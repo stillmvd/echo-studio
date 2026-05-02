@@ -9,7 +9,10 @@
     "fs:default",
     {
       "identifier": "shell:allow-spawn",
-      "allow": [{ "name": "wt", "cmd": "wt", "args": true }]
+      "allow": [
+        { "name": "wt", "cmd": "wt", "args": true },
+        { "name": "memory", "cmd": "memory", "args": true }
+      ]
     }
   ]
 }
