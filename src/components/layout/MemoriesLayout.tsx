@@ -1,4 +1,5 @@
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { BulkActionBar } from '@/components/memories/BulkActionBar';
 import { EmptyDetail } from '@/components/memories/EmptyDetail';
 import { FilterBar } from '@/components/memories/FilterBar';
 import { MemoryDetail } from '@/components/memories/MemoryDetail';
@@ -74,6 +75,7 @@ export function MemoriesLayout() {
             semanticWarning={list.data?.semanticWarning ?? null}
             modeUsed={list.data?.modeUsed ?? null}
           />
+          <BulkActionBar />
           <div className="flex-1 overflow-hidden">
             <MemoryList
               items={list.data?.items ?? []}

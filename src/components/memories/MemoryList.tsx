@@ -20,6 +20,9 @@ export function MemoryList({ items, total, isLoading, highlightTerms }: Props) {
   const selectedProject = useUiStore((s) => s.selectedProject);
   const selectedCategory = useUiStore((s) => s.selectedCategory);
   const searchQuery = useUiStore((s) => s.searchQuery);
+  const bulkSelectionIds = useUiStore((s) => s.bulkSelectionIds);
+  const toggleBulkId = useUiStore((s) => s.toggleBulkId);
+  const setBulkSelection = useUiStore((s) => s.setBulkSelection);
 
   const virtualizer = useVirtualizer({
     count: items.length,
@@ -33,12 +36,29 @@ export function MemoryList({ items, total, isLoading, highlightTerms }: Props) {
     parentRef.current?.scrollTo({ top: 0 });
   }, [selectedProject, selectedCategory, searchQuery]);
 
+  const allChecked = items.length > 0 && bulkSelectionIds.length === items.length;
+  const someChecked = bulkSelectionIds.length > 0 && !allChecked;
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-[var(--color-border-subtle)] px-4 py-2 text-xs text-[var(--color-text-muted)]">
-        <span>
-          {items.length} of {total} {total === 1 ? 'memory' : 'memories'}
-        </span>
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={allChecked}
+            ref={(el) => {
+              if (el) el.indeterminate = someChecked;
+            }}
+            onChange={() => {
+              if (allChecked || someChecked) setBulkSelection([]);
+              else setBulkSelection(items.map((m) => m.id));
+            }}
+            className="h-3.5 w-3.5 cursor-pointer accent-[var(--color-accent)]"
+          />
+          <span>
+            {items.length} of {total} {total === 1 ? 'memory' : 'memories'}
+          </span>
+        </label>
       </div>
       <div ref={parentRef} className="flex-1 overflow-y-auto">
         {isLoading ? (
@@ -70,6 +90,8 @@ export function MemoryList({ items, total, isLoading, highlightTerms }: Props) {
                     selected={selectedMemoryId === memory.id}
                     onClick={() => setSelectedMemoryId(memory.id)}
                     highlightTerms={highlightTerms}
+                    bulkChecked={bulkSelectionIds.includes(memory.id)}
+                    onToggleBulk={() => toggleBulkId(memory.id)}
                   />
                 </div>
               );

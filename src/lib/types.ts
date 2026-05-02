@@ -68,3 +68,20 @@ export interface MemoriesPage {
   modeUsed: SearchMode | null;
   semanticWarning: string | null;
 }
+
+export interface BulkFailure {
+  id: string;
+  error: string;
+}
+
+export interface BulkResult {
+  succeeded: string[];
+  failed: BulkFailure[];
+  backupPath: string | null;
+}
+
+export interface BackupInfo {
+  path: string;
+  createdAt: string;
+  sizeBytes: number;
+}

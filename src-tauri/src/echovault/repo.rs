@@ -1,5 +1,6 @@
 use std::path::PathBuf;
-use std::sync::{Mutex, Once};
+use std::sync::{Mutex, MutexGuard, Once};
+use std::time::Duration;
 
 use rusqlite::{params, params_from_iter, Connection, OpenFlags, Row};
 use serde_json::Value as JsonValue;
@@ -47,8 +48,9 @@ impl EchoVaultRepo {
         }
         let conn = Connection::open_with_flags(
             &db_path,
-            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+            OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX,
         )?;
+        conn.busy_timeout(Duration::from_millis(2000))?;
         Ok(Self {
             conn: Mutex::new(conn),
             memory_home: home,
@@ -63,6 +65,10 @@ impl EchoVaultRepo {
 
     pub fn home_source(&self) -> &'static str {
         self.home_source
+    }
+
+    pub(crate) fn conn_lock(&self) -> MutexGuard<'_, Connection> {
+        self.conn.lock().expect("poisoned conn mutex")
     }
 
     pub async fn search(&self, filter: &MemoriesFilter) -> Result<MemoriesPage> {

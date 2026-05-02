@@ -7,6 +7,8 @@ interface Props {
   selected: boolean;
   onClick: () => void;
   highlightTerms: string[];
+  bulkChecked: boolean;
+  onToggleBulk: () => void;
 }
 
 const categoryColor: Record<string, string> = {
@@ -39,44 +41,70 @@ function Highlighted({ text, terms }: { text: string; terms: string[] }) {
   );
 }
 
-export function MemoryRow({ memory, selected, onClick, highlightTerms }: Props) {
+export function MemoryRow({
+  memory,
+  selected,
+  onClick,
+  highlightTerms,
+  bulkChecked,
+  onToggleBulk,
+}: Props) {
   const cat = memory.category;
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
       className={cn(
-        'flex w-full flex-col gap-1 border-b border-[var(--color-border-subtle)] px-4 py-3 text-left transition-colors',
+        'flex w-full items-stretch gap-2 border-b border-[var(--color-border-subtle)] transition-colors',
         selected ? 'bg-[var(--color-bg-tertiary)]' : 'hover:bg-[var(--color-bg-tertiary)]/50',
       )}
     >
-      <div className="flex items-baseline gap-2">
-        <p className="flex-1 truncate text-sm text-[var(--color-text-primary)]">
-          <Highlighted text={memory.title} terms={highlightTerms} />
-        </p>
-        {cat && (
-          <span className={cn('shrink-0 text-[10px] uppercase', categoryColor[cat] ?? '')}>
-            {cat}
-          </span>
-        )}
-      </div>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[var(--color-text-muted)]">
-        <span className="truncate">{memory.project}</span>
-        <span>·</span>
-        <span>{memory.updatedAt.slice(0, 10)}</span>
-        {memory.tags.length > 0 && (
-          <>
-            <span>·</span>
-            <span className="truncate">
-              {memory.tags
-                .slice(0, 3)
-                .map((t) => `#${t}`)
-                .join(' ')}
-              {memory.tags.length > 3 ? ` +${memory.tags.length - 3}` : ''}
+      <span className="flex shrink-0 items-center pl-3">
+        <input
+          type="checkbox"
+          checked={bulkChecked}
+          onChange={onToggleBulk}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Select memory ${memory.title}`}
+          className="h-3.5 w-3.5 cursor-pointer accent-[var(--color-accent)]"
+        />
+      </span>
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex flex-1 flex-col gap-1 px-3 py-3 text-left"
+      >
+        <div className="flex items-baseline gap-2">
+          <p className="flex-1 truncate text-sm text-[var(--color-text-primary)]">
+            <Highlighted text={memory.title} terms={highlightTerms} />
+          </p>
+          {cat && (
+            <span className={cn('shrink-0 text-[10px] uppercase', categoryColor[cat] ?? '')}>
+              {cat}
             </span>
-          </>
-        )}
-      </div>
-    </button>
+          )}
+          {memory.status === 'archived' && (
+            <span className="shrink-0 rounded-sm bg-[var(--color-bg-tertiary)] px-1 text-[9px] uppercase text-[var(--color-text-muted)]">
+              archived
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[var(--color-text-muted)]">
+          <span className="truncate">{memory.project}</span>
+          <span>·</span>
+          <span>{memory.updatedAt.slice(0, 10)}</span>
+          {memory.tags.length > 0 && (
+            <>
+              <span>·</span>
+              <span className="truncate">
+                {memory.tags
+                  .slice(0, 3)
+                  .map((t) => `#${t}`)
+                  .join(' ')}
+                {memory.tags.length > 3 ? ` +${memory.tags.length - 3}` : ''}
+              </span>
+            </>
+          )}
+        </div>
+      </button>
+    </div>
   );
 }

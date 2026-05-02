@@ -19,6 +19,7 @@ interface UiState {
   selectedTags: string[];
   dateRange: DateRangePreset;
   sortBy: SortBy;
+  bulkSelectionIds: string[];
 
   setActiveTab: (tab: AppTab) => void;
   setSelectedProject: (project: string | null) => void;
@@ -33,6 +34,9 @@ interface UiState {
   setDateRange: (r: DateRangePreset) => void;
   setSortBy: (s: SortBy) => void;
   clearFilters: () => void;
+  toggleBulkId: (id: string) => void;
+  setBulkSelection: (ids: string[]) => void;
+  clearBulkSelection: () => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -49,6 +53,7 @@ export const useUiStore = create<UiState>()(
       selectedTags: [],
       dateRange: 'all',
       sortBy: 'updatedDesc',
+      bulkSelectionIds: [],
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setSelectedProject: (selectedProject) => set({ selectedProject, selectedMemoryId: null }),
@@ -78,7 +83,16 @@ export const useUiStore = create<UiState>()(
           dateRange: 'all',
           sortBy: 'updatedDesc',
           selectedMemoryId: null,
+          bulkSelectionIds: [],
         }),
+      toggleBulkId: (id) =>
+        set((s) => ({
+          bulkSelectionIds: s.bulkSelectionIds.includes(id)
+            ? s.bulkSelectionIds.filter((x) => x !== id)
+            : [...s.bulkSelectionIds, id],
+        })),
+      setBulkSelection: (bulkSelectionIds) => set({ bulkSelectionIds }),
+      clearBulkSelection: () => set({ bulkSelectionIds: [] }),
     }),
     {
       name: 'echo-studio.ui',

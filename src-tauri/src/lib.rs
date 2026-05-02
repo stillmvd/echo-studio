@@ -15,6 +15,14 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::memories::list_memories,
             commands::memories::get_memory,
+            commands::memories::archive_memory,
+            commands::memories::restore_memory,
+            commands::memories::delete_memory,
+            commands::memories::bulk_archive_memories,
+            commands::memories::bulk_restore_memories,
+            commands::memories::bulk_delete_memories,
+            commands::memories::list_db_backups,
+            commands::memories::manual_backup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

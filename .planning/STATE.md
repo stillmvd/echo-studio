@@ -2,53 +2,48 @@
 
 > Текущее состояние проекта. Обновляется на каждом значимом шаге.
 
-## Status: Phase 3 complete (filters + search)
+## Status: Phase 4 complete (echovault writes — archive/delete + bulk + backup)
 
 - 2026-05-02 (init): commit `1813264` — планирование, 37 FR/NFR, 13 phases
 - 2026-05-02 (Phase 0): commit `d7ff8e6` — Tauri 2 + React 19 skeleton
-- 2026-05-02 (Phase 1): commit `f7df1b6` — EchoVault read-repo + IPC + frontend wiring (4/4 golden)
-- 2026-05-02 (Phase 2): commit `894ec6b` — 3-pane layout, virtualized list, markdown detail
+- 2026-05-02 (Phase 1): commit `f7df1b6` — EchoVault read-repo + IPC
+- 2026-05-02 (Phase 2): commit `894ec6b` — 3-pane layout, virtualized list, markdown
 - 2026-05-02 (Phase 2 polish): commit `3c220ae` — dark scrollbars
-- 2026-05-02 (Phase 3): filters + search (FTS5 + semantic via Ollama + RRF + tag chips + sort + date range)
+- 2026-05-02 (Phase 3): commit `c9b9fa2` — filters + search (FTS5 + semantic + RRF)
+- 2026-05-02 (Phase 4): writes (archive/restore/delete) + bulk + backup-before-write
 
 ## Зафиксированные решения
 
-См. PROJECT.md (A-01..A-08), Phase 1 (A-09..A-12), Phase 2 (A-13..A-16).
+См. PROJECT.md (A-01..A-08), Phase 1 (A-09..A-12), Phase 2 (A-13..A-16), Phase 3 (A-17..A-21).
 
-Дополнительно из Phase 3:
-- A-17: `sqlite-vec` registered через `sqlite3_auto_extension` в `Once::call_once` — глобально, чтобы каждое новое Connection автоматически имело vec0.
-- A-18: Reciprocal Rank Fusion (RRF) с k=60 для hybrid-mode (lex+sem). Не используем weighted scores — простая ранговая агрегация.
-- A-19: Ollama-fallback: если semantic / hybrid выбраны, но Ollama недоступен — возвращаем результат FTS5 + поле `semanticWarning` с message; UI показывает баннер.
-- A-20: Tag aggregator уважает project/category-фильтры, но игнорирует search-query — чтобы chips не «исчезали» при опечатке.
-- A-21: Search highlighting frontend-side (tokenize query по unicode-границам, регэксп с UI-marks). Backend не возвращает offsets — экономия на сериализации.
+Дополнительно из Phase 4:
+- A-22: Connection переоткрыт `READ_WRITE | NO_MUTEX` + `busy_timeout=2000ms` для конкурентного доступа с EchoVault MCP-сервером.
+- A-23: Backup-before-write — `fs::copy` index.db в `~/.memory/.backups/index.YYYYMMDD-HHMMSS.db` ПЕРЕД любой destructive op. Rotation: keep last 20.
+- A-24: Hard-delete атомарно: `INSERT INTO memories_fts('delete', ...)` (external-content table cleanup) → `DELETE memory_details` → `DELETE memories_vec` → `DELETE memories`. Всё в одной transaction.
+- A-25: НЕ трогаем markdown файлы в `vault/` (per A-02 — index.db = SOT). EchoVault при следующей операции через `memory` CLI пересинхронизирует markdown. Документировано в commit message.
+- A-26: Bulk ops лимит 1000 ids/operation. Один backup на всю bulk. Возвращают `BulkResult { succeeded, failed: [{id, error}], backupPath }`.
 
-## Phase 3 — DoD checklist
+## Phase 4 — DoD checklist
 
-- [x] Search box (debounce 300ms, ✕ для очистки), 3 режима lex/sem/hyb
-- [x] Tag chips multi-select с counters (60 max)
-- [x] Date range presets: all / 7d / 30d / 90d
-- [x] Sort dropdown: Updated ↓ / Created ↓ / Title ↑ / Project ↑
-- [x] Search highlighting в title (frontend-side)
-- [x] sqlite-vec extension auto-loaded
-- [x] FTS5 query builder копирует логику EchoVault (drop stopwords, OR-prefix, dedup)
-- [x] Semantic via Ollama POST /api/embeddings (nomic-embed-text)
-- [x] RRF merge для hybrid
-- [x] Graceful fallback на FTS5 при недоступном Ollama + UI-баннер
-- [x] 8 unit tests Rust зелёные
-- [x] 4 golden tests Rust зелёные (Phase 1)
-- [x] `pnpm typecheck/biome/build`, `cargo clippy --all-targets -- -D warnings` зелёные
+- [x] `EchoVaultRepo::open()` теперь RW + busy_timeout 2s
+- [x] `archive_memory(id, reason?)` — UPDATE status, archived_at, archive_reason, updated_at
+- [x] `restore_memory(id)` — UPDATE status='active', clear archive fields
+- [x] `delete_memory(id)` — atomic FTS5 delete-op + DELETE memory_details/vec/memories
+- [x] `bulk_archive`, `bulk_restore`, `bulk_delete` с per-id error capture
+- [x] `backup_db` engine: create + list + rotate (keep 20)
+- [x] 10 Tauri commands зарегистрированы
+- [x] Frontend: ConfirmDialog (modal с ESC/Enter/click-outside), кнопки Archive/Restore/Delete в MemoryDetail с reason input
+- [x] Multi-select в MemoryList (checkboxes), select-all в header, indeterminate state
+- [x] BulkActionBar над списком при `bulkSelectionIds.length > 0`
+- [x] TanStack Query invalidation после каждой mutation
+- [x] 12 unit tests Rust + 4 golden tests зелёные
+- [x] `pnpm typecheck/biome/build`, `cargo clippy --all-targets -- -D warnings`, `cargo fmt` зелёные
 
 ## Известные ограничения
 
-- Bundle JS вырос до 712 KB (215 KB gzip) — react-markdown + highlight.js. В Phase 11 (QA) посмотрим code-splitting.
-- Поиск по `body` (memory_details) не включён — FTS5 таблица содержит только head fields (decision EchoVault).
-- Embeddings model жёстко nomic-embed-text. В Phase 10 (Settings) добавим выбор.
+- Markdown в `vault/` не синхронизируется при write-операциях. Это by design — EchoVault сам пересинхронизирует. Если пользователь просматривает .md напрямую, состояние может расходиться до следующей CLI-операции.
+- FTS rebuild не делается — полагаемся на `'delete'` op в external-content table (она знает все индексированные поля по rowid).
 
 ## Следующий шаг
 
-Phase 4 — EchoVault writes (archive/delete + bulk + backup-before-write). Нужно:
-- Открыть Connection в RW-режиме (заменить флаги в `EchoVaultRepo::open`)
-- Реализовать `archive_memory`, `delete_memory`, `bulk_archive`, `bulk_delete`
-- Atomic tx + write/edit markdown sections в `vault/`
-- Backup `index.db` перед каждой destructive op (`~/.memory/.backups/`)
-- UI: confirm-dialogs, multi-select в списке, прогресс bulk
+Phase 5 — Forms + Claude Code launcher: edit/create memory form, «Open in Claude Code» dialog с шаблонами (Save / Update / Investigate), spawn `wt claude --prompt-file <tmp>`.

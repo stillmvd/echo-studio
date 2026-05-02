@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import { Markdown } from '@/components/markdown/Markdown';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useArchiveMemory, useDeleteMemory, useRestoreMemory } from '@/hooks/use-memory-actions';
 import { cn } from '@/lib/cn';
 import type { MemoryWithBody } from '@/lib/types';
 import { type DetailMode, useUiStore } from '@/state/ui-store';
@@ -18,11 +21,36 @@ function formatBytes(n: number) {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+type DialogKind = null | 'archive' | 'restore' | 'delete';
+
 export function MemoryDetail({ data }: Props) {
   const detailMode = useUiStore((s) => s.detailMode);
   const setDetailMode = useUiStore((s) => s.setDetailMode);
+  const archive = useArchiveMemory();
+  const restore = useRestoreMemory();
+  const del = useDeleteMemory();
+
+  const [dialog, setDialog] = useState<DialogKind>(null);
+  const [archiveReason, setArchiveReason] = useState('');
 
   const m = data;
+  const isArchived = m.status === 'archived';
+  const busy = archive.isPending || restore.isPending || del.isPending;
+
+  const onConfirm = async () => {
+    if (dialog === 'archive') {
+      await archive.mutateAsync({
+        id: m.id,
+        reason: archiveReason.trim() || 'archived',
+      });
+      setArchiveReason('');
+    } else if (dialog === 'restore') {
+      await restore.mutateAsync(m.id);
+    } else if (dialog === 'delete') {
+      await del.mutateAsync(m.id);
+    }
+    setDialog(null);
+  };
 
   return (
     <article className="flex h-full flex-col overflow-hidden">
@@ -37,6 +65,7 @@ export function MemoryDetail({ data }: Props) {
           <Badge>{m.project}</Badge>
           {m.category && <Badge>{m.category}</Badge>}
           <Badge muted>status: {m.status}</Badge>
+          {m.archiveReason && <Badge muted>reason: {m.archiveReason}</Badge>}
           <span>·</span>
           <span>created {m.createdAt.slice(0, 10)}</span>
           <span>·</span>
@@ -102,7 +131,7 @@ export function MemoryDetail({ data }: Props) {
           </Section>
         )}
 
-        {m.body !== null && m.body !== undefined && m.body !== '' && (
+        {m.body && (
           <Section label="Details">
             {detailMode === 'rendered' ? (
               <Markdown body={m.body} />
@@ -118,10 +147,16 @@ export function MemoryDetail({ data }: Props) {
           <ActionButton disabled title="Edit (Phase 5)">
             Edit
           </ActionButton>
-          <ActionButton disabled title="Archive (Phase 4)">
-            Archive
-          </ActionButton>
-          <ActionButton disabled title="Delete (Phase 4)">
+          {isArchived ? (
+            <ActionButton onClick={() => setDialog('restore')} disabled={busy}>
+              Restore
+            </ActionButton>
+          ) : (
+            <ActionButton onClick={() => setDialog('archive')} disabled={busy}>
+              Archive
+            </ActionButton>
+          )}
+          <ActionButton onClick={() => setDialog('delete')} disabled={busy} danger>
             Delete
           </ActionButton>
           <ActionButton disabled title="Open in Claude Code (Phase 5)">
@@ -130,6 +165,43 @@ export function MemoryDetail({ data }: Props) {
           <span className="ml-auto font-mono">{m.id}</span>
         </footer>
       </div>
+
+      <ConfirmDialog
+        open={dialog !== null}
+        busy={busy}
+        title={
+          dialog === 'archive'
+            ? 'Archive this memory?'
+            : dialog === 'restore'
+              ? 'Restore this memory to active?'
+              : 'Delete this memory permanently?'
+        }
+        description={
+          dialog === 'delete'
+            ? 'A backup of index.db will be created in ~/.memory/.backups before deletion.'
+            : 'A backup of index.db will be created automatically.'
+        }
+        confirmLabel={
+          dialog === 'archive' ? 'Archive' : dialog === 'restore' ? 'Restore' : 'Delete'
+        }
+        danger={dialog === 'delete'}
+        onConfirm={onConfirm}
+        onCancel={() => {
+          setDialog(null);
+          setArchiveReason('');
+        }}
+      >
+        {dialog === 'archive' && (
+          <input
+            value={archiveReason}
+            onChange={(e) => setArchiveReason(e.target.value)}
+            placeholder="Reason (optional)"
+            className="h-8 w-full rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] px-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+            // biome-ignore lint/a11y/noAutofocus: dialog focus
+            autoFocus
+          />
+        )}
+      </ConfirmDialog>
     </article>
   );
 }
@@ -174,21 +246,27 @@ function ActionButton({
   children,
   disabled,
   title,
+  onClick,
+  danger,
 }: {
   children: React.ReactNode;
   disabled?: boolean;
   title?: string;
+  onClick?: () => void;
+  danger?: boolean;
 }) {
   return (
     <button
       type="button"
       disabled={disabled}
       title={title}
+      onClick={onClick}
       className={cn(
-        'rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)] px-3 py-1 text-xs',
-        disabled
-          ? 'cursor-not-allowed opacity-50'
-          : 'hover:border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)]',
+        'rounded-md border px-3 py-1 text-xs',
+        danger
+          ? 'border-[var(--color-danger)]/40 bg-[var(--color-danger)]/15 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/25'
+          : 'border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)]',
+        disabled && 'cursor-not-allowed opacity-50',
       )}
     >
       {children}
