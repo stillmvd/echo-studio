@@ -1,0 +1,21 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+.DS_Store
+*.log
+.env
+.env.local
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.pnpm-store/
+
+# OS
+Thumbs.db
+desktop.ini
+
+# Claude / GSD local
+.claude/local/
+.planning/phases/*/state/
