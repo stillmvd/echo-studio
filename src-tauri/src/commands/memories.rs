@@ -10,7 +10,7 @@ pub async fn list_memories(
 ) -> Result<MemoriesPage, EchoVaultError> {
     let repo = state.repo()?;
     let f = filter.unwrap_or_default();
-    repo.list(&f)
+    repo.search(&f).await
 }
 
 #[tauri::command]

@@ -33,6 +33,36 @@ pub struct MemoryWithBody {
     pub size_bytes: i64,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum SearchMode {
+    #[default]
+    Lexical,
+    Semantic,
+    Hybrid,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum SortBy {
+    #[default]
+    UpdatedDesc,
+    CreatedDesc,
+    TitleAsc,
+    ProjectAsc,
+}
+
+impl SortBy {
+    pub fn as_sql(&self) -> &'static str {
+        match self {
+            Self::UpdatedDesc => "datetime(updated_at) DESC",
+            Self::CreatedDesc => "datetime(created_at) DESC",
+            Self::TitleAsc => "title COLLATE NOCASE ASC",
+            Self::ProjectAsc => "project COLLATE NOCASE ASC, datetime(updated_at) DESC",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct MemoriesFilter {
@@ -41,6 +71,13 @@ pub struct MemoriesFilter {
     pub status: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
+    pub query: Option<String>,
+    pub mode: Option<SearchMode>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    pub date_from: Option<String>,
+    pub date_to: Option<String>,
+    pub sort_by: Option<SortBy>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,11 +96,21 @@ pub struct CategoryCount {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct TagCount {
+    pub tag: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MemoriesPage {
     pub total: i64,
     pub items: Vec<Memory>,
     pub projects: Vec<ProjectCount>,
     pub categories: Vec<CategoryCount>,
+    pub tags: Vec<TagCount>,
     pub memory_home: String,
     pub home_source: String,
+    pub mode_used: Option<SearchMode>,
+    pub semantic_warning: Option<String>,
 }

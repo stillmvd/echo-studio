@@ -25,12 +25,21 @@ export interface MemoryWithBody extends Memory {
   sizeBytes: number;
 }
 
+export type SearchMode = 'lexical' | 'semantic' | 'hybrid';
+export type SortBy = 'updatedDesc' | 'createdDesc' | 'titleAsc' | 'projectAsc';
+
 export interface MemoriesFilter {
   project?: string;
   category?: string;
   status?: 'active' | 'archived' | 'all';
   limit?: number;
   offset?: number;
+  query?: string;
+  mode?: SearchMode;
+  tags?: string[];
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: SortBy;
 }
 
 export interface ProjectCount {
@@ -43,11 +52,19 @@ export interface CategoryCount {
   count: number;
 }
 
+export interface TagCount {
+  tag: string;
+  count: number;
+}
+
 export interface MemoriesPage {
   total: number;
   items: Memory[];
   projects: ProjectCount[];
   categories: CategoryCount[];
+  tags: TagCount[];
   memoryHome: string;
   homeSource: string;
+  modeUsed: SearchMode | null;
+  semanticWarning: string | null;
 }

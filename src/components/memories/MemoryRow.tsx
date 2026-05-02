@@ -1,10 +1,12 @@
 import { cn } from '@/lib/cn';
+import { splitHighlighted } from '@/lib/highlight';
 import type { Memory } from '@/lib/types';
 
 interface Props {
   memory: Memory;
   selected: boolean;
   onClick: () => void;
+  highlightTerms: string[];
 }
 
 const categoryColor: Record<string, string> = {
@@ -15,7 +17,29 @@ const categoryColor: Record<string, string> = {
   learning: 'text-[var(--color-warning)]',
 };
 
-export function MemoryRow({ memory, selected, onClick }: Props) {
+function Highlighted({ text, terms }: { text: string; terms: string[] }) {
+  const segs = splitHighlighted(text, terms);
+  return (
+    <>
+      {segs.map((s, i) =>
+        s.match ? (
+          <mark
+            // biome-ignore lint/suspicious/noArrayIndexKey: ephemeral spans
+            key={i}
+            className="rounded-sm bg-[var(--color-accent)]/25 px-0.5 text-[var(--color-text-primary)]"
+          >
+            {s.text}
+          </mark>
+        ) : (
+          // biome-ignore lint/suspicious/noArrayIndexKey: ephemeral spans
+          <span key={i}>{s.text}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+export function MemoryRow({ memory, selected, onClick, highlightTerms }: Props) {
   const cat = memory.category;
   return (
     <button
@@ -27,7 +51,9 @@ export function MemoryRow({ memory, selected, onClick }: Props) {
       )}
     >
       <div className="flex items-baseline gap-2">
-        <p className="flex-1 truncate text-sm text-[var(--color-text-primary)]">{memory.title}</p>
+        <p className="flex-1 truncate text-sm text-[var(--color-text-primary)]">
+          <Highlighted text={memory.title} terms={highlightTerms} />
+        </p>
         {cat && (
           <span className={cn('shrink-0 text-[10px] uppercase', categoryColor[cat] ?? '')}>
             {cat}

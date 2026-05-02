@@ -8,16 +8,18 @@ interface Props {
   items: Memory[];
   total: number;
   isLoading: boolean;
+  highlightTerms: string[];
 }
 
 const ROW_HEIGHT = 64;
 
-export function MemoryList({ items, total, isLoading }: Props) {
+export function MemoryList({ items, total, isLoading, highlightTerms }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
   const selectedMemoryId = useUiStore((s) => s.selectedMemoryId);
   const setSelectedMemoryId = useUiStore((s) => s.setSelectedMemoryId);
   const selectedProject = useUiStore((s) => s.selectedProject);
   const selectedCategory = useUiStore((s) => s.selectedCategory);
+  const searchQuery = useUiStore((s) => s.searchQuery);
 
   const virtualizer = useVirtualizer({
     count: items.length,
@@ -29,7 +31,7 @@ export function MemoryList({ items, total, isLoading }: Props) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset scroll on filter change
   useEffect(() => {
     parentRef.current?.scrollTo({ top: 0 });
-  }, [selectedProject, selectedCategory]);
+  }, [selectedProject, selectedCategory, searchQuery]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -37,7 +39,6 @@ export function MemoryList({ items, total, isLoading }: Props) {
         <span>
           {items.length} of {total} {total === 1 ? 'memory' : 'memories'}
         </span>
-        <span>sorted by updated ↓</span>
       </div>
       <div ref={parentRef} className="flex-1 overflow-y-auto">
         {isLoading ? (
@@ -68,6 +69,7 @@ export function MemoryList({ items, total, isLoading }: Props) {
                     memory={memory}
                     selected={selectedMemoryId === memory.id}
                     onClick={() => setSelectedMemoryId(memory.id)}
+                    highlightTerms={highlightTerms}
                   />
                 </div>
               );

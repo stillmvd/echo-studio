@@ -16,6 +16,9 @@ pub enum EchoVaultError {
 
     #[error("YAML parse error: {0}")]
     Yaml(#[from] serde_yaml::Error),
+
+    #[error("Ollama unreachable: {0}")]
+    OllamaUnreachable(String),
 }
 
 impl serde::Serialize for EchoVaultError {
