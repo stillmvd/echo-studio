@@ -20,6 +20,9 @@ interface UiState {
   dateRange: DateRangePreset;
   sortBy: SortBy;
   bulkSelectionIds: string[];
+  conversationsProjectId: string | null;
+  conversationsSortBy: 'date' | 'size' | 'duration' | 'msgs';
+  conversationsSortDir: 'asc' | 'desc';
 
   setActiveTab: (tab: AppTab) => void;
   setSelectedProject: (project: string | null) => void;
@@ -37,6 +40,8 @@ interface UiState {
   toggleBulkId: (id: string) => void;
   setBulkSelection: (ids: string[]) => void;
   clearBulkSelection: () => void;
+  setConversationsProjectId: (id: string | null) => void;
+  setConversationsSort: (by: 'date' | 'size' | 'duration' | 'msgs', dir: 'asc' | 'desc') => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -54,6 +59,9 @@ export const useUiStore = create<UiState>()(
       dateRange: 'all',
       sortBy: 'updatedDesc',
       bulkSelectionIds: [],
+      conversationsProjectId: null,
+      conversationsSortBy: 'date',
+      conversationsSortDir: 'desc',
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setSelectedProject: (selectedProject) => set({ selectedProject, selectedMemoryId: null }),
@@ -93,6 +101,9 @@ export const useUiStore = create<UiState>()(
         })),
       setBulkSelection: (bulkSelectionIds) => set({ bulkSelectionIds }),
       clearBulkSelection: () => set({ bulkSelectionIds: [] }),
+      setConversationsProjectId: (conversationsProjectId) => set({ conversationsProjectId }),
+      setConversationsSort: (conversationsSortBy, conversationsSortDir) =>
+        set({ conversationsSortBy, conversationsSortDir }),
     }),
     {
       name: 'echo-studio.ui',
@@ -104,6 +115,9 @@ export const useUiStore = create<UiState>()(
         detailMode: s.detailMode,
         searchMode: s.searchMode,
         sortBy: s.sortBy,
+        conversationsProjectId: s.conversationsProjectId,
+        conversationsSortBy: s.conversationsSortBy,
+        conversationsSortDir: s.conversationsSortDir,
       }),
     },
   ),

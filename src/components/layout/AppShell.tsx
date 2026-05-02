@@ -1,5 +1,6 @@
 import { useMemoriesList } from '@/hooks/use-memories';
 import { useUiStore } from '@/state/ui-store';
+import { ConversationsLayout } from './ConversationsLayout';
 import { MemoriesLayout } from './MemoriesLayout';
 import { StatusBar } from './StatusBar';
 import { TabBar } from './TabBar';
@@ -13,7 +14,7 @@ export function AppShell() {
       <TabBar />
       <main className="flex-1 overflow-hidden">
         {activeTab === 'memories' && <MemoriesLayout />}
-        {activeTab === 'conversations' && <Placeholder label="Conversations — Phase 7-9" />}
+        {activeTab === 'conversations' && <ConversationsLayout />}
         {activeTab === 'settings' && <Placeholder label="Settings — Phase 10" />}
       </main>
       <StatusBar

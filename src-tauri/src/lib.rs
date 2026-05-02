@@ -1,4 +1,5 @@
 mod commands;
+mod conversations;
 pub mod echovault;
 mod services;
 mod state;
@@ -41,6 +42,8 @@ pub fn run() {
             commands::memories::update_memory,
             commands::system::open_in_claude_code,
             commands::system::trigger_reindex,
+            commands::conversations::list_conversation_projects,
+            commands::conversations::list_conversation_sessions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -90,6 +90,27 @@ export interface MemoryPatch {
   body?: string | null;
 }
 
+export interface ConversationProject {
+  id: string;
+  cwd: string;
+  displayName: string;
+  sessionCount: number;
+  totalSize: number;
+  lastActivity: string | null;
+}
+
+export interface SessionMeta {
+  sessionId: string;
+  filePath: string;
+  sizeBytes: number;
+  messageCount: number;
+  firstEventAt: string | null;
+  lastEventAt: string | null;
+  durationMs: number;
+  gitBranch: string | null;
+  cwd: string | null;
+}
+
 export interface BackupInfo {
   path: string;
   createdAt: string;
