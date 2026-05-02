@@ -2,7 +2,8 @@ use tauri::State;
 
 use crate::echovault::{
     backup::{create_backup, list_backups, rotate_backups},
-    BackupInfo, BulkResult, EchoVaultError, MemoriesFilter, MemoriesPage, MemoryWithBody,
+    BackupInfo, BulkResult, EchoVaultError, MemoriesFilter, MemoriesPage, MemoryPatch,
+    MemoryWithBody,
 };
 use crate::state::AppState;
 
@@ -92,4 +93,14 @@ pub async fn manual_backup(state: State<'_, AppState>) -> Result<String, EchoVau
     let path = create_backup(repo.home())?;
     rotate_backups(repo.home(), 20)?;
     Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn update_memory(
+    state: State<'_, AppState>,
+    id: String,
+    patch: MemoryPatch,
+) -> Result<bool, EchoVaultError> {
+    let repo = state.repo()?;
+    repo.update(&id, &patch)
 }

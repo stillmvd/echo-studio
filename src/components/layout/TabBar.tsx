@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { ClaudeCodeDialog } from '@/components/memories/ClaudeCodeDialog';
 import { cn } from '@/lib/cn';
 import { type AppTab, useUiStore } from '@/state/ui-store';
 
@@ -10,6 +12,8 @@ const tabs: { id: AppTab; label: string }[] = [
 export function TabBar() {
   const activeTab = useUiStore((s) => s.activeTab);
   const setActiveTab = useUiStore((s) => s.setActiveTab);
+  const selectedProject = useUiStore((s) => s.selectedProject);
+  const [newOpen, setNewOpen] = useState(false);
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-1 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)] px-3">
@@ -36,7 +40,26 @@ export function TabBar() {
           </button>
         ))}
       </nav>
-      <span className="ml-auto h-2 w-2 rounded-full bg-[var(--color-accent)]" />
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setNewOpen(true)}
+          className="rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] px-3 py-1 text-xs text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+          title="Create a new memory via Claude Code"
+        >
+          + New memory
+        </button>
+        <span className="h-2 w-2 rounded-full bg-[var(--color-accent)]" />
+      </div>
+
+      <ClaudeCodeDialog
+        open={newOpen}
+        initialTemplate="save"
+        memory={null}
+        defaultProject={selectedProject}
+        defaultCwd=""
+        onClose={() => setNewOpen(false)}
+      />
     </header>
   );
 }

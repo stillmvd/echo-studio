@@ -6,8 +6,20 @@ import {
   bulkRestoreMemories,
   deleteMemory,
   restoreMemory,
+  updateMemory,
 } from '@/lib/ipc';
+import type { MemoryPatch } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
+
+export function useUpdateMemory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: MemoryPatch }) => updateMemory(id, patch),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['memories'] });
+    },
+  });
+}
 
 export function useArchiveMemory() {
   const qc = useQueryClient();

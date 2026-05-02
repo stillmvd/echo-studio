@@ -23,6 +23,8 @@ pub fn run() {
             commands::memories::bulk_delete_memories,
             commands::memories::list_db_backups,
             commands::memories::manual_backup,
+            commands::memories::update_memory,
+            commands::system::open_in_claude_code,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

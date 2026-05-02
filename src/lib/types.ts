@@ -80,6 +80,16 @@ export interface BulkResult {
   backupPath: string | null;
 }
 
+export interface MemoryPatch {
+  title?: string;
+  what?: string;
+  why?: string | null;
+  impact?: string | null;
+  category?: string | null;
+  tags?: string[];
+  body?: string | null;
+}
+
 export interface BackupInfo {
   path: string;
   createdAt: string;

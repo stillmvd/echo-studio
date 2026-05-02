@@ -1,5 +1,12 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { BackupInfo, BulkResult, MemoriesFilter, MemoriesPage, MemoryWithBody } from './types';
+import type {
+  BackupInfo,
+  BulkResult,
+  MemoriesFilter,
+  MemoriesPage,
+  MemoryPatch,
+  MemoryWithBody,
+} from './types';
 
 export async function listMemories(filter: MemoriesFilter = {}): Promise<MemoriesPage> {
   return invoke<MemoriesPage>('list_memories', { filter });
@@ -39,4 +46,12 @@ export async function listDbBackups(): Promise<BackupInfo[]> {
 
 export async function manualBackup(): Promise<string> {
   return invoke<string>('manual_backup');
+}
+
+export async function updateMemory(id: string, patch: MemoryPatch): Promise<boolean> {
+  return invoke<boolean>('update_memory', { id, patch });
+}
+
+export async function openInClaudeCode(cwd?: string): Promise<string> {
+  return invoke<string>('open_in_claude_code', { cwd });
 }

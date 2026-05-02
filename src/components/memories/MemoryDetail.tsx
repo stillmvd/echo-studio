@@ -5,6 +5,8 @@ import { useArchiveMemory, useDeleteMemory, useRestoreMemory } from '@/hooks/use
 import { cn } from '@/lib/cn';
 import type { MemoryWithBody } from '@/lib/types';
 import { type DetailMode, useUiStore } from '@/state/ui-store';
+import { ClaudeCodeDialog } from './ClaudeCodeDialog';
+import { EditMemoryDialog } from './EditMemoryDialog';
 
 interface Props {
   data: MemoryWithBody;
@@ -32,6 +34,8 @@ export function MemoryDetail({ data }: Props) {
 
   const [dialog, setDialog] = useState<DialogKind>(null);
   const [archiveReason, setArchiveReason] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [claudeOpen, setClaudeOpen] = useState(false);
 
   const m = data;
   const isArchived = m.status === 'archived';
@@ -144,7 +148,7 @@ export function MemoryDetail({ data }: Props) {
         )}
 
         <footer className="mt-8 flex flex-wrap items-center gap-2 border-t border-[var(--color-border-subtle)] pt-4 text-xs text-[var(--color-text-muted)]">
-          <ActionButton disabled title="Edit (Phase 5)">
+          <ActionButton onClick={() => setEditing(true)} disabled={busy}>
             Edit
           </ActionButton>
           {isArchived ? (
@@ -159,7 +163,7 @@ export function MemoryDetail({ data }: Props) {
           <ActionButton onClick={() => setDialog('delete')} disabled={busy} danger>
             Delete
           </ActionButton>
-          <ActionButton disabled title="Open in Claude Code (Phase 5)">
+          <ActionButton onClick={() => setClaudeOpen(true)} disabled={busy}>
             Open in Claude Code
           </ActionButton>
           <span className="ml-auto font-mono">{m.id}</span>
@@ -202,6 +206,16 @@ export function MemoryDetail({ data }: Props) {
           />
         )}
       </ConfirmDialog>
+
+      <EditMemoryDialog open={editing} data={data} onClose={() => setEditing(false)} />
+      <ClaudeCodeDialog
+        open={claudeOpen}
+        initialTemplate="update"
+        memory={data}
+        defaultProject={data.project}
+        defaultCwd=""
+        onClose={() => setClaudeOpen(false)}
+      />
     </article>
   );
 }
