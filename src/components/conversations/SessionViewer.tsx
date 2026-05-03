@@ -261,28 +261,23 @@ function AssistantMessage({ item }: { item: DisplayItem }) {
 }
 
 function ThinkingMessage({ item }: { item: DisplayItem }) {
-  const [open, setOpen] = useState(false);
-  const text = item.text ?? '';
-  const preview = text.split('\n')[0]?.slice(0, 120) ?? '';
+  const text = (item.text ?? '').trim();
+  const sealed = text.length === 0;
   return (
-    <button
-      type="button"
-      onClick={() => setOpen((o) => !o)}
-      className="rounded-lg border border-dashed border-[var(--color-border-subtle)] bg-transparent px-4 py-2 text-left"
+    <div
+      className="flex items-center gap-2 rounded-lg border border-dashed border-[var(--color-border-subtle)] bg-transparent px-4 py-2 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]"
+      title={
+        sealed
+          ? 'Anthropic encrypts the contents of thinking blocks (extended thinking signature). Only the marker that Claude paused to reason is preserved.'
+          : undefined
+      }
     >
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
-        <span>💭 Thinking</span>
-        {item.timestamp && <span>{timeOnly(item.timestamp)}</span>}
-        <span className="ml-auto">{open ? '▼' : '▶'}</span>
-      </div>
-      {open ? (
-        <div className="mt-2 whitespace-pre-wrap text-xs text-[var(--color-text-secondary)]">
-          {text}
-        </div>
-      ) : (
-        <p className="mt-1 truncate text-xs italic text-[var(--color-text-muted)]">{preview}</p>
-      )}
-    </button>
+      <span>💭 Thinking</span>
+      {item.timestamp && <span>{timeOnly(item.timestamp)}</span>}
+      <span className="ml-auto italic normal-case tracking-normal opacity-70">
+        {sealed ? 'sealed by Anthropic — content not accessible' : `${text.length} chars`}
+      </span>
+    </div>
   );
 }
 
