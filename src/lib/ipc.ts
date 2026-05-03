@@ -7,7 +7,9 @@ import type {
   MemoriesPage,
   MemoryPatch,
   MemoryWithBody,
+  SessionEvent,
   SessionMeta,
+  SessionSearchHit,
 } from './types';
 
 export async function listMemories(filter: MemoriesFilter = {}): Promise<MemoriesPage> {
@@ -64,4 +66,15 @@ export async function listConversationProjects(): Promise<ConversationProject[]>
 
 export async function listConversationSessions(projectId: string): Promise<SessionMeta[]> {
   return invoke<SessionMeta[]>('list_conversation_sessions', { projectId });
+}
+
+export async function readSessionEvents(filePath: string): Promise<SessionEvent[]> {
+  return invoke<SessionEvent[]>('read_session_events', { filePath });
+}
+
+export async function searchSessionText(
+  projectId: string,
+  query: string,
+): Promise<SessionSearchHit[]> {
+  return invoke<SessionSearchHit[]>('search_session_text', { projectId, query });
 }

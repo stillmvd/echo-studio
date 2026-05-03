@@ -44,6 +44,8 @@ pub fn run() {
             commands::system::trigger_reindex,
             commands::conversations::list_conversation_projects,
             commands::conversations::list_conversation_sessions,
+            commands::conversations::read_session_events,
+            commands::conversations::search_session_text,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

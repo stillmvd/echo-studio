@@ -111,6 +111,26 @@ export interface SessionMeta {
   cwd: string | null;
 }
 
+export interface SessionEvent {
+  uuid: string;
+  parentUuid: string | null;
+  timestamp: string | null;
+  eventType: string;
+  subtype: string | null;
+  role: string | null;
+  summary: string;
+  raw: unknown;
+}
+
+export interface SessionSearchHit {
+  sessionId: string;
+  filePath: string;
+  uuid: string;
+  timestamp: string | null;
+  eventType: string;
+  preview: string;
+}
+
 export interface BackupInfo {
   path: string;
   createdAt: string;

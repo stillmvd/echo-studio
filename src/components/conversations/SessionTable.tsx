@@ -3,6 +3,10 @@ import { cn } from '@/lib/cn';
 import type { SessionMeta } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 
+function makeOpener(setSelected: (path: string | null) => void) {
+  return (filePath: string) => setSelected(filePath);
+}
+
 interface Props {
   sessions: SessionMeta[];
   isLoading: boolean;
@@ -53,6 +57,8 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
   const sortBy = useUiStore((s) => s.conversationsSortBy);
   const sortDir = useUiStore((s) => s.conversationsSortDir);
   const setSort = useUiStore((s) => s.setConversationsSort);
+  const setSelectedSessionPath = useUiStore((s) => s.setSelectedSessionPath);
+  const openSession = makeOpener(setSelectedSessionPath);
 
   const sorted = useMemo(() => {
     const copy = [...sessions];
@@ -126,7 +132,8 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
             {sorted.map((s) => (
               <tr
                 key={s.sessionId}
-                className="border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-tertiary)]/40"
+                onClick={() => openSession(s.filePath)}
+                className="cursor-pointer border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-tertiary)]/40"
               >
                 <td className="px-3 py-1.5 font-mono text-[10px] text-[var(--color-text-secondary)]">
                   {s.sessionId.slice(0, 8)}…

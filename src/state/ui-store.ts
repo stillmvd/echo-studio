@@ -24,6 +24,9 @@ interface UiState {
   conversationsProjectId: string | null;
   conversationsSortBy: 'date' | 'size' | 'duration' | 'msgs';
   conversationsSortDir: 'asc' | 'desc';
+  selectedSessionPath: string | null;
+  sessionSearchQuery: string;
+  crossSessionSearchQuery: string;
 
   setActiveTab: (tab: AppTab) => void;
   setSelectedProject: (project: string | null) => void;
@@ -44,6 +47,9 @@ interface UiState {
   toggleTagsExpanded: () => void;
   setConversationsProjectId: (id: string | null) => void;
   setConversationsSort: (by: 'date' | 'size' | 'duration' | 'msgs', dir: 'asc' | 'desc') => void;
+  setSelectedSessionPath: (path: string | null) => void;
+  setSessionSearchQuery: (q: string) => void;
+  setCrossSessionSearchQuery: (q: string) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -65,6 +71,9 @@ export const useUiStore = create<UiState>()(
       conversationsProjectId: null,
       conversationsSortBy: 'date',
       conversationsSortDir: 'desc',
+      selectedSessionPath: null,
+      sessionSearchQuery: '',
+      crossSessionSearchQuery: '',
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setSelectedProject: (selectedProject) => set({ selectedProject, selectedMemoryId: null }),
@@ -105,9 +114,14 @@ export const useUiStore = create<UiState>()(
       setBulkSelection: (bulkSelectionIds) => set({ bulkSelectionIds }),
       clearBulkSelection: () => set({ bulkSelectionIds: [] }),
       toggleTagsExpanded: () => set((s) => ({ tagsExpanded: !s.tagsExpanded })),
-      setConversationsProjectId: (conversationsProjectId) => set({ conversationsProjectId }),
+      setConversationsProjectId: (conversationsProjectId) =>
+        set({ conversationsProjectId, selectedSessionPath: null }),
       setConversationsSort: (conversationsSortBy, conversationsSortDir) =>
         set({ conversationsSortBy, conversationsSortDir }),
+      setSelectedSessionPath: (selectedSessionPath) =>
+        set({ selectedSessionPath, sessionSearchQuery: '' }),
+      setSessionSearchQuery: (sessionSearchQuery) => set({ sessionSearchQuery }),
+      setCrossSessionSearchQuery: (crossSessionSearchQuery) => set({ crossSessionSearchQuery }),
     }),
     {
       name: 'echo-studio.ui',
