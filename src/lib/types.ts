@@ -131,6 +131,16 @@ export interface SessionSearchHit {
   preview: string;
 }
 
+export interface SessionDeleteFailure {
+  path: string;
+  error: string;
+}
+
+export interface SessionBulkDeleteResult {
+  deleted: string[];
+  failed: SessionDeleteFailure[];
+}
+
 export interface BackupInfo {
   path: string;
   createdAt: string;

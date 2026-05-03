@@ -42,10 +42,13 @@ pub fn run() {
             commands::memories::update_memory,
             commands::system::open_in_claude_code,
             commands::system::trigger_reindex,
+            commands::system::write_text_file,
             commands::conversations::list_conversation_projects,
             commands::conversations::list_conversation_sessions,
             commands::conversations::read_session_events,
             commands::conversations::search_session_text,
+            commands::conversations::delete_conversation_session,
+            commands::conversations::bulk_delete_conversation_sessions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

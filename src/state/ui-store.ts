@@ -27,6 +27,8 @@ interface UiState {
   selectedSessionPath: string | null;
   sessionSearchQuery: string;
   crossSessionSearchQuery: string;
+  conversationsBulkSelection: string[];
+  conversationsAgeFilter: 'all' | 'older30' | 'older90' | 'older365';
 
   setActiveTab: (tab: AppTab) => void;
   setSelectedProject: (project: string | null) => void;
@@ -50,6 +52,10 @@ interface UiState {
   setSelectedSessionPath: (path: string | null) => void;
   setSessionSearchQuery: (q: string) => void;
   setCrossSessionSearchQuery: (q: string) => void;
+  toggleConversationsBulkPath: (path: string) => void;
+  setConversationsBulkSelection: (paths: string[]) => void;
+  clearConversationsBulkSelection: () => void;
+  setConversationsAgeFilter: (f: 'all' | 'older30' | 'older90' | 'older365') => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -74,6 +80,8 @@ export const useUiStore = create<UiState>()(
       selectedSessionPath: null,
       sessionSearchQuery: '',
       crossSessionSearchQuery: '',
+      conversationsBulkSelection: [],
+      conversationsAgeFilter: 'all',
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setSelectedProject: (selectedProject) => set({ selectedProject, selectedMemoryId: null }),
@@ -122,6 +130,17 @@ export const useUiStore = create<UiState>()(
         set({ selectedSessionPath, sessionSearchQuery: '' }),
       setSessionSearchQuery: (sessionSearchQuery) => set({ sessionSearchQuery }),
       setCrossSessionSearchQuery: (crossSessionSearchQuery) => set({ crossSessionSearchQuery }),
+      toggleConversationsBulkPath: (path) =>
+        set((s) => ({
+          conversationsBulkSelection: s.conversationsBulkSelection.includes(path)
+            ? s.conversationsBulkSelection.filter((p) => p !== path)
+            : [...s.conversationsBulkSelection, path],
+        })),
+      setConversationsBulkSelection: (conversationsBulkSelection) =>
+        set({ conversationsBulkSelection }),
+      clearConversationsBulkSelection: () => set({ conversationsBulkSelection: [] }),
+      setConversationsAgeFilter: (conversationsAgeFilter) =>
+        set({ conversationsAgeFilter, conversationsBulkSelection: [] }),
     }),
     {
       name: 'echo-studio.ui',
@@ -137,6 +156,7 @@ export const useUiStore = create<UiState>()(
         conversationsProjectId: s.conversationsProjectId,
         conversationsSortBy: s.conversationsSortBy,
         conversationsSortDir: s.conversationsSortDir,
+        conversationsAgeFilter: s.conversationsAgeFilter,
       }),
     },
   ),

@@ -1,11 +1,9 @@
 import { useMemo } from 'react';
+import { Select } from '@/components/ui/Select';
+import { applyAgeFilter } from '@/lib/age-filter';
 import { cn } from '@/lib/cn';
 import type { SessionMeta } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
-
-function makeOpener(setSelected: (path: string | null) => void) {
-  return (filePath: string) => setSelected(filePath);
-}
 
 interface Props {
   sessions: SessionMeta[];
@@ -22,6 +20,13 @@ const columns: { key: SortBy | 'session' | 'branch'; label: string; sortable: bo
   { key: 'msgs', label: 'Msgs', sortable: true },
   { key: 'size', label: 'Size', sortable: true },
   { key: 'branch', label: 'Branch', sortable: false },
+];
+
+const ageFilterOptions = [
+  { value: 'all' as const, label: 'All sessions' },
+  { value: 'older30' as const, label: 'Older than 30 days' },
+  { value: 'older90' as const, label: 'Older than 90 days' },
+  { value: 'older365' as const, label: 'Older than 1 year' },
 ];
 
 function formatBytes(n: number): string {
@@ -58,16 +63,27 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
   const sortDir = useUiStore((s) => s.conversationsSortDir);
   const setSort = useUiStore((s) => s.setConversationsSort);
   const setSelectedSessionPath = useUiStore((s) => s.setSelectedSessionPath);
-  const openSession = makeOpener(setSelectedSessionPath);
+  const ageFilter = useUiStore((s) => s.conversationsAgeFilter);
+  const setAgeFilter = useUiStore((s) => s.setConversationsAgeFilter);
+  const bulkSelection = useUiStore((s) => s.conversationsBulkSelection);
+  const toggleBulkPath = useUiStore((s) => s.toggleConversationsBulkPath);
+  const setBulkSelection = useUiStore((s) => s.setConversationsBulkSelection);
+
+  const visible = useMemo(() => applyAgeFilter(sessions, ageFilter), [sessions, ageFilter]);
 
   const sorted = useMemo(() => {
-    const copy = [...sessions];
+    const copy = [...visible];
     copy.sort((a, b) => {
       const cmp = compareSessions(a, b, sortBy);
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return copy;
-  }, [sessions, sortBy, sortDir]);
+  }, [visible, sortBy, sortDir]);
+
+  const visiblePaths = useMemo(() => visible.map((s) => s.filePath), [visible]);
+  const allChecked =
+    visiblePaths.length > 0 && visiblePaths.every((p) => bulkSelection.includes(p));
+  const someChecked = bulkSelection.length > 0 && !allChecked;
 
   if (selectedProjectName === null) {
     return (
@@ -103,13 +119,30 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="border-b border-[var(--color-border-subtle)] px-4 py-2 text-xs text-[var(--color-text-muted)]">
-        {sessions.length} sessions in {selectedProjectName}
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] px-4 py-2 text-xs text-[var(--color-text-muted)]">
+        <span>
+          {visible.length} of {sessions.length} sessions in {selectedProjectName}
+        </span>
+        <Select value={ageFilter} options={ageFilterOptions} onChange={setAgeFilter} />
       </div>
       <div className="flex-1 overflow-auto">
         <table className="w-full border-collapse text-xs">
           <thead className="sticky top-0 bg-[var(--color-bg-secondary)]">
             <tr>
+              <th className="border-b border-[var(--color-border-subtle)] px-3 py-2 text-left">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someChecked;
+                  }}
+                  onChange={() => {
+                    if (allChecked || someChecked) setBulkSelection([]);
+                    else setBulkSelection(visiblePaths);
+                  }}
+                  aria-label="Select all visible sessions"
+                />
+              </th>
               {columns.map((c) => (
                 <th
                   key={c.key}
@@ -129,30 +162,55 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
             </tr>
           </thead>
           <tbody>
-            {sorted.map((s) => (
-              <tr
-                key={s.sessionId}
-                onClick={() => openSession(s.filePath)}
-                className="cursor-pointer border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-tertiary)]/40"
-              >
-                <td className="px-3 py-1.5 font-mono text-[10px] text-[var(--color-text-secondary)]">
-                  {s.sessionId.slice(0, 8)}…
-                </td>
-                <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
-                  {s.lastEventAt ? s.lastEventAt.slice(0, 16).replace('T', ' ') : '—'}
-                </td>
-                <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
-                  {formatDuration(s.durationMs)}
-                </td>
-                <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">{s.messageCount}</td>
-                <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
-                  {formatBytes(s.sizeBytes)}
-                </td>
-                <td className="px-3 py-1.5 font-mono text-[10px] text-[var(--color-text-muted)]">
-                  {s.gitBranch ?? '—'}
+            {sorted.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={columns.length + 1}
+                  className="px-4 py-6 text-center text-[var(--color-text-muted)]"
+                >
+                  No sessions match the age filter.
                 </td>
               </tr>
-            ))}
+            ) : (
+              sorted.map((s) => (
+                <tr
+                  key={s.sessionId}
+                  onClick={() => setSelectedSessionPath(s.filePath)}
+                  className={cn(
+                    'cursor-pointer border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-tertiary)]/40',
+                    bulkSelection.includes(s.filePath) && 'bg-[var(--color-bg-tertiary)]/40',
+                  )}
+                >
+                  <td className="px-3 py-1.5">
+                    <input
+                      type="checkbox"
+                      checked={bulkSelection.includes(s.filePath)}
+                      onChange={() => toggleBulkPath(s.filePath)}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`Select session ${s.sessionId.slice(0, 8)}`}
+                    />
+                  </td>
+                  <td className="px-3 py-1.5 font-mono text-[10px] text-[var(--color-text-secondary)]">
+                    {s.sessionId.slice(0, 8)}…
+                  </td>
+                  <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
+                    {s.lastEventAt ? s.lastEventAt.slice(0, 16).replace('T', ' ') : '—'}
+                  </td>
+                  <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
+                    {formatDuration(s.durationMs)}
+                  </td>
+                  <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
+                    {s.messageCount}
+                  </td>
+                  <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
+                    {formatBytes(s.sizeBytes)}
+                  </td>
+                  <td className="px-3 py-1.5 font-mono text-[10px] text-[var(--color-text-muted)]">
+                    {s.gitBranch ?? '—'}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

@@ -10,6 +10,11 @@ pub const EVENT_REINDEX_DONE: &str = "echovault://reindex-done";
 pub const EVENT_REINDEX_ERROR: &str = "echovault://reindex-error";
 
 #[tauri::command]
+pub async fn write_text_file(file_path: String, content: String) -> Result<(), String> {
+    std::fs::write(&file_path, content).map_err(|e| format!("write_text_file: {e}"))
+}
+
+#[tauri::command]
 pub async fn open_in_claude_code(app: AppHandle, cwd: Option<String>) -> Result<String, String> {
     let target_dir = resolve_cwd(cwd);
 

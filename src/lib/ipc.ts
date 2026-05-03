@@ -7,6 +7,7 @@ import type {
   MemoriesPage,
   MemoryPatch,
   MemoryWithBody,
+  SessionBulkDeleteResult,
   SessionEvent,
   SessionMeta,
   SessionSearchHit,
@@ -77,4 +78,14 @@ export async function searchSessionText(
   query: string,
 ): Promise<SessionSearchHit[]> {
   return invoke<SessionSearchHit[]>('search_session_text', { projectId, query });
+}
+
+export async function deleteConversationSession(filePath: string): Promise<void> {
+  return invoke<void>('delete_conversation_session', { filePath });
+}
+
+export async function bulkDeleteConversationSessions(
+  filePaths: string[],
+): Promise<SessionBulkDeleteResult> {
+  return invoke<SessionBulkDeleteResult>('bulk_delete_conversation_sessions', { filePaths });
 }
