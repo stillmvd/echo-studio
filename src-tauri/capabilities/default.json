@@ -11,7 +11,8 @@
       "identifier": "shell:allow-spawn",
       "allow": [
         { "name": "wt", "cmd": "wt", "args": true },
-        { "name": "memory", "cmd": "memory", "args": true }
+        { "name": "memory", "cmd": "memory", "args": true },
+        { "name": "explorer", "cmd": "explorer", "args": true }
       ]
     }
   ]

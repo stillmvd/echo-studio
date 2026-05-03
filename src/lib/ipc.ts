@@ -4,6 +4,7 @@ import type {
   BulkResult,
   ConversationProject,
   DisplayItem,
+  EchoVaultConfig,
   MemoriesFilter,
   MemoriesPage,
   MemoryPatch,
@@ -88,4 +89,12 @@ export async function bulkDeleteConversationSessions(
   filePaths: string[],
 ): Promise<SessionBulkDeleteResult> {
   return invoke<SessionBulkDeleteResult>('bulk_delete_conversation_sessions', { filePaths });
+}
+
+export async function readEchovaultConfig(): Promise<EchoVaultConfig> {
+  return invoke<EchoVaultConfig>('read_echovault_config');
+}
+
+export async function revealInExplorer(path: string): Promise<void> {
+  return invoke<void>('reveal_in_explorer', { path });
 }

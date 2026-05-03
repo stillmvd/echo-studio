@@ -43,6 +43,8 @@ pub fn run() {
             commands::system::open_in_claude_code,
             commands::system::trigger_reindex,
             commands::system::write_text_file,
+            commands::system::read_echovault_config,
+            commands::system::reveal_in_explorer,
             commands::conversations::list_conversation_projects,
             commands::conversations::list_conversation_sessions,
             commands::conversations::read_session_events,

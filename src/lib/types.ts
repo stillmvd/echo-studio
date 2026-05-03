@@ -134,6 +134,16 @@ export interface SessionSearchHit {
   preview: string;
 }
 
+export interface EchoVaultConfig {
+  memoryHome: string;
+  homeSource: string;
+  embeddingProvider: string;
+  embeddingModel: string;
+  ollamaBaseUrl: string | null;
+  configYamlPath: string;
+  configYamlExists: boolean;
+}
+
 export interface SessionDeleteFailure {
   path: string;
   error: string;

@@ -5,6 +5,8 @@ use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
+use crate::echovault::EchoVaultConfig;
+
 pub const EVENT_REINDEX_PROGRESS: &str = "echovault://reindex-progress";
 pub const EVENT_REINDEX_DONE: &str = "echovault://reindex-done";
 pub const EVENT_REINDEX_ERROR: &str = "echovault://reindex-error";
@@ -12,6 +14,26 @@ pub const EVENT_REINDEX_ERROR: &str = "echovault://reindex-error";
 #[tauri::command]
 pub async fn write_text_file(file_path: String, content: String) -> Result<(), String> {
     std::fs::write(&file_path, content).map_err(|e| format!("write_text_file: {e}"))
+}
+
+#[tauri::command]
+pub async fn read_echovault_config() -> Result<EchoVaultConfig, String> {
+    crate::echovault::config::read_echovault_config()
+}
+
+#[tauri::command]
+pub async fn reveal_in_explorer(app: AppHandle, path: String) -> Result<(), String> {
+    use tauri_plugin_shell::ShellExt;
+    if cfg!(windows) {
+        app.shell()
+            .command("explorer")
+            .args([format!("/select,{path}")])
+            .spawn()
+            .map_err(|e| format!("spawn explorer: {e}"))?;
+        Ok(())
+    } else {
+        Err("reveal_in_explorer is windows-only".into())
+    }
 }
 
 #[tauri::command]
