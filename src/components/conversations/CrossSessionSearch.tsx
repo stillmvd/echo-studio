@@ -60,7 +60,7 @@ export function CrossSessionSearch({ projectId }: Props) {
                   >
                     <span className="line-clamp-2 text-xs">{h.preview}</span>
                     <span className="font-mono text-[9px] text-[var(--color-text-muted)]">
-                      {h.eventType} · {h.sessionId.slice(0, 8)}…
+                      {h.kind} · {h.sessionId.slice(0, 8)}…
                       {h.timestamp && ` · ${h.timestamp.slice(0, 16).replace('T', ' ')}`}
                     </span>
                   </button>

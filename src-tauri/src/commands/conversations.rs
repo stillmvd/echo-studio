@@ -7,7 +7,7 @@ use crate::conversations::{
     paths::projects_root,
     reader::{read_session, search_in_sessions},
     scanner::{list_projects, list_sessions},
-    ConversationProject, SessionEvent, SessionMeta, SessionSearchHit,
+    ConversationProject, DisplayItem, SessionMeta, SessionSearchHit,
 };
 
 #[derive(Debug, Serialize)]
@@ -58,7 +58,7 @@ pub async fn list_conversation_sessions(project_id: String) -> Result<Vec<Sessio
 }
 
 #[tauri::command]
-pub async fn read_session_events(file_path: String) -> Result<Vec<SessionEvent>, String> {
+pub async fn read_session_events(file_path: String) -> Result<Vec<DisplayItem>, String> {
     let path = PathBuf::from(&file_path);
     if !path.exists() {
         return Err(format!("file not found: {file_path}"));

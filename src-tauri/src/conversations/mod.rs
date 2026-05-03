@@ -4,4 +4,4 @@ pub mod reader;
 pub mod scanner;
 
 pub use models::{ConversationProject, SessionMeta};
-pub use reader::{SessionEvent, SessionSearchHit};
+pub use reader::{DisplayItem, SessionSearchHit};

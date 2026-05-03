@@ -111,14 +111,17 @@ export interface SessionMeta {
   cwd: string | null;
 }
 
-export interface SessionEvent {
+export interface DisplayItem {
   uuid: string;
   parentUuid: string | null;
   timestamp: string | null;
-  eventType: string;
-  subtype: string | null;
-  role: string | null;
-  summary: string;
+  kind: string;
+  role: string;
+  text: string | null;
+  toolName: string | null;
+  toolInputSummary: string | null;
+  toolInputJson: unknown;
+  isError: boolean | null;
   raw: unknown;
 }
 
@@ -127,7 +130,7 @@ export interface SessionSearchHit {
   filePath: string;
   uuid: string;
   timestamp: string | null;
-  eventType: string;
+  kind: string;
   preview: string;
 }
 

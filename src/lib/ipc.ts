@@ -3,12 +3,12 @@ import type {
   BackupInfo,
   BulkResult,
   ConversationProject,
+  DisplayItem,
   MemoriesFilter,
   MemoriesPage,
   MemoryPatch,
   MemoryWithBody,
   SessionBulkDeleteResult,
-  SessionEvent,
   SessionMeta,
   SessionSearchHit,
 } from './types';
@@ -69,8 +69,8 @@ export async function listConversationSessions(projectId: string): Promise<Sessi
   return invoke<SessionMeta[]>('list_conversation_sessions', { projectId });
 }
 
-export async function readSessionEvents(filePath: string): Promise<SessionEvent[]> {
-  return invoke<SessionEvent[]>('read_session_events', { filePath });
+export async function readSessionEvents(filePath: string): Promise<DisplayItem[]> {
+  return invoke<DisplayItem[]>('read_session_events', { filePath });
 }
 
 export async function searchSessionText(

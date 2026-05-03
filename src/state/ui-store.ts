@@ -29,6 +29,8 @@ interface UiState {
   crossSessionSearchQuery: string;
   conversationsBulkSelection: string[];
   conversationsAgeFilter: 'all' | 'older30' | 'older90' | 'older365';
+  viewerShowSystem: boolean;
+  viewerShowThinking: boolean;
 
   setActiveTab: (tab: AppTab) => void;
   setSelectedProject: (project: string | null) => void;
@@ -56,6 +58,8 @@ interface UiState {
   setConversationsBulkSelection: (paths: string[]) => void;
   clearConversationsBulkSelection: () => void;
   setConversationsAgeFilter: (f: 'all' | 'older30' | 'older90' | 'older365') => void;
+  toggleViewerShowSystem: () => void;
+  toggleViewerShowThinking: () => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -82,6 +86,8 @@ export const useUiStore = create<UiState>()(
       crossSessionSearchQuery: '',
       conversationsBulkSelection: [],
       conversationsAgeFilter: 'all',
+      viewerShowSystem: false,
+      viewerShowThinking: false,
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setSelectedProject: (selectedProject) => set({ selectedProject, selectedMemoryId: null }),
@@ -141,6 +147,8 @@ export const useUiStore = create<UiState>()(
       clearConversationsBulkSelection: () => set({ conversationsBulkSelection: [] }),
       setConversationsAgeFilter: (conversationsAgeFilter) =>
         set({ conversationsAgeFilter, conversationsBulkSelection: [] }),
+      toggleViewerShowSystem: () => set((s) => ({ viewerShowSystem: !s.viewerShowSystem })),
+      toggleViewerShowThinking: () => set((s) => ({ viewerShowThinking: !s.viewerShowThinking })),
     }),
     {
       name: 'echo-studio.ui',
@@ -157,6 +165,8 @@ export const useUiStore = create<UiState>()(
         conversationsSortBy: s.conversationsSortBy,
         conversationsSortDir: s.conversationsSortDir,
         conversationsAgeFilter: s.conversationsAgeFilter,
+        viewerShowSystem: s.viewerShowSystem,
+        viewerShowThinking: s.viewerShowThinking,
       }),
     },
   ),
