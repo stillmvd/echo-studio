@@ -78,15 +78,17 @@ export function ProjectSidebar({ projects, categories, total, memoryHome, homeSo
             selected={selectedCategory === null}
             onClick={() => setSelectedCategory(null)}
           />
-          {categories.map((c) => (
-            <SidebarItem
-              key={c.category ?? '__none__'}
-              label={c.category ?? '(none)'}
-              count={c.count}
-              selected={selectedCategory === (c.category ?? null)}
-              onClick={() => setSelectedCategory(c.category ?? null)}
-            />
-          ))}
+          {categories
+            .filter((c): c is { category: string; count: number } => c.category !== null)
+            .map((c) => (
+              <SidebarItem
+                key={c.category}
+                label={c.category}
+                count={c.count}
+                selected={selectedCategory === c.category}
+                onClick={() => setSelectedCategory(c.category)}
+              />
+            ))}
         </Section>
       </div>
 

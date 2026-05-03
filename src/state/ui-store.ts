@@ -20,6 +20,7 @@ interface UiState {
   dateRange: DateRangePreset;
   sortBy: SortBy;
   bulkSelectionIds: string[];
+  tagsExpanded: boolean;
   conversationsProjectId: string | null;
   conversationsSortBy: 'date' | 'size' | 'duration' | 'msgs';
   conversationsSortDir: 'asc' | 'desc';
@@ -40,6 +41,7 @@ interface UiState {
   toggleBulkId: (id: string) => void;
   setBulkSelection: (ids: string[]) => void;
   clearBulkSelection: () => void;
+  toggleTagsExpanded: () => void;
   setConversationsProjectId: (id: string | null) => void;
   setConversationsSort: (by: 'date' | 'size' | 'duration' | 'msgs', dir: 'asc' | 'desc') => void;
 }
@@ -59,6 +61,7 @@ export const useUiStore = create<UiState>()(
       dateRange: 'all',
       sortBy: 'updatedDesc',
       bulkSelectionIds: [],
+      tagsExpanded: false,
       conversationsProjectId: null,
       conversationsSortBy: 'date',
       conversationsSortDir: 'desc',
@@ -101,6 +104,7 @@ export const useUiStore = create<UiState>()(
         })),
       setBulkSelection: (bulkSelectionIds) => set({ bulkSelectionIds }),
       clearBulkSelection: () => set({ bulkSelectionIds: [] }),
+      toggleTagsExpanded: () => set((s) => ({ tagsExpanded: !s.tagsExpanded })),
       setConversationsProjectId: (conversationsProjectId) => set({ conversationsProjectId }),
       setConversationsSort: (conversationsSortBy, conversationsSortDir) =>
         set({ conversationsSortBy, conversationsSortDir }),
@@ -115,6 +119,7 @@ export const useUiStore = create<UiState>()(
         detailMode: s.detailMode,
         searchMode: s.searchMode,
         sortBy: s.sortBy,
+        tagsExpanded: s.tagsExpanded,
         conversationsProjectId: s.conversationsProjectId,
         conversationsSortBy: s.conversationsSortBy,
         conversationsSortDir: s.conversationsSortDir,
