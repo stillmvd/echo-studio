@@ -1,6 +1,19 @@
-import ReactMarkdown from 'react-markdown';
-import rehypeHighlight from 'rehype-highlight';
-import remarkGfm from 'remark-gfm';
+import { lazy, Suspense } from 'react';
+
+const ReactMarkdownLazy = lazy(async () => {
+  const [{ default: ReactMarkdown }, { default: rehypeHighlight }, { default: remarkGfm }] =
+    await Promise.all([import('react-markdown'), import('rehype-highlight'), import('remark-gfm')]);
+  return {
+    default: ({ body }: { body: string }) => (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[[rehypeHighlight, { ignoreMissing: true }]]}
+      >
+        {body}
+      </ReactMarkdown>
+    ),
+  };
+});
 
 interface Props {
   body: string;
@@ -9,12 +22,9 @@ interface Props {
 export function Markdown({ body }: Props) {
   return (
     <article className="echo-markdown text-sm leading-relaxed text-[var(--color-text-secondary)]">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[[rehypeHighlight, { ignoreMissing: true }]]}
-      >
-        {body}
-      </ReactMarkdown>
+      <Suspense fallback={<pre className="whitespace-pre-wrap font-sans">{body}</pre>}>
+        <ReactMarkdownLazy body={body} />
+      </Suspense>
     </article>
   );
 }

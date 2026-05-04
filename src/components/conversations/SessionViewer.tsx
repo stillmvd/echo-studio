@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Markdown } from '@/components/markdown/Markdown';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useSessionEvents } from '@/hooks/use-session';
@@ -39,6 +39,14 @@ export function SessionViewer({ filePath, sessionId, onBack }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const del = useDeleteSession();
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !confirmDelete) onBack();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [confirmDelete, onBack]);
 
   const filtered = useMemo(() => {
     const data = events.data ?? [];
