@@ -84,3 +84,23 @@ fn golden_get_returns_none_for_missing_id() {
         .expect("get");
     assert!(result.is_none());
 }
+
+#[test]
+#[ignore]
+fn golden_search_with_zero_hits_does_not_break_sql() {
+    use echo_studio_lib::echovault::SearchMode;
+    // Regression: empty ranked_rowids built `CASE rowid  ELSE 999999 END`
+    // which is invalid SQL. Now должно вернуть пустой page без паники.
+    let repo = open_repo();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let page = rt
+        .block_on(repo.search(&MemoriesFilter {
+            query: Some("zzzqqqxxxnoSuchTokenWillEverMatchAnyMemory42".into()),
+            mode: Some(SearchMode::Lexical),
+            limit: Some(10),
+            ..Default::default()
+        }))
+        .expect("search must not error");
+    assert_eq!(page.total, 0);
+    assert!(page.items.is_empty());
+}
