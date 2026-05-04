@@ -119,16 +119,6 @@ The portable `Echo Studio.exe` ends up in `src-tauri/target/release/`.
 
 ---
 
-## Roadmap
-
-- [ ] One-click "restore from backup" in Settings
-- [ ] Light theme
-- [ ] macOS / Linux builds (Tauri makes this almost free, but tested only on Windows for now)
-- [ ] Plugin/skill viewer (per-project and global)
-- [ ] MCP server inspector
-
----
-
 ## License
 
 MIT — see [LICENSE](LICENSE).
