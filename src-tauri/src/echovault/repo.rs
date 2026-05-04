@@ -217,8 +217,8 @@ impl EchoVaultRepo {
             |row| row.get(0),
         )?;
 
-        let order_clause = if let Some(rowids) = ranked_rowids.as_deref() {
-            format!(
+        let order_clause = match ranked_rowids.as_deref() {
+            Some(rowids) if !rowids.is_empty() => format!(
                 "CASE rowid {} ELSE 999999 END ASC",
                 rowids
                     .iter()
@@ -227,9 +227,8 @@ impl EchoVaultRepo {
                     .map(|(i, id)| format!("WHEN {id} THEN {i}"))
                     .collect::<Vec<_>>()
                     .join(" ")
-            )
-        } else {
-            filter.sort_by.unwrap_or_default().as_sql().to_string()
+            ),
+            _ => filter.sort_by.unwrap_or_default().as_sql().to_string(),
         };
 
         let list_sql = format!(

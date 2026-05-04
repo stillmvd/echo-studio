@@ -1,6 +1,6 @@
 [package]
 name = "echo-studio"
-version = "0.1.0"
+version = "0.1.1"
 description = "Visual manager for EchoVault memories and AI coding agent session logs"
 authors = ["stillmvd"]
 edition = "2021"
