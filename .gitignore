@@ -19,3 +19,7 @@ desktop.ini
 # Claude / GSD local
 .claude/local/
 .planning/phases/*/state/
+
+# Override global .gitignore_global which may exclude .planning/
+!.planning/
+!.planning/**
