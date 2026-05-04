@@ -1,7 +1,7 @@
 [package]
 name = "echo-studio"
 version = "0.1.0"
-description = "Visual manager for EchoVault memories and Claude Code conversations"
+description = "Visual manager for EchoVault memories and AI coding agent session logs"
 authors = ["stillmvd"]
 edition = "2021"
 
@@ -32,3 +32,10 @@ reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-feature
 notify = "6"
 notify-debouncer-mini = "0.4"
 humantime = "2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

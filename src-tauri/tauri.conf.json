@@ -28,13 +28,21 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
+    "publisher": "stillmvd",
+    "copyright": "Copyright (c) 2026 stillmvd",
+    "shortDescription": "Visual manager for EchoVault memories and AI agent session logs",
+    "longDescription": "Echo Studio is a portable Windows desktop app that lets you browse, search, edit, archive, and delete EchoVault memories, and explore session logs from your AI coding agent CLI in a chat-style viewer.",
+    "category": "DeveloperTool",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper" }
+    }
   }
 }
