@@ -1,61 +1,80 @@
 # Echo Studio — STATE
 
-> Текущее состояние проекта. Обновляется на каждом значимом шаге.
+> Финальное состояние MVP1.
 
-## Status: Phase 10 complete — Settings + Geist fonts
+## Status: SHIPPED — v0.1.0 portable release
 
-- 2026-05-02 (init): commit `1813264`
-- 2026-05-02 (Phase 0): `d7ff8e6` — Tauri 2 + React 19 skeleton
-- 2026-05-02 (Phase 1): `f7df1b6` — read-repo + IPC
-- 2026-05-02 (Phase 2): `894ec6b` — 3-pane layout
-- 2026-05-02 (Phase 2 polish): `3c220ae` — dark scrollbars
-- 2026-05-02 (Phase 3): `c9b9fa2` — filters + search
-- 2026-05-02 (Phase 4): `1fabf35` — writes + bulk + backup
-- 2026-05-02 (Phase 4 polish): `1c67474` — dark checkboxes
-- 2026-05-03 (Phase 5): `5c6ca74` — edit form + Claude launcher
-- 2026-05-03 (Phase 6): `4a7179f` — file watcher + reindex
-- 2026-05-03 (Phase 7): `6c8e248` — conversations list
-- 2026-05-03 (polish): `c3703cb` — collapsible tags + custom Select
-- 2026-05-03 (Phase 8): `cdaf7eb` — conversations viewer + search
-- 2026-05-03 (Phase 9): `60142d8` — conversations delete + export
-- 2026-05-03 (viewer rewrite): `5d683c6` — chat-style render flatten content blocks
-- 2026-05-03 (thinking fix): `a787a0d` — sealed marker (Anthropic encrypts)
-- 2026-05-03 (Phase 10): Settings page + Geist fonts + polish
+- 2026-05-04 (release): https://github.com/stillmvd/echo-studio/releases/tag/v0.1.0
+  - `EchoStudio-v0.1.0-x86_64-portable.zip` (4.3 MB)
+  - `Echo Studio.exe` 8.3 MB single binary
 
-## Phase 10 — DoD checklist
+## История коммитов (high-level)
 
-- [x] `read_echovault_config` Rust command — parses `~/.memory/config.yaml`
-      и резолвит memory_home/embedding/ollama_base_url с defaults.
-- [x] `reveal_in_explorer(path)` — `explorer /select,<path>` (Windows-only).
-- [x] SettingsLayout с 4 секциями: EchoVault paths/embedding/config /
-      Database backups list (formatted timestamp, size, reveal button) /
-      Conversations stats / About.
-- [x] Geist Sans + Mono подключены через @fontsource (self-hosted, offline).
-- [x] AppShell теперь рендерит SettingsLayout вместо placeholder.
-- [x] Capabilities: shell:allow-spawn для `explorer`.
-- [x] Все pre-commit checks зелёные.
+| Commit | Phase | Что |
+|---|---|---|
+| 1813264 | init | планирование, 37 FR/NFR, 13-фазный roadmap |
+| d7ff8e6 | 0 | Tauri 2 + React 19 skeleton |
+| f7df1b6 | 1 | EchoVault read-repo + IPC |
+| 894ec6b | 2 | 3-pane layout, virtualized list, markdown |
+| 3c220ae | 2 polish | dark scrollbars |
+| c9b9fa2 | 3 | filters + search (FTS5+semantic+RRF) |
+| 1fabf35 | 4 | writes + bulk + backup |
+| 1c67474 | 4 polish | dark checkboxes |
+| 5c6ca74 | 5 | edit form + Claude Code launcher |
+| 4a7179f | 6 | file watcher + reindex + status bar |
+| 6c8e248 | 7 | conversations list (jsonl scanner) |
+| c3703cb | 7 polish | collapsible tags + custom Select |
+| cdaf7eb | 8 | conversations viewer + search |
+| 60142d8 | 9 | conversations delete + export |
+| 5d683c6 | 8 rewrite | chat-style viewer (flatten content blocks) |
+| a787a0d | 8 fix | thinking blocks sealed marker |
+| d1af074 | 10 | Settings + Geist fonts |
+| 874e982 | polish | sort tag chips alphabetically |
+| bd51300 | fix | prune stale tag filter after delete |
+| adbadef | 11 | session titles (custom-title / ai-title) |
+| 58a74ec | 11 | error boundary + lazy markdown + Esc |
+| 42f4694 | 12 | release prep — README, LICENSE, Cargo profile, bundle metadata |
+| c45c1fc | 12 polish | dark title bar, transitive size opt |
+| b301d02 | 12 | app icons + windows optimization doc |
+| 1c61fc5 | 12 | gitignore dist-portable |
+
+## Финальный артефакт
+
+| Field | Value |
+|---|---|
+| Repo | github.com/stillmvd/echo-studio (public) |
+| License | MIT |
+| Tag | v0.1.0 |
+| .exe size | 8.3 MB (`opt-level=s, lto, strip, panic=abort`) |
+| ZIP size | 4.3 MB |
+| WebView2 | system runtime (downloadBootstrapper fallback) |
+| Title bar | Dark theme на Win10 1809+ / Win11 |
+| Telemetry | none |
 
 ## Зафиксированные решения
 
-См. PROJECT.md (A-01..A-08), Phase 1-9 (A-09..A-35).
+См. PROJECT.md (A-01..A-08), Phase 1-10 (A-09..A-38).
 
-Phase 10 specifics:
-- A-36: Settings — read-only display всех paths и configs. НЕ
-  перезаписываем `~/.memory/config.yaml` из UI (per A-25 invariant —
-  EchoVault владеет своим конфигом).
-- A-37: Geist через @fontsource* для offline self-hosting (не CDN).
-- A-38: thinking blocks от Anthropic API имеют `thinking: ""` —
-  reasoning зашифрован в `signature`. Показываем static marker
-  «sealed by Anthropic — content not accessible», не expand.
+Phase 12 specifics:
+- A-39: Portable distribution через `pnpm tauri build --no-bundle`
+  + ручная упаковка ZIP (PowerShell Compress-Archive). Нет
+  installer'а, нет admin-прав требуемых.
+- A-40: Cargo release profile максимально размер-ориентирован
+  (opt-level=s, lto, codegen-units=1, strip, panic=abort,
+  +transitive deps). Dev build не задет.
+- A-41: README не упоминает Claude/Anthropic per owner request.
+  «AI coding agent» / «agent CLI» нейтральные термины.
+- A-42: `.planning/` override в локальном .gitignore чтобы global
+  ~/.gitignore_global не excluded planning docs.
 
-## Известные ограничения
+## Что осталось НЕ сделано (на будущее)
 
-- Restore from backup не реализован — owner может вручную скопировать
-  старый `index.db` из `.backups/`.
-- Light theme нет.
-- Reveal in Explorer работает только на Windows (использует `explorer`).
-
-## Следующий шаг
-
-Phase 11 — QA pass: bug fixes, performance review, accessibility,
-финальный manual UAT по checklist'у из PROJECT.md.
+См. README.md → Roadmap:
+- Restore from backup в Settings
+- Light theme
+- macOS / Linux builds
+- Plugin/skill viewer
+- MCP server inspector
+- Code signing (требует EV-cert)
+- Single-instance lock (`tauri-plugin-single-instance`)
+- Auto-updater (`tauri-plugin-updater`)
