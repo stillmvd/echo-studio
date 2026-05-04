@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { BulkActionBar } from '@/components/memories/BulkActionBar';
 import { EmptyDetail } from '@/components/memories/EmptyDetail';
@@ -19,6 +20,7 @@ export function MemoriesLayout() {
   const searchQuery = useUiStore((s) => s.searchQuery);
   const searchMode = useUiStore((s) => s.searchMode);
   const selectedTags = useUiStore((s) => s.selectedTags);
+  const setSelectedTags = useUiStore((s) => s.setSelectedTags);
   const dateRange = useUiStore((s) => s.dateRange);
   const sortBy = useUiStore((s) => s.sortBy);
 
@@ -37,6 +39,16 @@ export function MemoriesLayout() {
     sortBy,
   });
   const detail = useMemoryDetail(selectedMemoryId);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: prune stale selected tags after refetch
+  useEffect(() => {
+    if (!list.data || selectedTags.length === 0) return;
+    const available = new Set(list.data.tags.map((t) => t.tag));
+    const fresh = selectedTags.filter((t) => available.has(t));
+    if (fresh.length !== selectedTags.length) {
+      setSelectedTags(fresh);
+    }
+  }, [list.data?.tags, selectedTags]);
 
   if (list.isError) {
     return (

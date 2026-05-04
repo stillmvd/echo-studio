@@ -41,6 +41,7 @@ interface UiState {
   setSearchQuery: (q: string) => void;
   setSearchMode: (m: SearchMode) => void;
   toggleTag: (tag: string) => void;
+  setSelectedTags: (tags: string[]) => void;
   clearTags: () => void;
   setDateRange: (r: DateRangePreset) => void;
   setSortBy: (s: SortBy) => void;
@@ -104,6 +105,7 @@ export const useUiStore = create<UiState>()(
             : [...s.selectedTags, tag],
           selectedMemoryId: null,
         })),
+      setSelectedTags: (selectedTags) => set({ selectedTags }),
       clearTags: () => set({ selectedTags: [], selectedMemoryId: null }),
       setDateRange: (dateRange) => set({ dateRange, selectedMemoryId: null }),
       setSortBy: (sortBy) => set({ sortBy, selectedMemoryId: null }),
