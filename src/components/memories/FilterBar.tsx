@@ -112,25 +112,28 @@ export function FilterBar({ tags, semanticWarning, modeUsed }: Props) {
 
           {tagsExpanded && (
             <div className="flex flex-wrap items-center gap-1.5">
-              {tags.slice(0, 60).map((t) => {
-                const active = selectedTags.includes(t.tag);
-                return (
-                  <button
-                    type="button"
-                    key={t.tag}
-                    onClick={() => toggleTag(t.tag)}
-                    className={cn(
-                      'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition-colors',
-                      active
-                        ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent)]'
-                        : 'border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border)]',
-                    )}
-                  >
-                    #{t.tag}
-                    <span className="text-[var(--color-text-muted)]">{t.count}</span>
-                  </button>
-                );
-              })}
+              {[...tags]
+                .slice(0, 60)
+                .sort((a, b) => a.tag.localeCompare(b.tag))
+                .map((t) => {
+                  const active = selectedTags.includes(t.tag);
+                  return (
+                    <button
+                      type="button"
+                      key={t.tag}
+                      onClick={() => toggleTag(t.tag)}
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition-colors',
+                        active
+                          ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/15 text-[var(--color-accent)]'
+                          : 'border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border)]',
+                      )}
+                    >
+                      #{t.tag}
+                      <span className="text-[var(--color-text-muted)]">{t.count}</span>
+                    </button>
+                  );
+                })}
               {selectedTags.length > 0 && (
                 <button
                   type="button"
