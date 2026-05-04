@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Select } from '@/components/ui/Select';
 import { applyAgeFilter } from '@/lib/age-filter';
 import { cn } from '@/lib/cn';
-import type { SessionMeta } from '@/lib/types';
+import { type SessionMeta, sessionDisplayTitle } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 
 interface Props {
@@ -190,8 +190,26 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                       aria-label={`Select session ${s.sessionId.slice(0, 8)}`}
                     />
                   </td>
-                  <td className="px-3 py-1.5 font-mono text-[10px] text-[var(--color-text-secondary)]">
-                    {s.sessionId.slice(0, 8)}…
+                  <td className="max-w-[280px] px-3 py-1.5">
+                    <div
+                      className={cn(
+                        'truncate',
+                        s.customTitle || s.aiTitle
+                          ? 'text-[var(--color-text-primary)]'
+                          : 'font-mono text-[10px] text-[var(--color-text-muted)]',
+                      )}
+                      title={`${sessionDisplayTitle(s)}\n${s.sessionId}`}
+                    >
+                      {sessionDisplayTitle(s)}
+                    </div>
+                    {(s.customTitle || s.aiTitle) && (
+                      <div className="font-mono text-[9px] text-[var(--color-text-muted)]">
+                        {s.sessionId.slice(0, 8)}
+                        {s.customTitle && (
+                          <span className="ml-1 text-[var(--color-accent)]">· renamed</span>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
                     {s.lastEventAt ? s.lastEventAt.slice(0, 16).replace('T', ' ') : '—'}

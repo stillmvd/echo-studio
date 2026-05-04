@@ -23,4 +23,6 @@ pub struct SessionMeta {
     pub duration_ms: i64,
     pub git_branch: Option<String>,
     pub cwd: Option<String>,
+    pub custom_title: Option<String>,
+    pub ai_title: Option<String>,
 }

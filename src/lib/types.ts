@@ -109,6 +109,16 @@ export interface SessionMeta {
   durationMs: number;
   gitBranch: string | null;
   cwd: string | null;
+  customTitle: string | null;
+  aiTitle: string | null;
+}
+
+export function sessionDisplayTitle(s: {
+  customTitle: string | null;
+  aiTitle: string | null;
+  sessionId: string;
+}): string {
+  return s.customTitle?.trim() || s.aiTitle?.trim() || `${s.sessionId.slice(0, 8)}…`;
 }
 
 export interface DisplayItem {

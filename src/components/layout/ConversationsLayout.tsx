@@ -5,6 +5,7 @@ import { SessionBulkBar } from '@/components/conversations/SessionBulkBar';
 import { SessionTable } from '@/components/conversations/SessionTable';
 import { SessionViewer } from '@/components/conversations/SessionViewer';
 import { useConversationProjects, useConversationSessions } from '@/hooks/use-conversations';
+import { sessionDisplayTitle } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 
 export function ConversationsLayout() {
@@ -53,12 +54,12 @@ export function ConversationsLayout() {
           <SessionViewer
             filePath={selectedSessionPath}
             sessionId={
-              selectedSession?.sessionId ??
-              selectedSessionPath
-                .split(/[/\\]/)
-                .pop()
-                ?.replace(/\.jsonl$/, '') ??
-              'session'
+              selectedSession
+                ? sessionDisplayTitle(selectedSession)
+                : (selectedSessionPath
+                    .split(/[/\\]/)
+                    .pop()
+                    ?.replace(/\.jsonl$/, '') ?? 'session')
             }
             onBack={() => setSelectedSessionPath(null)}
           />

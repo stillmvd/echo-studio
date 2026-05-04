@@ -142,6 +142,8 @@ pub fn parse_session_meta(path: &Path) -> Option<SessionMeta> {
     let mut last_event_at: Option<String> = None;
     let mut git_branch: Option<String> = None;
     let mut cwd: Option<String> = None;
+    let mut custom_title: Option<String> = None;
+    let mut ai_title: Option<String> = None;
 
     for line in reader.lines().map_while(|l| l.ok()) {
         if line.trim().is_empty() {
@@ -154,6 +156,21 @@ pub fn parse_session_meta(path: &Path) -> Option<SessionMeta> {
 
         if matches!(event_type, "user" | "assistant") {
             message_count += 1;
+        }
+
+        if event_type == "custom-title" {
+            if let Some(t) = parsed.get("customTitle").and_then(|v| v.as_str()) {
+                if !t.is_empty() {
+                    custom_title = Some(t.to_string());
+                }
+            }
+        }
+        if event_type == "ai-title" {
+            if let Some(t) = parsed.get("aiTitle").and_then(|v| v.as_str()) {
+                if !t.is_empty() {
+                    ai_title = Some(t.to_string());
+                }
+            }
         }
 
         if event_type == "system"
@@ -195,5 +212,7 @@ pub fn parse_session_meta(path: &Path) -> Option<SessionMeta> {
         duration_ms,
         git_branch,
         cwd,
+        custom_title,
+        ai_title,
     })
 }
