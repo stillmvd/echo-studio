@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ClaudeCodeDialog } from '@/components/memories/ClaudeCodeDialog';
 import { cn } from '@/lib/cn';
 import { type AppTab, useUiStore } from '@/state/ui-store';
+import { WindowControls } from './WindowControls';
 
 const tabs: { id: AppTab; label: string }[] = [
   { id: 'memories', label: 'Memories' },
@@ -16,14 +17,22 @@ export function TabBar() {
   const [newOpen, setNewOpen] = useState(false);
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-1 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)] px-3">
-      <div className="flex items-baseline gap-2 px-3">
-        <span className="text-sm font-semibold tracking-tight text-[var(--color-text-primary)]">
+    <header
+      data-tauri-drag-region
+      className="flex h-12 shrink-0 items-center gap-1 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)] pl-3"
+    >
+      <div data-tauri-drag-region className="flex items-baseline gap-2 px-3">
+        <span
+          data-tauri-drag-region
+          className="text-sm font-semibold tracking-tight text-[var(--color-text-primary)]"
+        >
           Echo Studio
         </span>
-        <span className="text-[10px] text-[var(--color-text-muted)]">v0.1.0</span>
+        <span data-tauri-drag-region className="text-[10px] text-[var(--color-text-muted)]">
+          v0.1.1
+        </span>
       </div>
-      <nav className="ml-4 flex items-center gap-1">
+      <nav data-tauri-drag-region className="ml-4 flex items-center gap-1">
         {tabs.map((t) => (
           <button
             type="button"
@@ -40,7 +49,7 @@ export function TabBar() {
           </button>
         ))}
       </nav>
-      <div className="ml-auto flex items-center gap-2">
+      <div data-tauri-drag-region className="ml-auto flex items-center gap-2 pr-2">
         <button
           type="button"
           onClick={() => setNewOpen(true)}
@@ -51,6 +60,7 @@ export function TabBar() {
         </button>
         <span className="h-2 w-2 rounded-full bg-[var(--color-accent)]" />
       </div>
+      <WindowControls />
 
       <ClaudeCodeDialog
         open={newOpen}

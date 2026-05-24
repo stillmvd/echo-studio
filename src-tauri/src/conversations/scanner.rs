@@ -99,12 +99,14 @@ pub fn list_sessions(project_id: &str) -> Vec<SessionMeta> {
     let Ok(entries) = fs::read_dir(&project_dir) else {
         return sessions;
     };
+    let titles = super::titles::load_titles();
     for entry in entries.flatten() {
         let path = entry.path();
         if path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
             continue;
         }
-        if let Some(meta) = parse_session_meta(&path) {
+        if let Some(mut meta) = parse_session_meta(&path) {
+            meta.user_title = titles.get(&meta.session_id).cloned();
             sessions.push(meta);
         }
     }
@@ -214,5 +216,6 @@ pub fn parse_session_meta(path: &Path) -> Option<SessionMeta> {
         cwd,
         custom_title,
         ai_title,
+        user_title: None,
     })
 }

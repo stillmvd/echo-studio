@@ -111,14 +111,21 @@ export interface SessionMeta {
   cwd: string | null;
   customTitle: string | null;
   aiTitle: string | null;
+  userTitle: string | null;
 }
 
 export function sessionDisplayTitle(s: {
+  userTitle: string | null;
   customTitle: string | null;
   aiTitle: string | null;
   sessionId: string;
 }): string {
-  return s.customTitle?.trim() || s.aiTitle?.trim() || `${s.sessionId.slice(0, 8)}…`;
+  return (
+    s.userTitle?.trim() ||
+    s.customTitle?.trim() ||
+    s.aiTitle?.trim() ||
+    `${s.sessionId.slice(0, 8)}…`
+  );
 }
 
 export interface DisplayItem {

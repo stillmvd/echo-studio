@@ -1,6 +1,21 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { bulkDeleteConversationSessions, deleteConversationSession } from '@/lib/ipc';
+import {
+  bulkDeleteConversationSessions,
+  deleteConversationSession,
+  setSessionUserTitle,
+} from '@/lib/ipc';
 import { useUiStore } from '@/state/ui-store';
+
+export function useRenameSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sessionId, title }: { sessionId: string; title: string | null }) =>
+      setSessionUserTitle(sessionId, title),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
 
 export function useDeleteSession() {
   const qc = useQueryClient();

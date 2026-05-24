@@ -81,6 +81,10 @@ export async function searchSessionText(
   return invoke<SessionSearchHit[]>('search_session_text', { projectId, query });
 }
 
+export async function setSessionUserTitle(sessionId: string, title: string | null): Promise<void> {
+  return invoke<void>('set_session_user_title', { sessionId, title });
+}
+
 export async function deleteConversationSession(filePath: string): Promise<void> {
   return invoke<void>('delete_conversation_session', { filePath });
 }

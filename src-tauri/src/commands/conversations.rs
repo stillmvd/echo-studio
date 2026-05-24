@@ -7,6 +7,7 @@ use crate::conversations::{
     paths::projects_root,
     reader::{read_session, search_in_sessions},
     scanner::{list_projects, list_sessions},
+    titles::set_title,
     ConversationProject, DisplayItem, SessionMeta, SessionSearchHit,
 };
 
@@ -72,6 +73,14 @@ pub async fn search_session_text(
     query: String,
 ) -> Result<Vec<SessionSearchHit>, String> {
     Ok(search_in_sessions(&project_id, &query))
+}
+
+#[tauri::command]
+pub async fn set_session_user_title(
+    session_id: String,
+    title: Option<String>,
+) -> Result<(), String> {
+    set_title(&session_id, title)
 }
 
 #[tauri::command]

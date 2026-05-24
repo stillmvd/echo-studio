@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 use std::process::Stdio;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -52,6 +54,21 @@ pub async fn open_in_claude_code(app: AppHandle, cwd: Option<String>) -> Result<
 
 #[tauri::command]
 pub async fn trigger_reindex(app: AppHandle) -> Result<(), String> {
+    if let Ok(cfg) = crate::echovault::config::read_echovault_config() {
+        if cfg.embedding_provider.eq_ignore_ascii_case("ollama") {
+            let base = cfg
+                .ollama_base_url
+                .clone()
+                .filter(|s| !s.trim().is_empty())
+                .unwrap_or_else(|| "http://localhost:11434".to_string());
+            if let Err(reason) = probe_ollama(&base).await {
+                return Err(format!(
+                    "Ollama недоступна по адресу {base} ({reason}). Запустите Ollama (`ollama serve`) и повторите reindex."
+                ));
+            }
+        }
+    }
+
     let exe = locate_memory_exe()
         .ok_or_else(|| "memory.exe not found in PATH or Python Scripts/".to_string())?;
 
@@ -65,11 +82,18 @@ pub async fn trigger_reindex(app: AppHandle) -> Result<(), String> {
     let stdout = child.stdout.take().ok_or("stdout missing")?;
     let stderr = child.stderr.take().ok_or("stderr missing")?;
 
+    let stderr_tail: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+
     let app_for_stdout = app.clone();
-    tokio::spawn(stream_lines(stdout, app_for_stdout, false));
+    tokio::spawn(stream_lines(stdout, app_for_stdout, false, None));
 
     let app_for_stderr = app.clone();
-    tokio::spawn(stream_lines(stderr, app_for_stderr, true));
+    tokio::spawn(stream_lines(
+        stderr,
+        app_for_stderr,
+        true,
+        Some(stderr_tail.clone()),
+    ));
 
     let app_for_done = app.clone();
     tokio::spawn(async move {
@@ -78,9 +102,10 @@ pub async fn trigger_reindex(app: AppHandle) -> Result<(), String> {
                 let _ = app_for_done.emit(EVENT_REINDEX_DONE, ());
             }
             Ok(status) => {
+                let tail = stderr_tail.lock().map(|b| b.join(" ")).unwrap_or_default();
                 let _ = app_for_done.emit(
                     EVENT_REINDEX_ERROR,
-                    format!("reindex exited with code {status}"),
+                    summarize_failure(&status.to_string(), &tail),
                 );
             }
             Err(e) => {
@@ -92,14 +117,62 @@ pub async fn trigger_reindex(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-async fn stream_lines<R>(reader: R, app: AppHandle, is_stderr: bool)
-where
+async fn probe_ollama(base_url: &str) -> Result<(), String> {
+    let url = format!("{}/api/tags", base_url.trim_end_matches('/'));
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(3))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|_| "нет соединения".to_string())?;
+    if resp.status().is_success() {
+        Ok(())
+    } else {
+        Err(format!("HTTP {}", resp.status()))
+    }
+}
+
+fn summarize_failure(status: &str, stderr_tail: &str) -> String {
+    let lower = stderr_tail.to_lowercase();
+    if lower.contains("connecterror")
+        || lower.contains("10061")
+        || lower.contains("connection refused")
+        || lower.contains("max retries")
+    {
+        return "Ollama недоступна — embeddings не получены. Запустите Ollama и повторите reindex."
+            .to_string();
+    }
+    if stderr_tail.trim().is_empty() {
+        format!("reindex завершился с ошибкой ({status})")
+    } else {
+        format!("reindex: {stderr_tail}")
+    }
+}
+
+async fn stream_lines<R>(
+    reader: R,
+    app: AppHandle,
+    is_stderr: bool,
+    tail: Option<Arc<Mutex<Vec<String>>>>,
+) where
     R: tokio::io::AsyncRead + Unpin,
 {
     let mut buf = BufReader::new(reader).lines();
     while let Ok(Some(line)) = buf.next_line().await {
         if line.trim().is_empty() {
             continue;
+        }
+        if let Some(ref tail) = tail {
+            if let Ok(mut t) = tail.lock() {
+                t.push(line.clone());
+                let len = t.len();
+                if len > 5 {
+                    t.drain(0..len - 5);
+                }
+            }
         }
         let payload = if is_stderr {
             format!("[stderr] {line}")

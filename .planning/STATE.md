@@ -69,7 +69,7 @@ Phase 12 specifics:
 
 ## Что осталось НЕ сделано (на будущее)
 
-См. README.md → Roadmap:
+Backlog (раздел Roadmap удалён из README в `5ad891a`):
 - Restore from backup в Settings
 - Light theme
 - macOS / Linux builds

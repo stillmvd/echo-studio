@@ -1,9 +1,18 @@
-import { useMemo } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { ContextMenu } from '@/components/ui/ContextMenu';
 import { Select } from '@/components/ui/Select';
+import { useDeleteSession, useRenameSession } from '@/hooks/use-session-actions';
 import { applyAgeFilter } from '@/lib/age-filter';
 import { cn } from '@/lib/cn';
 import { type SessionMeta, sessionDisplayTitle } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
+import { RenameSessionDialog } from './RenameSessionDialog';
+
+function originalTitle(s: SessionMeta): string {
+  return s.customTitle?.trim() || s.aiTitle?.trim() || `${s.sessionId.slice(0, 8)}…`;
+}
 
 interface Props {
   sessions: SessionMeta[];
@@ -69,6 +78,12 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
   const toggleBulkPath = useUiStore((s) => s.toggleConversationsBulkPath);
   const setBulkSelection = useUiStore((s) => s.setConversationsBulkSelection);
 
+  const rename = useRenameSession();
+  const del = useDeleteSession();
+  const [menu, setMenu] = useState<{ x: number; y: number; session: SessionMeta } | null>(null);
+  const [renameTarget, setRenameTarget] = useState<SessionMeta | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SessionMeta | null>(null);
+
   const visible = useMemo(() => applyAgeFilter(sessions, ageFilter), [sessions, ageFilter]);
 
   const sorted = useMemo(() => {
@@ -118,120 +133,180 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] px-4 py-2 text-xs text-[var(--color-text-muted)]">
-        <span>
-          {visible.length} of {sessions.length} sessions in {selectedProjectName}
-        </span>
-        <Select value={ageFilter} options={ageFilterOptions} onChange={setAgeFilter} />
-      </div>
-      <div className="flex-1 overflow-auto">
-        <table className="w-full border-collapse text-xs">
-          <thead className="sticky top-0 bg-[var(--color-bg-secondary)]">
-            <tr>
-              <th className="border-b border-[var(--color-border-subtle)] px-3 py-2 text-left">
-                <input
-                  type="checkbox"
-                  checked={allChecked}
-                  ref={(el) => {
-                    if (el) el.indeterminate = someChecked;
-                  }}
-                  onChange={() => {
-                    if (allChecked || someChecked) setBulkSelection([]);
-                    else setBulkSelection(visiblePaths);
-                  }}
-                  aria-label="Select all visible sessions"
-                />
-              </th>
-              {columns.map((c) => (
-                <th
-                  key={c.key}
-                  className={cn(
-                    'border-b border-[var(--color-border-subtle)] px-3 py-2 text-left font-medium text-[var(--color-text-muted)]',
-                    c.sortable &&
-                      'cursor-pointer select-none hover:text-[var(--color-text-primary)]',
-                  )}
-                  onClick={c.sortable ? () => onHeaderClick(c.key as SortBy) : undefined}
-                >
-                  {c.label}
-                  {c.sortable && sortBy === c.key && (
-                    <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.length === 0 ? (
+    <>
+      <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] px-4 py-2 text-xs text-[var(--color-text-muted)]">
+          <span>
+            {visible.length} of {sessions.length} sessions in {selectedProjectName}
+          </span>
+          <Select value={ageFilter} options={ageFilterOptions} onChange={setAgeFilter} />
+        </div>
+        <div className="flex-1 overflow-auto">
+          <table className="w-full border-collapse text-xs">
+            <thead className="sticky top-0 bg-[var(--color-bg-secondary)]">
               <tr>
-                <td
-                  colSpan={columns.length + 1}
-                  className="px-4 py-6 text-center text-[var(--color-text-muted)]"
-                >
-                  No sessions match the age filter.
-                </td>
-              </tr>
-            ) : (
-              sorted.map((s) => (
-                <tr
-                  key={s.sessionId}
-                  onClick={() => setSelectedSessionPath(s.filePath)}
-                  className={cn(
-                    'cursor-pointer border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-tertiary)]/40',
-                    bulkSelection.includes(s.filePath) && 'bg-[var(--color-bg-tertiary)]/40',
-                  )}
-                >
-                  <td className="px-3 py-1.5">
-                    <input
-                      type="checkbox"
-                      checked={bulkSelection.includes(s.filePath)}
-                      onChange={() => toggleBulkPath(s.filePath)}
-                      onClick={(e) => e.stopPropagation()}
-                      aria-label={`Select session ${s.sessionId.slice(0, 8)}`}
-                    />
-                  </td>
-                  <td className="max-w-[280px] px-3 py-1.5">
-                    <div
-                      className={cn(
-                        'truncate',
-                        s.customTitle || s.aiTitle
-                          ? 'text-[var(--color-text-primary)]'
-                          : 'font-mono text-[10px] text-[var(--color-text-muted)]',
-                      )}
-                      title={`${sessionDisplayTitle(s)}\n${s.sessionId}`}
-                    >
-                      {sessionDisplayTitle(s)}
-                    </div>
-                    {(s.customTitle || s.aiTitle) && (
-                      <div className="font-mono text-[9px] text-[var(--color-text-muted)]">
-                        {s.sessionId.slice(0, 8)}
-                        {s.customTitle && (
-                          <span className="ml-1 text-[var(--color-accent)]">· renamed</span>
-                        )}
-                      </div>
+                <th className="border-b border-[var(--color-border-subtle)] px-3 py-2 text-left">
+                  <input
+                    type="checkbox"
+                    checked={allChecked}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someChecked;
+                    }}
+                    onChange={() => {
+                      if (allChecked || someChecked) setBulkSelection([]);
+                      else setBulkSelection(visiblePaths);
+                    }}
+                    aria-label="Select all visible sessions"
+                  />
+                </th>
+                {columns.map((c) => (
+                  <th
+                    key={c.key}
+                    className={cn(
+                      'border-b border-[var(--color-border-subtle)] px-3 py-2 text-left font-medium text-[var(--color-text-muted)]',
+                      c.sortable &&
+                        'cursor-pointer select-none hover:text-[var(--color-text-primary)]',
                     )}
-                  </td>
-                  <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
-                    {s.lastEventAt ? s.lastEventAt.slice(0, 16).replace('T', ' ') : '—'}
-                  </td>
-                  <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
-                    {formatDuration(s.durationMs)}
-                  </td>
-                  <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
-                    {s.messageCount}
-                  </td>
-                  <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
-                    {formatBytes(s.sizeBytes)}
-                  </td>
-                  <td className="px-3 py-1.5 font-mono text-[10px] text-[var(--color-text-muted)]">
-                    {s.gitBranch ?? '—'}
+                    onClick={c.sortable ? () => onHeaderClick(c.key as SortBy) : undefined}
+                  >
+                    {c.label}
+                    {c.sortable && sortBy === c.key && (
+                      <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={columns.length + 1}
+                    className="px-4 py-6 text-center text-[var(--color-text-muted)]"
+                  >
+                    No sessions match the age filter.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                sorted.map((s) => (
+                  <tr
+                    key={s.sessionId}
+                    onClick={() => setSelectedSessionPath(s.filePath)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setMenu({ x: e.clientX, y: e.clientY, session: s });
+                    }}
+                    className={cn(
+                      'cursor-pointer border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-bg-tertiary)]/40',
+                      (bulkSelection.includes(s.filePath) ||
+                        menu?.session.sessionId === s.sessionId) &&
+                        'bg-[var(--color-bg-tertiary)]/40',
+                    )}
+                  >
+                    <td className="px-3 py-1.5">
+                      <input
+                        type="checkbox"
+                        checked={bulkSelection.includes(s.filePath)}
+                        onChange={() => toggleBulkPath(s.filePath)}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Select session ${s.sessionId.slice(0, 8)}`}
+                      />
+                    </td>
+                    <td className="max-w-[280px] px-3 py-1.5">
+                      <div
+                        className={cn(
+                          'truncate',
+                          s.customTitle || s.aiTitle
+                            ? 'text-[var(--color-text-primary)]'
+                            : 'font-mono text-[10px] text-[var(--color-text-muted)]',
+                        )}
+                        title={`${sessionDisplayTitle(s)}\n${s.sessionId}`}
+                      >
+                        {sessionDisplayTitle(s)}
+                      </div>
+                      {(s.userTitle || s.customTitle || s.aiTitle) && (
+                        <div className="font-mono text-[9px] text-[var(--color-text-muted)]">
+                          {s.sessionId.slice(0, 8)}
+                          {s.userTitle && (
+                            <span className="ml-1 text-[var(--color-accent)]">· renamed</span>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
+                      {s.lastEventAt ? s.lastEventAt.slice(0, 16).replace('T', ' ') : '—'}
+                    </td>
+                    <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
+                      {formatDuration(s.durationMs)}
+                    </td>
+                    <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
+                      {s.messageCount}
+                    </td>
+                    <td className="px-3 py-1.5 text-[var(--color-text-secondary)]">
+                      {formatBytes(s.sizeBytes)}
+                    </td>
+                    <td className="px-3 py-1.5 font-mono text-[10px] text-[var(--color-text-muted)]">
+                      {s.gitBranch ?? '—'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            {
+              label: 'Rename',
+              icon: <Pencil className="h-3.5 w-3.5" />,
+              onSelect: () => setRenameTarget(menu.session),
+            },
+            {
+              label: 'Delete',
+              icon: <Trash2 className="h-3.5 w-3.5" />,
+              danger: true,
+              onSelect: () => setDeleteTarget(menu.session),
+            },
+          ]}
+        />
+      )}
+
+      <RenameSessionDialog
+        open={!!renameTarget}
+        initialValue={renameTarget?.userTitle ?? ''}
+        fallbackTitle={renameTarget ? originalTitle(renameTarget) : ''}
+        busy={rename.isPending}
+        onCancel={() => setRenameTarget(null)}
+        onSubmit={(title) => {
+          if (!renameTarget) return;
+          rename.mutate(
+            { sessionId: renameTarget.sessionId, title },
+            { onSuccess: () => setRenameTarget(null) },
+          );
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        danger
+        title="Delete conversation?"
+        description={
+          deleteTarget ? `«${sessionDisplayTitle(deleteTarget)}» будет удалён безвозвратно.` : ''
+        }
+        confirmLabel="Delete"
+        busy={del.isPending}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          del.mutate(deleteTarget.filePath, { onSuccess: () => setDeleteTarget(null) });
+        }}
+      />
+    </>
   );
 }
