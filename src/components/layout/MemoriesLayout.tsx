@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { Group, Panel, Separator, useDefaultLayout } from 'react-resizable-panels';
 import { BulkActionBar } from '@/components/memories/BulkActionBar';
 import { EmptyDetail } from '@/components/memories/EmptyDetail';
 import { FilterBar } from '@/components/memories/FilterBar';
@@ -13,6 +13,10 @@ import { tokenizeQuery } from '@/lib/highlight';
 import { useUiStore } from '@/state/ui-store';
 
 export function MemoriesLayout() {
+  const layout = useDefaultLayout({
+    id: 'echo-studio.memories.panel-sizes',
+    storage: localStorage,
+  });
   const selectedProject = useUiStore((s) => s.selectedProject);
   const selectedCategory = useUiStore((s) => s.selectedCategory);
   const status = useUiStore((s) => s.status);
@@ -63,8 +67,8 @@ export function MemoriesLayout() {
   const highlightTerms = debouncedQuery ? tokenizeQuery(debouncedQuery) : [];
 
   return (
-    <PanelGroup direction="horizontal" autoSaveId="echo-studio.memories.panel-sizes">
-      <Panel defaultSize={20} minSize={15} className="bg-[var(--color-bg-secondary)]">
+    <Group orientation="horizontal" {...layout}>
+      <Panel defaultSize="20" minSize="15" className="bg-[var(--color-bg-secondary)]">
         {list.data ? (
           <ProjectSidebar
             projects={list.data.projects}
@@ -78,9 +82,9 @@ export function MemoriesLayout() {
         )}
       </Panel>
 
-      <PanelResizeHandle className="w-px bg-[var(--color-border-subtle)] transition-colors hover:bg-[var(--color-accent)] data-[resize-handle-state=drag]:bg-[var(--color-accent)]" />
+      <Separator className="w-px bg-[var(--color-border-subtle)] transition-colors hover:bg-[var(--color-accent)] data-[separator=active]:bg-[var(--color-accent)]" />
 
-      <Panel defaultSize={35} minSize={25} className="bg-[var(--color-bg-primary)]">
+      <Panel defaultSize="35" minSize="25" className="bg-[var(--color-bg-primary)]">
         <div className="flex h-full flex-col overflow-hidden">
           <FilterBar
             tags={list.data?.tags ?? []}
@@ -99,9 +103,9 @@ export function MemoriesLayout() {
         </div>
       </Panel>
 
-      <PanelResizeHandle className="w-px bg-[var(--color-border-subtle)] transition-colors hover:bg-[var(--color-accent)] data-[resize-handle-state=drag]:bg-[var(--color-accent)]" />
+      <Separator className="w-px bg-[var(--color-border-subtle)] transition-colors hover:bg-[var(--color-accent)] data-[separator=active]:bg-[var(--color-accent)]" />
 
-      <Panel defaultSize={45} minSize={30} className="bg-[var(--color-bg-primary)]">
+      <Panel defaultSize="45" minSize="30" className="bg-[var(--color-bg-primary)]">
         {selectedMemoryId === null ? (
           <EmptyDetail message="Select a memory to see details." />
         ) : detail.isLoading ? (
@@ -112,6 +116,6 @@ export function MemoriesLayout() {
           <EmptyDetail message="Memory not found." />
         )}
       </Panel>
-    </PanelGroup>
+    </Group>
   );
 }

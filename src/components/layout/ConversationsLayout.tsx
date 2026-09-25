@@ -1,4 +1,4 @@
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { Group, Panel, Separator, useDefaultLayout } from 'react-resizable-panels';
 import { ConversationsProjectSidebar } from '@/components/conversations/ConversationsProjectSidebar';
 import { CrossSessionSearch } from '@/components/conversations/CrossSessionSearch';
 import { SessionBulkBar } from '@/components/conversations/SessionBulkBar';
@@ -14,6 +14,10 @@ export function ConversationsLayout() {
   const selectedSessionPath = useUiStore((s) => s.selectedSessionPath);
   const setSelectedSessionPath = useUiStore((s) => s.setSelectedSessionPath);
 
+  const layout = useDefaultLayout({
+    id: 'echo-studio.conversations.panel-sizes',
+    storage: localStorage,
+  });
   const projects = useConversationProjects();
   const sessions = useConversationSessions(projectId);
 
@@ -31,8 +35,8 @@ export function ConversationsLayout() {
   }
 
   return (
-    <PanelGroup direction="horizontal" autoSaveId="echo-studio.conversations.panel-sizes">
-      <Panel defaultSize={28} minSize={20} className="bg-[var(--color-bg-secondary)]">
+    <Group orientation="horizontal" {...layout}>
+      <Panel defaultSize="28" minSize="20" className="bg-[var(--color-bg-secondary)]">
         <div className="flex h-full flex-col overflow-hidden">
           <CrossSessionSearch projectId={projectId} />
           {projects.isLoading ? (
@@ -47,9 +51,9 @@ export function ConversationsLayout() {
         </div>
       </Panel>
 
-      <PanelResizeHandle className="w-px bg-[var(--color-border-subtle)] transition-colors hover:bg-[var(--color-accent)] data-[resize-handle-state=drag]:bg-[var(--color-accent)]" />
+      <Separator className="w-px bg-[var(--color-border-subtle)] transition-colors hover:bg-[var(--color-accent)] data-[separator=active]:bg-[var(--color-accent)]" />
 
-      <Panel defaultSize={72} minSize={40} className="bg-[var(--color-bg-primary)]">
+      <Panel defaultSize="72" minSize="40" className="bg-[var(--color-bg-primary)]">
         {selectedSessionPath ? (
           <SessionViewer
             filePath={selectedSessionPath}
@@ -76,6 +80,6 @@ export function ConversationsLayout() {
           </div>
         )}
       </Panel>
-    </PanelGroup>
+    </Group>
   );
 }
