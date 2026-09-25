@@ -5,6 +5,7 @@ import type { SearchMode, SortBy } from '@/lib/types';
 export type AppTab = 'memories' | 'conversations' | 'settings';
 export type MemoryStatus = 'active' | 'archived' | 'all';
 export type DetailMode = 'rendered' | 'raw';
+export type ProjectSort = 'recent' | 'name' | 'sessions' | 'size';
 export type DateRangePreset = 'all' | 'last7' | 'last30' | 'last90';
 
 interface UiState {
@@ -29,6 +30,8 @@ interface UiState {
   crossSessionSearchQuery: string;
   conversationsBulkSelection: string[];
   conversationsAgeFilter: 'all' | 'older30' | 'older90' | 'older365';
+  projectsSort: ProjectSort;
+  setProjectsSort: (sort: ProjectSort) => void;
   viewerShowSystem: boolean;
   viewerShowThinking: boolean;
 
@@ -87,6 +90,7 @@ export const useUiStore = create<UiState>()(
       crossSessionSearchQuery: '',
       conversationsBulkSelection: [],
       conversationsAgeFilter: 'all',
+      projectsSort: 'recent',
       viewerShowSystem: false,
       viewerShowThinking: false,
 
@@ -152,6 +156,7 @@ export const useUiStore = create<UiState>()(
       setConversationsBulkSelection: (conversationsBulkSelection) =>
         set({ conversationsBulkSelection }),
       clearConversationsBulkSelection: () => set({ conversationsBulkSelection: [] }),
+      setProjectsSort: (projectsSort) => set({ projectsSort }),
       setConversationsAgeFilter: (conversationsAgeFilter) =>
         set({ conversationsAgeFilter, conversationsBulkSelection: [] }),
       toggleViewerShowSystem: () => set((s) => ({ viewerShowSystem: !s.viewerShowSystem })),
@@ -172,6 +177,7 @@ export const useUiStore = create<UiState>()(
         conversationsSortBy: s.conversationsSortBy,
         conversationsSortDir: s.conversationsSortDir,
         conversationsAgeFilter: s.conversationsAgeFilter,
+        projectsSort: s.projectsSort,
         viewerShowSystem: s.viewerShowSystem,
         viewerShowThinking: s.viewerShowThinking,
       }),

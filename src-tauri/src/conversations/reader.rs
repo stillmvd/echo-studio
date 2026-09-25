@@ -124,7 +124,7 @@ pub fn search_in_sessions(project_id: &str, query: &str) -> Vec<SessionSearchHit
                         uuid: item.uuid.clone(),
                         timestamp: item.timestamp.clone(),
                         kind: item.kind.clone(),
-                        preview: truncate(&haystack, SUMMARY_MAX),
+                        preview: snippet_around(&haystack, &trimmed, SUMMARY_MAX),
                     });
                 }
             }
@@ -428,6 +428,41 @@ fn system_detail(subtype: &str, raw: &Value) -> String {
     }
 }
 
+const SNIPPET_LEAD: usize = 40;
+
+fn snippet_around(s: &str, query_lower: &str, max: usize) -> String {
+    let chars: Vec<char> = s
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .collect();
+    let mut lower: Vec<char> = Vec::with_capacity(chars.len());
+    let mut origin: Vec<usize> = Vec::with_capacity(chars.len());
+    for (i, c) in chars.iter().enumerate() {
+        for l in c.to_lowercase() {
+            lower.push(l);
+            origin.push(i);
+        }
+    }
+    let needle: Vec<char> = query_lower.chars().collect();
+    let pos = if needle.is_empty() {
+        0
+    } else {
+        lower
+            .windows(needle.len())
+            .position(|w| w == needle.as_slice())
+            .and_then(|p| origin.get(p).copied())
+            .unwrap_or(0)
+    };
+    let start = pos.saturating_sub(SNIPPET_LEAD);
+    let end = (start + max).min(chars.len());
+    let body: String = chars[start..end].iter().collect();
+    let lead = if start > 0 { "…" } else { "" };
+    let tail = if end < chars.len() { "…" } else { "" };
+    format!("{lead}{body}{tail}")
+}
+
 fn truncate(s: &str, max: usize) -> String {
     let collapsed: String = s.split_whitespace().collect::<Vec<_>>().join(" ");
     if collapsed.chars().count() <= max {
@@ -439,7 +474,18 @@ fn truncate(s: &str, max: usize) -> String {
 
 #[cfg(test)]
 mod jsonl_tests {
-    use super::jsonl_lines;
+    use super::{jsonl_lines, snippet_around};
+
+    #[test]
+    fn snippet_starts_near_match() {
+        let text = format!("{} the titlebar is here", "x ".repeat(200));
+        let s = snippet_around(&text, "titlebar", 60);
+        assert!(s.starts_with('…'));
+        assert!(s.contains("titlebar"));
+        assert!(snippet_around("Кириллица и Titlebar", "titlebar", 60).contains("Titlebar"));
+        let dotted = format!("{}İ titlebar", "x ".repeat(100));
+        assert!(snippet_around(&dotted, "titlebar", 50).contains("titlebar"));
+    }
 
     #[test]
     fn invalid_utf8_line_does_not_truncate_rest() {

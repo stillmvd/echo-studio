@@ -39,16 +39,17 @@ export function ConversationsLayout() {
     <Group orientation="horizontal" {...layout}>
       <Panel defaultSize="28" minSize="20" className={panelCard}>
         <div className="flex h-full flex-col overflow-hidden">
-          <CrossSessionSearch projectId={projectId} />
-          {projects.isLoading ? (
-            <div className="p-4 text-sm text-[var(--color-text-muted)]">Loading…</div>
-          ) : (
-            <ConversationsProjectSidebar
-              projects={projects.data ?? []}
-              selectedId={projectId}
-              onSelect={setProjectId}
-            />
-          )}
+          <CrossSessionSearch projectId={projectId}>
+            {projects.isLoading ? (
+              <p className="px-2 text-sm text-[var(--color-text-muted)]">Loading…</p>
+            ) : (
+              <ConversationsProjectSidebar
+                projects={projects.data ?? []}
+                selectedId={projectId}
+                onSelect={setProjectId}
+              />
+            )}
+          </CrossSessionSearch>
         </div>
       </Panel>
 

@@ -1,5 +1,5 @@
 use std::fs;
-use std::io::{BufRead, BufReader};
+use std::io::BufReader;
 use std::path::Path;
 
 use serde_json::Value;
@@ -120,13 +120,16 @@ pub fn list_sessions(project_id: &str) -> Vec<SessionMeta> {
     sessions
 }
 
+const CWD_SCAN_LINES: usize = 64;
+
 fn read_cwd_from_first_line(path: &Path) -> Option<String> {
     let file = fs::File::open(path).ok()?;
-    let mut reader = BufReader::new(file);
-    let mut line = String::new();
-    let _ = reader.read_line(&mut line).ok()?;
-    let parsed: Value = serde_json::from_str(&line).ok()?;
-    parsed.get("cwd").and_then(|v| v.as_str()).map(String::from)
+    jsonl_lines(BufReader::new(file))
+        .take(CWD_SCAN_LINES)
+        .find_map(|line| {
+            let parsed: Value = serde_json::from_str(&line).ok()?;
+            parsed.get("cwd").and_then(|v| v.as_str()).map(String::from)
+        })
 }
 
 pub fn parse_session_meta(path: &Path) -> Option<SessionMeta> {

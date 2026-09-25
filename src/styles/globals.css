@@ -55,6 +55,16 @@
     color: var(--color-accent-fg);
   }
 
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  select:not(:disabled),
+  summary,
+  label:has(> input[type="checkbox"]:not(:disabled)),
+  input[type="checkbox"]:not(:disabled) {
+    cursor: pointer;
+  }
+
   *:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
