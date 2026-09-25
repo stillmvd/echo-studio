@@ -98,7 +98,7 @@ export function MemoryDetail({ data }: Props) {
         )}
       </header>
 
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-6 pt-4 pb-20">
         <Section label="What">
           <p className="whitespace-pre-wrap text-sm text-[var(--color-text-secondary)]">{m.what}</p>
         </Section>

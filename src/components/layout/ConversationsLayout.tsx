@@ -1,4 +1,4 @@
-import { Group, Panel, Separator, useDefaultLayout } from 'react-resizable-panels';
+import { Group, Panel, useDefaultLayout } from 'react-resizable-panels';
 import { ConversationsProjectSidebar } from '@/components/conversations/ConversationsProjectSidebar';
 import { CrossSessionSearch } from '@/components/conversations/CrossSessionSearch';
 import { SessionBulkBar } from '@/components/conversations/SessionBulkBar';
@@ -7,6 +7,7 @@ import { SessionViewer } from '@/components/conversations/SessionViewer';
 import { useConversationProjects, useConversationSessions } from '@/hooks/use-conversations';
 import { sessionDisplayTitle } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
+import { PanelSeparator, panelCard } from './panels';
 
 export function ConversationsLayout() {
   const projectId = useUiStore((s) => s.conversationsProjectId);
@@ -36,7 +37,7 @@ export function ConversationsLayout() {
 
   return (
     <Group orientation="horizontal" {...layout}>
-      <Panel defaultSize="28" minSize="20" className="bg-[var(--color-bg-secondary)]">
+      <Panel defaultSize="28" minSize="20" className={panelCard}>
         <div className="flex h-full flex-col overflow-hidden">
           <CrossSessionSearch projectId={projectId} />
           {projects.isLoading ? (
@@ -51,9 +52,9 @@ export function ConversationsLayout() {
         </div>
       </Panel>
 
-      <Separator className="w-px bg-[var(--color-border-subtle)] transition-colors hover:bg-[var(--color-accent)] data-[separator=active]:bg-[var(--color-accent)]" />
+      <PanelSeparator />
 
-      <Panel defaultSize="72" minSize="40" className="bg-[var(--color-bg-primary)]">
+      <Panel defaultSize="72" minSize="40" className={panelCard}>
         {selectedSessionPath ? (
           <SessionViewer
             filePath={selectedSessionPath}

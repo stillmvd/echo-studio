@@ -4,6 +4,8 @@ import { useDbBackups, useEchovaultConfig } from '@/hooks/use-settings';
 import { cn } from '@/lib/cn';
 import { revealInExplorer } from '@/lib/ipc';
 import type { BackupInfo } from '@/lib/types';
+import { version } from '../../../package.json';
+import { panelCard } from './panels';
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -28,7 +30,7 @@ export function SettingsLayout() {
   const totalSessions = (projects.data ?? []).reduce((s, p) => s + p.sessionCount, 0);
 
   return (
-    <div className="h-full overflow-y-auto px-6 py-6">
+    <div className={cn(panelCard, 'h-full overflow-y-auto px-6 pt-6 pb-20')}>
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <h1 className="text-lg font-semibold tracking-tight text-[var(--color-text-primary)]">
           Settings
@@ -126,7 +128,7 @@ export function SettingsLayout() {
         <Section title="About">
           <dl className="grid grid-cols-[180px_1fr] gap-x-4 gap-y-2 text-sm">
             <Dt>Echo Studio</Dt>
-            <Dd>v0.1.0 (MVP1)</Dd>
+            <Dd>v{version}</Dd>
             <Dt>Stack</Dt>
             <Dd>Tauri 2 + React 19 + Rust</Dd>
             <Dt>EchoVault repo</Dt>

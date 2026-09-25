@@ -1,11 +1,36 @@
 @import "tailwindcss";
 @import "./tokens.css";
 @import "highlight.js/styles/github-dark-dimmed.css";
-@import "@fontsource/geist-sans/400.css";
-@import "@fontsource/geist-sans/500.css";
-@import "@fontsource/geist-sans/600.css";
 @import "@fontsource/geist-mono/400.css";
 @import "@fontsource/geist-mono/500.css";
+
+@font-face {
+  font-family: "Kockers Sans";
+  font-weight: 300;
+  font-display: swap;
+  src: url("../assets/fonts/KockersSans-Light.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Kockers Sans";
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/KockersSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Kockers Sans";
+  font-weight: 500;
+  font-display: swap;
+  src: url("../assets/fonts/KockersSans-Medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Kockers Sans";
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/KockersSans-Bold.woff2") format("woff2");
+}
 
 @layer base {
   html,
@@ -21,6 +46,7 @@
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-synthesis: none;
     overflow: hidden;
   }
 
@@ -32,11 +58,6 @@
   *:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
-  }
-
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-border) transparent;
   }
 
   *::-webkit-scrollbar {
@@ -114,6 +135,11 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
+}
+
+.panel-card::-webkit-scrollbar-track,
+.panel-card *::-webkit-scrollbar-track {
+  margin-block: 28px;
 }
 
 .echo-markdown h1,

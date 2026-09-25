@@ -151,7 +151,7 @@ export function SessionViewer({ filePath, sessionId, onBack }: Props) {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div className="flex-1 overflow-y-auto px-4 pt-3 pb-20">
         {events.isLoading ? (
           <p className="text-sm text-[var(--color-text-muted)]">Loading session…</p>
         ) : events.isError ? (
