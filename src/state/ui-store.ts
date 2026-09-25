@@ -8,6 +8,8 @@ export type DetailMode = 'rendered' | 'raw';
 export type ProjectSort = 'recent' | 'name' | 'sessions' | 'size';
 export type DateRangePreset = 'all' | 'last7' | 'last30' | 'last90';
 
+export type MemoryAction = 'edit' | 'archive' | 'restore' | 'delete';
+
 interface UiState {
   activeTab: AppTab;
   selectedProject: string | null;
@@ -34,6 +36,7 @@ interface UiState {
   setProjectsSort: (sort: ProjectSort) => void;
   viewerShowSystem: boolean;
   viewerShowThinking: boolean;
+  pendingMemoryAction: { id: string; kind: MemoryAction } | null;
 
   setActiveTab: (tab: AppTab) => void;
   setSelectedProject: (project: string | null) => void;
@@ -64,6 +67,8 @@ interface UiState {
   setConversationsAgeFilter: (f: 'all' | 'older30' | 'older90' | 'older365') => void;
   toggleViewerShowSystem: () => void;
   toggleViewerShowThinking: () => void;
+  setPendingMemoryAction: (action: { id: string; kind: MemoryAction } | null) => void;
+  requestMemoryAction: (id: string, kind: MemoryAction) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -93,6 +98,7 @@ export const useUiStore = create<UiState>()(
       projectsSort: 'recent',
       viewerShowSystem: false,
       viewerShowThinking: false,
+      pendingMemoryAction: null,
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setSelectedProject: (selectedProject) =>
@@ -100,7 +106,8 @@ export const useUiStore = create<UiState>()(
       setSelectedCategory: (selectedCategory) =>
         set({ selectedCategory, selectedMemoryId: null, bulkSelectionIds: [] }),
       setStatus: (status) => set({ status, selectedMemoryId: null, bulkSelectionIds: [] }),
-      setSelectedMemoryId: (selectedMemoryId) => set({ selectedMemoryId }),
+      setSelectedMemoryId: (selectedMemoryId) =>
+        set({ selectedMemoryId, pendingMemoryAction: null }),
       setDetailMode: (detailMode) => set({ detailMode }),
       setSearchQuery: (searchQuery) =>
         set({ searchQuery, selectedMemoryId: null, bulkSelectionIds: [] }),
@@ -161,6 +168,9 @@ export const useUiStore = create<UiState>()(
         set({ conversationsAgeFilter, conversationsBulkSelection: [] }),
       toggleViewerShowSystem: () => set((s) => ({ viewerShowSystem: !s.viewerShowSystem })),
       toggleViewerShowThinking: () => set((s) => ({ viewerShowThinking: !s.viewerShowThinking })),
+      setPendingMemoryAction: (pendingMemoryAction) => set({ pendingMemoryAction }),
+      requestMemoryAction: (id, kind) =>
+        set({ selectedMemoryId: id, pendingMemoryAction: { id, kind } }),
     }),
     {
       name: 'echo-studio.ui',

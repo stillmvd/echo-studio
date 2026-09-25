@@ -1,5 +1,8 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useEffect, useRef } from 'react';
+import { Archive, ArchiveRestore, Pencil, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ContextMenu } from '@/components/ui/ContextMenu';
+import { menuPoint } from '@/lib/context-menu';
 import type { Memory } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { MemoryRow } from './MemoryRow';
@@ -23,6 +26,8 @@ export function MemoryList({ items, total, isLoading, highlightTerms }: Props) {
   const bulkSelectionIds = useUiStore((s) => s.bulkSelectionIds);
   const toggleBulkId = useUiStore((s) => s.toggleBulkId);
   const setBulkSelection = useUiStore((s) => s.setBulkSelection);
+  const runAction = useUiStore((s) => s.requestMemoryAction);
+  const [menu, setMenu] = useState<{ x: number; y: number; memory: Memory } | null>(null);
 
   const virtualizer = useVirtualizer({
     count: items.length,
@@ -92,6 +97,11 @@ export function MemoryList({ items, total, isLoading, highlightTerms }: Props) {
                     highlightTerms={highlightTerms}
                     bulkChecked={bulkSelectionIds.includes(memory.id)}
                     onToggleBulk={() => toggleBulkId(memory.id)}
+                    menuOpen={menu?.memory.id === memory.id}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setMenu({ ...menuPoint(e), memory });
+                    }}
                   />
                 </div>
               );
@@ -99,6 +109,39 @@ export function MemoryList({ items, total, isLoading, highlightTerms }: Props) {
           </div>
         )}
       </div>
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            {
+              label: 'Edit',
+              icon: <Pencil className="h-3.5 w-3.5" />,
+              onSelect: () => runAction(menu.memory.id, 'edit'),
+            },
+            menu.memory.status === 'archived'
+              ? {
+                  label: 'Restore',
+                  icon: <ArchiveRestore className="h-3.5 w-3.5" />,
+                  onSelect: () => runAction(menu.memory.id, 'restore'),
+                }
+              : {
+                  label: 'Archive',
+                  icon: <Archive className="h-3.5 w-3.5" />,
+                  onSelect: () => runAction(menu.memory.id, 'archive'),
+                },
+            'separator',
+            {
+              label: 'Delete',
+              icon: <Trash2 className="h-3.5 w-3.5" />,
+              danger: true,
+              onSelect: () => runAction(menu.memory.id, 'delete'),
+            },
+          ]}
+        />
+      )}
     </div>
   );
 }

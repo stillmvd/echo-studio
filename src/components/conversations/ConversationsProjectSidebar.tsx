@@ -1,7 +1,10 @@
-import { ArrowDownWideNarrow, Check } from 'lucide-react';
+import { ArrowDownWideNarrow, Check, Copy, FolderOpen, SquareTerminal } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { Chip } from '@/components/ui/Chip';
 import { ContextMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
+import { menuPoint } from '@/lib/context-menu';
+import { openInClaudeCode, revealInExplorer } from '@/lib/ipc';
 import { formatAgo, formatBytes, parentFolder, sortProjects } from '@/lib/projects';
 import type { ConversationProject } from '@/lib/types';
 import { type ProjectSort, useUiStore } from '@/state/ui-store';
@@ -18,15 +21,6 @@ const sortOptions: { id: ProjectSort; label: string }[] = [
   { id: 'sessions', label: 'Sessions' },
   { id: 'size', label: 'Size' },
 ];
-
-function Chip({ value, unit }: { value: string | number; unit: string }) {
-  return (
-    <span className="inline-flex h-6 items-center rounded-full bg-[var(--color-bg-tertiary)] px-[9px] text-[11px] font-medium text-[var(--color-text-muted)] tabular-nums">
-      <b className="mr-1 font-bold text-[var(--color-text-primary)]">{value}</b>
-      {unit}
-    </span>
-  );
-}
 
 function SortButton() {
   const sort = useUiStore((s) => s.projectsSort);
@@ -70,6 +64,9 @@ export function ConversationsProjectSidebar({ projects, selectedId, onSelect }: 
   const totalSize = projects.reduce((s, p) => s + p.totalSize, 0);
   const totalSessions = projects.reduce((s, p) => s + p.sessionCount, 0);
   const [sizeValue = '', sizeUnit = ''] = formatBytes(totalSize).split(' ');
+  const [menu, setMenu] = useState<{ x: number; y: number; project: ConversationProject } | null>(
+    null,
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -96,6 +93,7 @@ export function ConversationsProjectSidebar({ projects, selectedId, onSelect }: 
           {sorted.map((p) => {
             const selected = selectedId === p.id;
             const parent = parentFolder(p.cwd);
+            const menuOpen = menu?.project.id === p.id;
             return (
               <li key={p.id} className="shrink-0">
                 <button
@@ -103,11 +101,18 @@ export function ConversationsProjectSidebar({ projects, selectedId, onSelect }: 
                   title={p.cwd}
                   aria-current={selected ? 'true' : undefined}
                   onClick={() => onSelect(p.id)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setMenu({ ...menuPoint(e), project: p });
+                  }}
                   className={cn(
                     'grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-full pr-1.5 pl-4 text-left text-sm transition-[height,background-color,color] duration-200 ease-[var(--ease-trail)] motion-reduce:transition-none',
                     selected
                       ? 'h-[52px] bg-[var(--color-text-primary)] font-bold text-[var(--color-bg-primary)]'
-                      : 'h-11 text-[var(--color-text-primary)] hover:bg-[var(--color-hover)]',
+                      : cn(
+                          'h-11 text-[var(--color-text-primary)] hover:bg-[var(--color-hover)]',
+                          menuOpen && 'bg-[var(--color-hover)]',
+                        ),
                   )}
                 >
                   <span className="flex min-w-0 flex-col">
@@ -149,6 +154,38 @@ export function ConversationsProjectSidebar({ projects, selectedId, onSelect }: 
             );
           })}
         </ul>
+      )}
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            {
+              label: 'Show in Explorer',
+              icon: <FolderOpen className="h-3.5 w-3.5" />,
+              onSelect: () => {
+                revealInExplorer(menu.project.cwd).catch(() => {});
+              },
+            },
+            {
+              label: 'Open in Claude Code',
+              icon: <SquareTerminal className="h-3.5 w-3.5" />,
+              onSelect: () => {
+                openInClaudeCode(menu.project.cwd).catch(() => {});
+              },
+            },
+            'separator',
+            {
+              label: 'Copy path',
+              icon: <Copy className="h-3.5 w-3.5" />,
+              onSelect: () => {
+                navigator.clipboard.writeText(menu.project.cwd).catch(() => {});
+              },
+            },
+          ]}
+        />
       )}
     </div>
   );

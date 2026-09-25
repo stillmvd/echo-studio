@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Markdown } from '@/components/markdown/Markdown';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useArchiveMemory, useDeleteMemory, useRestoreMemory } from '@/hooks/use-memory-actions';
@@ -36,6 +36,15 @@ export function MemoryDetail({ data }: Props) {
   const [archiveReason, setArchiveReason] = useState('');
   const [editing, setEditing] = useState(false);
   const [claudeOpen, setClaudeOpen] = useState(false);
+  const pendingAction = useUiStore((s) => s.pendingMemoryAction);
+  const setPendingAction = useUiStore((s) => s.setPendingMemoryAction);
+
+  useEffect(() => {
+    if (!pendingAction || pendingAction.id !== data.id) return;
+    setPendingAction(null);
+    if (pendingAction.kind === 'edit') setEditing(true);
+    else setDialog(pendingAction.kind);
+  }, [pendingAction, data.id, setPendingAction]);
 
   const m = data;
   const isArchived = m.status === 'archived';

@@ -9,6 +9,8 @@ interface Props {
   highlightTerms: string[];
   bulkChecked: boolean;
   onToggleBulk: () => void;
+  onContextMenu: (e: React.MouseEvent) => void;
+  menuOpen: boolean;
 }
 
 const categoryColor: Record<string, string> = {
@@ -48,13 +50,17 @@ export function MemoryRow({
   highlightTerms,
   bulkChecked,
   onToggleBulk,
+  onContextMenu,
+  menuOpen,
 }: Props) {
   const cat = memory.category;
   return (
     <div
       className={cn(
         'flex w-full items-stretch gap-2 border-b border-[var(--color-border-subtle)] transition-colors',
-        selected ? 'bg-[var(--color-bg-tertiary)]' : 'hover:bg-[var(--color-bg-tertiary)]/50',
+        selected || menuOpen
+          ? 'bg-[var(--color-bg-tertiary)]'
+          : 'hover:bg-[var(--color-bg-tertiary)]/50',
       )}
     >
       <span className="flex shrink-0 items-center pl-3">
@@ -70,6 +76,7 @@ export function MemoryRow({
       <button
         type="button"
         onClick={onClick}
+        onContextMenu={onContextMenu}
         className="flex flex-1 flex-col gap-1 px-3 py-3 text-left"
       >
         <div className="flex items-baseline gap-2">

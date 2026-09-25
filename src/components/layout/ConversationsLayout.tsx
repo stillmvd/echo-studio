@@ -1,7 +1,6 @@
 import { Group, Panel, useDefaultLayout } from 'react-resizable-panels';
 import { ConversationsProjectSidebar } from '@/components/conversations/ConversationsProjectSidebar';
 import { CrossSessionSearch } from '@/components/conversations/CrossSessionSearch';
-import { SessionBulkBar } from '@/components/conversations/SessionBulkBar';
 import { SessionTable } from '@/components/conversations/SessionTable';
 import { SessionViewer } from '@/components/conversations/SessionViewer';
 import { useConversationProjects, useConversationSessions } from '@/hooks/use-conversations';
@@ -58,6 +57,7 @@ export function ConversationsLayout() {
       <Panel defaultSize="72" minSize="40" className={panelCard}>
         {selectedSessionPath ? (
           <SessionViewer
+            key={selectedSessionPath}
             filePath={selectedSessionPath}
             sessionId={
               selectedSession
@@ -70,16 +70,11 @@ export function ConversationsLayout() {
             onBack={() => setSelectedSessionPath(null)}
           />
         ) : (
-          <div className="flex h-full flex-col overflow-hidden">
-            <SessionBulkBar />
-            <div className="flex-1 overflow-hidden">
-              <SessionTable
-                sessions={sessions.data ?? []}
-                isLoading={sessions.isLoading}
-                selectedProjectName={selectedProject?.displayName ?? null}
-              />
-            </div>
-          </div>
+          <SessionTable
+            sessions={sessions.data ?? []}
+            isLoading={sessions.isLoading}
+            selectedProjectName={selectedProject?.displayName ?? null}
+          />
         )}
       </Panel>
     </Group>
