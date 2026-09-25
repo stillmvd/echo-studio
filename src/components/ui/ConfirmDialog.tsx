@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
   cancelLabel?: string;
   danger?: boolean;
   busy?: boolean;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   onCancel: () => void;
   children?: React.ReactNode;
 }
@@ -27,10 +27,22 @@ export function ConfirmDialog({
   children,
 }: Props) {
   const [mounted, setMounted] = useState(open);
+  const [error, setError] = useState<string | null>(null);
+
+  const confirm = useCallback(async () => {
+    setError(null);
+    try {
+      await onConfirm();
+    } catch (e) {
+      setError(String(e));
+    }
+  }, [onConfirm]);
 
   useEffect(() => {
-    if (open) setMounted(true);
-    else {
+    if (open) {
+      setMounted(true);
+      setError(null);
+    } else {
       const t = setTimeout(() => setMounted(false), 150);
       return () => clearTimeout(t);
     }
@@ -40,11 +52,18 @@ export function ConfirmDialog({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !busy) onCancel();
-      if (e.key === 'Enter' && !busy) onConfirm();
+      if (
+        e.key === 'Enter' &&
+        !busy &&
+        !e.defaultPrevented &&
+        !(e.target instanceof HTMLTextAreaElement) &&
+        !(e.target instanceof HTMLButtonElement)
+      )
+        void confirm();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, busy, onConfirm, onCancel]);
+  }, [open, busy, confirm, onCancel]);
 
   if (!mounted) return null;
 
@@ -72,6 +91,11 @@ export function ConfirmDialog({
           <p className="mt-2 text-sm text-[var(--color-text-secondary)]">{description}</p>
         )}
         {children && <div className="mt-3">{children}</div>}
+        {error && (
+          <p className="mt-3 whitespace-pre-wrap break-words text-xs text-[var(--color-danger)]">
+            {error}
+          </p>
+        )}
         <div className="mt-5 flex justify-end gap-2">
           <button
             type="button"
@@ -83,7 +107,7 @@ export function ConfirmDialog({
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            onClick={() => void confirm()}
             disabled={busy}
             className={cn(
               'rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50',

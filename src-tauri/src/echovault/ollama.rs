@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::error::{EchoVaultError, Result};
 
-const DEFAULT_BASE_URL: &str = "http://localhost:11434";
+pub(crate) const DEFAULT_BASE_URL: &str = "http://localhost:11434";
 const DEFAULT_MODEL: &str = "nomic-embed-text";
 const TIMEOUT: Duration = Duration::from_secs(8);
 

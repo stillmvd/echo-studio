@@ -36,7 +36,7 @@ export function MemoryList({ items, total, isLoading, highlightTerms }: Props) {
     parentRef.current?.scrollTo({ top: 0 });
   }, [selectedProject, selectedCategory, searchQuery]);
 
-  const allChecked = items.length > 0 && bulkSelectionIds.length === items.length;
+  const allChecked = items.length > 0 && items.every((m) => bulkSelectionIds.includes(m.id));
   const someChecked = bulkSelectionIds.length > 0 && !allChecked;
 
   return (

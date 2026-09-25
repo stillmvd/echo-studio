@@ -23,7 +23,12 @@ pub fn create_backup(home: &Path) -> Result<PathBuf> {
     let dir = backups_dir(home);
     fs::create_dir_all(&dir)?;
     let stamp = Utc::now().format(TIMESTAMP_FORMAT).to_string();
-    let target = dir.join(format!("{BACKUP_PREFIX}{stamp}{BACKUP_SUFFIX}"));
+    let mut target = dir.join(format!("{BACKUP_PREFIX}{stamp}{BACKUP_SUFFIX}"));
+    let mut n = 2;
+    while target.exists() {
+        target = dir.join(format!("{BACKUP_PREFIX}{stamp}-{n}{BACKUP_SUFFIX}"));
+        n += 1;
+    }
     let source = index_db_path(home);
     fs::copy(&source, &target)?;
     Ok(target)
@@ -121,9 +126,11 @@ mod tests {
 
         let path = create_backup(&home).unwrap();
         assert!(path.exists());
+        let second = create_backup(&home).unwrap();
+        assert_ne!(path, second);
 
         let backups = list_backups(&home).unwrap();
-        assert_eq!(backups.len(), 1);
+        assert_eq!(backups.len(), 2);
 
         fs::remove_dir_all(&tmp).ok();
     }

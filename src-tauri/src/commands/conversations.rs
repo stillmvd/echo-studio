@@ -35,36 +35,40 @@ fn ensure_path_within_projects(path: &Path) -> Result<(), String> {
         .map_err(|e| format!("canonicalize path: {e}"))?;
     if !canonical_path.starts_with(&canonical_root) {
         return Err(format!(
-            "refusing to delete: {} is outside ~/.claude/projects",
+            "refusing: {} is outside ~/.claude/projects",
             canonical_path.display()
         ));
     }
     if canonical_path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
         return Err(format!(
-            "refusing to delete: {} is not a .jsonl file",
+            "refusing: {} is not a .jsonl file",
             canonical_path.display()
         ));
     }
     Ok(())
 }
 
+async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|e| format!("task failed: {e}"))
+}
+
 #[tauri::command]
 pub async fn list_conversation_projects() -> Result<Vec<ConversationProject>, String> {
-    Ok(list_projects())
+    blocking(list_projects).await
 }
 
 #[tauri::command]
 pub async fn list_conversation_sessions(project_id: String) -> Result<Vec<SessionMeta>, String> {
-    Ok(list_sessions(&project_id))
+    blocking(move || list_sessions(&project_id)).await
 }
 
 #[tauri::command]
 pub async fn read_session_events(file_path: String) -> Result<Vec<DisplayItem>, String> {
     let path = PathBuf::from(&file_path);
-    if !path.exists() {
-        return Err(format!("file not found: {file_path}"));
-    }
-    read_session(&path)
+    ensure_path_within_projects(&path)?;
+    blocking(move || read_session(&path)).await?
 }
 
 #[tauri::command]
@@ -72,7 +76,7 @@ pub async fn search_session_text(
     project_id: String,
     query: String,
 ) -> Result<Vec<SessionSearchHit>, String> {
-    Ok(search_in_sessions(&project_id, &query))
+    blocking(move || search_in_sessions(&project_id, &query)).await
 }
 
 #[tauri::command]

@@ -9,15 +9,12 @@ export function useDbWatcher() {
   const [lastChange, setLastChange] = useState<number>(0);
 
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    listen(EVENT_DB_CHANGED, () => {
+    const pending = listen(EVENT_DB_CHANGED, () => {
       setLastChange(Date.now());
       qc.invalidateQueries({ queryKey: ['memories'] });
-    }).then((fn) => {
-      unlisten = fn;
     });
     return () => {
-      unlisten?.();
+      void pending.then((unlisten) => unlisten());
     };
   }, [qc]);
 

@@ -72,6 +72,21 @@ export function EditMemoryDialog({ open, data, onClose }: Props) {
     }
   };
 
+  const dirty =
+    !!data &&
+    (title !== data.title ||
+      what !== data.what ||
+      why !== (data.why ?? '') ||
+      impact !== (data.impact ?? '') ||
+      category !== (data.category ?? '') ||
+      body !== (data.body ?? '') ||
+      tagsInput.trim() !== '' ||
+      tags.join('\n') !== data.tags.join('\n'));
+
+  const cancel = () => {
+    if (!dirty || window.confirm('Discard unsaved changes?')) onClose();
+  };
+
   return (
     <ConfirmDialog
       open={open}
@@ -80,7 +95,7 @@ export function EditMemoryDialog({ open, data, onClose }: Props) {
       busy={update.isPending}
       confirmLabel="Save"
       onConfirm={submit}
-      onCancel={onClose}
+      onCancel={cancel}
     >
       <div className="flex flex-col gap-2.5 max-h-[60vh] overflow-y-auto pr-1">
         <Field label="Title *">

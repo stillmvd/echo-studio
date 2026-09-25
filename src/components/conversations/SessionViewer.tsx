@@ -42,7 +42,12 @@ export function SessionViewer({ filePath, sessionId, onBack }: Props) {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !confirmDelete) onBack();
+      if (e.key !== 'Escape' || confirmDelete) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        e.target.blur();
+        return;
+      }
+      onBack();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);

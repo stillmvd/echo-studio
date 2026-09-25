@@ -6,6 +6,7 @@ use serde_json::Value;
 
 use super::models::{ConversationProject, SessionMeta};
 use super::paths::{decode_cwd, display_name, projects_root};
+use super::reader::jsonl_lines;
 
 pub fn list_projects() -> Vec<ConversationProject> {
     let Some(root) = projects_root() else {
@@ -147,7 +148,7 @@ pub fn parse_session_meta(path: &Path) -> Option<SessionMeta> {
     let mut custom_title: Option<String> = None;
     let mut ai_title: Option<String> = None;
 
-    for line in reader.lines().map_while(|l| l.ok()) {
+    for line in jsonl_lines(reader) {
         if line.trim().is_empty() {
             continue;
         }

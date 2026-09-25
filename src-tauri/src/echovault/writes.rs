@@ -1,5 +1,5 @@
 use chrono::Utc;
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
 use super::backup::{create_backup, rotate_backups};
@@ -164,61 +164,66 @@ fn restore_in_tx(tx: &Connection, id: &str) -> Result<bool> {
     Ok(n > 0)
 }
 
-struct FtsRow {
-    rowid: i64,
-    title: String,
-    what: String,
-    why: Option<String>,
-    impact: Option<String>,
-    tags: Option<String>,
-    category: Option<String>,
-    project: String,
-    source: Option<String>,
+const FTS_COLUMNS: &str = "title, what, why, impact, tags, category, project, source";
+
+pub(super) fn memory_rowid(tx: &Connection, id: &str) -> Result<Option<i64>> {
+    Ok(tx
+        .query_row(
+            "SELECT rowid FROM memories WHERE id = ?1",
+            params![id],
+            |r| r.get(0),
+        )
+        .optional()?)
+}
+
+pub(super) fn fts_synced_by_trigger(tx: &Connection, event: &str) -> Result<bool> {
+    Ok(tx.query_row(
+        "SELECT EXISTS(
+           SELECT 1 FROM sqlite_master
+           WHERE type = 'trigger' AND tbl_name = 'memories'
+             AND sql LIKE '%memories_fts%'
+             AND substr(upper(sql), 1, instr(upper(sql), 'BEGIN')) LIKE '%' || ?1 || '%'
+         )",
+        params![event],
+        |r| r.get(0),
+    )?)
+}
+
+pub(super) fn fts_remove(tx: &Connection, rowid: i64) -> Result<()> {
+    tx.execute(
+        &format!(
+            "INSERT INTO memories_fts(memories_fts, rowid, {FTS_COLUMNS})
+             SELECT 'delete', rowid, {FTS_COLUMNS} FROM memories WHERE rowid = ?1"
+        ),
+        params![rowid],
+    )?;
+    Ok(())
+}
+
+pub(super) fn fts_add(tx: &Connection, rowid: i64) -> Result<()> {
+    tx.execute(
+        &format!(
+            "INSERT INTO memories_fts(rowid, {FTS_COLUMNS})
+             SELECT rowid, {FTS_COLUMNS} FROM memories WHERE rowid = ?1"
+        ),
+        params![rowid],
+    )?;
+    Ok(())
 }
 
 fn delete_in_tx(tx: &Connection, id: &str) -> Result<bool> {
-    let row = tx
-        .query_row(
-            "SELECT rowid, title, what, why, impact, tags, category, project, source
-             FROM memories WHERE id = ?1",
-            params![id],
-            |r| {
-                Ok(FtsRow {
-                    rowid: r.get(0)?,
-                    title: r.get(1)?,
-                    what: r.get(2)?,
-                    why: r.get(3)?,
-                    impact: r.get(4)?,
-                    tags: r.get(5)?,
-                    category: r.get(6)?,
-                    project: r.get(7)?,
-                    source: r.get(8)?,
-                })
-            },
-        )
-        .map(Some)
-        .or_else(|e| match e {
-            rusqlite::Error::QueryReturnedNoRows => Ok(None),
-            other => Err(other),
-        })?;
-
-    let Some(r) = row else {
+    let Some(rowid) = memory_rowid(tx, id)? else {
         return Ok(false);
     };
 
-    tx.execute(
-        "INSERT INTO memories_fts(memories_fts, rowid, title, what, why, impact, tags, category, project, source)
-         VALUES ('delete', ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-        params![r.rowid, r.title, r.what, r.why, r.impact, r.tags, r.category, r.project, r.source],
-    )?;
+    if !fts_synced_by_trigger(tx, "DELETE")? {
+        fts_remove(tx, rowid)?;
+    }
     tx.execute(
         "DELETE FROM memory_details WHERE memory_id = ?1",
         params![id],
     )?;
-    tx.execute(
-        "DELETE FROM memories_vec WHERE rowid = ?1",
-        params![r.rowid],
-    )?;
+    tx.execute("DELETE FROM memories_vec WHERE rowid = ?1", params![rowid])?;
     tx.execute("DELETE FROM memories WHERE id = ?1", params![id])?;
     Ok(true)
 }

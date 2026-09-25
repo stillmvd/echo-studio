@@ -5,6 +5,7 @@ use serde::Deserialize;
 use super::backup::{create_backup, rotate_backups};
 use super::error::Result;
 use super::repo::EchoVaultRepo;
+use super::writes::{fts_add, fts_remove, fts_synced_by_trigger, memory_rowid};
 
 const BACKUP_KEEP: usize = 20;
 
@@ -88,19 +89,29 @@ fn update_in_tx(tx: &Connection, id: &str, patch: &MemoryPatch) -> Result<bool> 
     binds.push(Box::new(now.clone()));
     sets.push("updated_count = COALESCE(updated_count, 0) + 1".to_string());
 
-    let head_changed = sets.len() > 2 || patch.title.is_some() || patch.what.is_some();
-    let mut updated_rows: usize = 0;
+    let head_changed = sets.len() > 2;
+    if !head_changed && patch.body.is_none() {
+        return Ok(false);
+    }
+    let Some(rowid) = memory_rowid(tx, id)? else {
+        return Ok(false);
+    };
+    let manual_fts = head_changed && !fts_synced_by_trigger(tx, "UPDATE")?;
+
     if head_changed {
+        if manual_fts {
+            fts_remove(tx, rowid)?;
+        }
         let sql = format!(
-            "UPDATE memories SET {set_clause} WHERE id = ?{id_idx}",
+            "UPDATE memories SET {set_clause} WHERE rowid = ?{rowid_idx}",
             set_clause = sets.join(", "),
-            id_idx = binds.len() + 1,
+            rowid_idx = binds.len() + 1,
         );
-        binds.push(Box::new(id.to_string()));
+        binds.push(Box::new(rowid));
         let params: Vec<&dyn ToSql> = binds.iter().map(|b| b.as_ref()).collect();
-        updated_rows = tx.execute(&sql, params.as_slice())?;
-        if updated_rows == 0 {
-            return Ok(false);
+        tx.execute(&sql, params.as_slice())?;
+        if manual_fts {
+            fts_add(tx, rowid)?;
         }
     }
 
@@ -124,12 +135,67 @@ fn update_in_tx(tx: &Connection, id: &str, patch: &MemoryPatch) -> Result<bool> 
             tx.execute(
                 "UPDATE memories
                  SET updated_at = ?1, updated_count = COALESCE(updated_count, 0) + 1
-                 WHERE id = ?2",
-                params![now, id],
+                 WHERE rowid = ?2",
+                params![now, rowid],
             )?;
-            updated_rows = updated_rows.max(1);
         }
     }
 
-    Ok(updated_rows > 0)
+    Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn db() -> Connection {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch(
+            "CREATE TABLE memories (id TEXT UNIQUE, title TEXT, what TEXT, why TEXT, impact TEXT,
+               tags TEXT, category TEXT, project TEXT, source TEXT, updated_at TEXT, updated_count INTEGER);
+             CREATE TABLE memory_details (memory_id TEXT PRIMARY KEY, body TEXT);
+             CREATE VIRTUAL TABLE memories_fts USING fts5(title, what, why, impact, tags, category,
+               project, source, content='memories', content_rowid='rowid');
+             INSERT INTO memories(id, title, what, project) VALUES ('m1', 'old heading', 'x', 'p');
+             INSERT INTO memories_fts(rowid, title, what, why, impact, tags, category, project, source)
+               SELECT rowid, title, what, why, impact, tags, category, project, source FROM memories;",
+        )
+        .unwrap();
+        c
+    }
+
+    fn hits(c: &Connection, q: &str) -> i64 {
+        c.query_row(
+            "SELECT count(*) FROM memories_fts WHERE memories_fts MATCH ?1",
+            params![q],
+            |r| r.get(0),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn title_update_reindexes_fts() {
+        let c = db();
+        let patch = MemoryPatch {
+            title: Some("fresh heading".into()),
+            ..Default::default()
+        };
+        assert!(update_in_tx(&c, "m1", &patch).unwrap());
+        assert_eq!(hits(&c, "fresh"), 1);
+        assert_eq!(hits(&c, "old"), 0);
+    }
+
+    #[test]
+    fn body_patch_on_missing_id_is_noop() {
+        let c = db();
+        let patch = MemoryPatch {
+            body: Some(Some("text".into())),
+            ..Default::default()
+        };
+        assert!(!update_in_tx(&c, "missing", &patch).unwrap());
+        let n: i64 = c
+            .query_row("SELECT count(*) FROM memory_details", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 0);
+    }
 }

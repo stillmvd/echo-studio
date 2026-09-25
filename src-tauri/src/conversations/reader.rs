@@ -7,6 +7,13 @@ use serde_json::Value;
 
 use super::paths::projects_root;
 
+pub(crate) fn jsonl_lines(reader: impl BufRead) -> impl Iterator<Item = String> {
+    reader
+        .split(b'\n')
+        .map_while(Result::ok)
+        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+}
+
 const SUMMARY_MAX: usize = 240;
 const SEARCH_MAX_HITS: usize = 200;
 
@@ -41,7 +48,7 @@ pub fn read_session(file_path: &Path) -> Result<Vec<DisplayItem>, String> {
     let file = fs::File::open(file_path).map_err(|e| format!("open: {e}"))?;
     let reader = BufReader::new(file);
     let mut items = Vec::new();
-    for line in reader.lines().map_while(|l| l.ok()) {
+    for line in jsonl_lines(reader) {
         if line.trim().is_empty() {
             continue;
         }
@@ -89,7 +96,7 @@ pub fn search_in_sessions(project_id: &str, query: &str) -> Vec<SessionSearchHit
             continue;
         };
         let reader = BufReader::new(file);
-        for line in reader.lines().map_while(|l| l.ok()) {
+        for line in jsonl_lines(reader) {
             if hits.len() >= SEARCH_MAX_HITS {
                 break;
             }
@@ -428,4 +435,17 @@ fn truncate(s: &str, max: usize) -> String {
     }
     let taken: String = collapsed.chars().take(max).collect();
     format!("{taken}…")
+}
+
+#[cfg(test)]
+mod jsonl_tests {
+    use super::jsonl_lines;
+
+    #[test]
+    fn invalid_utf8_line_does_not_truncate_rest() {
+        let data: &[u8] = b"{\"a\":1}\n\xff\xfe broken\n{\"b\":2}\n";
+        let lines: Vec<String> = jsonl_lines(data).collect();
+        assert_eq!(lines.len(), 3);
+        assert_eq!(lines[2], "{\"b\":2}");
+    }
 }

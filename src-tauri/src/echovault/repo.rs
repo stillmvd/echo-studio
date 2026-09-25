@@ -5,12 +5,13 @@ use std::time::Duration;
 use rusqlite::{params, params_from_iter, Connection, OpenFlags, Row};
 use serde_json::Value as JsonValue;
 
+use super::config::read_echovault_config;
 use super::error::{EchoVaultError, Result};
 use super::models::{
     CategoryCount, MemoriesFilter, MemoriesPage, Memory, MemoryWithBody, ProjectCount, SearchMode,
     TagCount,
 };
-use super::ollama::{embedding_to_blob, OllamaClient};
+use super::ollama::{embedding_to_blob, OllamaClient, DEFAULT_BASE_URL};
 use super::paths::{index_db_path, resolve_memory_home};
 use super::search::{build_fts_query, merge_rrf};
 
@@ -55,7 +56,14 @@ impl EchoVaultRepo {
             conn: Mutex::new(conn),
             memory_home: home,
             home_source: source,
-            ollama: OllamaClient::default(),
+            ollama: read_echovault_config()
+                .map(|c| {
+                    OllamaClient::new(
+                        c.ollama_base_url.as_deref().unwrap_or(DEFAULT_BASE_URL),
+                        &c.embedding_model,
+                    )
+                })
+                .unwrap_or_default(),
         })
     }
 

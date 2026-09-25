@@ -24,23 +24,21 @@ export function useReindex() {
   });
 
   useEffect(() => {
-    const unlisteners: Array<() => void> = [];
-
-    listen<string>(EVENT_PROGRESS, (e) => {
-      setState((s) => ({ ...s, lastLine: e.payload, error: null }));
-    }).then((fn) => unlisteners.push(fn));
-
-    listen(EVENT_DONE, () => {
-      setState({ running: false, lastLine: null, error: null, doneAt: Date.now() });
-      qc.invalidateQueries({ queryKey: ['memories'] });
-    }).then((fn) => unlisteners.push(fn));
-
-    listen<string>(EVENT_ERROR, (e) => {
-      setState({ running: false, lastLine: null, error: e.payload, doneAt: Date.now() });
-    }).then((fn) => unlisteners.push(fn));
+    const pending = [
+      listen<string>(EVENT_PROGRESS, (e) => {
+        setState((s) => ({ ...s, lastLine: e.payload, error: null }));
+      }),
+      listen(EVENT_DONE, () => {
+        setState({ running: false, lastLine: null, error: null, doneAt: Date.now() });
+        qc.invalidateQueries({ queryKey: ['memories'] });
+      }),
+      listen<string>(EVENT_ERROR, (e) => {
+        setState({ running: false, lastLine: null, error: e.payload, doneAt: Date.now() });
+      }),
+    ];
 
     return () => {
-      for (const u of unlisteners) u();
+      for (const p of pending) void p.then((unlisten) => unlisten());
     };
   }, [qc]);
 

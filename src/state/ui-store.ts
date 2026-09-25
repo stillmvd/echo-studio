@@ -91,24 +91,29 @@ export const useUiStore = create<UiState>()(
       viewerShowThinking: false,
 
       setActiveTab: (activeTab) => set({ activeTab }),
-      setSelectedProject: (selectedProject) => set({ selectedProject, selectedMemoryId: null }),
-      setSelectedCategory: (selectedCategory) => set({ selectedCategory, selectedMemoryId: null }),
-      setStatus: (status) => set({ status, selectedMemoryId: null }),
+      setSelectedProject: (selectedProject) =>
+        set({ selectedProject, selectedMemoryId: null, bulkSelectionIds: [] }),
+      setSelectedCategory: (selectedCategory) =>
+        set({ selectedCategory, selectedMemoryId: null, bulkSelectionIds: [] }),
+      setStatus: (status) => set({ status, selectedMemoryId: null, bulkSelectionIds: [] }),
       setSelectedMemoryId: (selectedMemoryId) => set({ selectedMemoryId }),
       setDetailMode: (detailMode) => set({ detailMode }),
-      setSearchQuery: (searchQuery) => set({ searchQuery, selectedMemoryId: null }),
-      setSearchMode: (searchMode) => set({ searchMode, selectedMemoryId: null }),
+      setSearchQuery: (searchQuery) =>
+        set({ searchQuery, selectedMemoryId: null, bulkSelectionIds: [] }),
+      setSearchMode: (searchMode) =>
+        set({ searchMode, selectedMemoryId: null, bulkSelectionIds: [] }),
       toggleTag: (tag) =>
         set((s) => ({
           selectedTags: s.selectedTags.includes(tag)
             ? s.selectedTags.filter((t) => t !== tag)
             : [...s.selectedTags, tag],
           selectedMemoryId: null,
+          bulkSelectionIds: [],
         })),
       setSelectedTags: (selectedTags) => set({ selectedTags }),
-      clearTags: () => set({ selectedTags: [], selectedMemoryId: null }),
-      setDateRange: (dateRange) => set({ dateRange, selectedMemoryId: null }),
-      setSortBy: (sortBy) => set({ sortBy, selectedMemoryId: null }),
+      clearTags: () => set({ selectedTags: [], selectedMemoryId: null, bulkSelectionIds: [] }),
+      setDateRange: (dateRange) => set({ dateRange, selectedMemoryId: null, bulkSelectionIds: [] }),
+      setSortBy: (sortBy) => set({ sortBy, selectedMemoryId: null, bulkSelectionIds: [] }),
       clearFilters: () =>
         set({
           selectedProject: null,
@@ -131,7 +136,7 @@ export const useUiStore = create<UiState>()(
       clearBulkSelection: () => set({ bulkSelectionIds: [] }),
       toggleTagsExpanded: () => set((s) => ({ tagsExpanded: !s.tagsExpanded })),
       setConversationsProjectId: (conversationsProjectId) =>
-        set({ conversationsProjectId, selectedSessionPath: null }),
+        set({ conversationsProjectId, selectedSessionPath: null, conversationsBulkSelection: [] }),
       setConversationsSort: (conversationsSortBy, conversationsSortDir) =>
         set({ conversationsSortBy, conversationsSortDir }),
       setSelectedSessionPath: (selectedSessionPath) =>

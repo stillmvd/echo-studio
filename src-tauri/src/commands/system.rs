@@ -15,7 +15,11 @@ pub const EVENT_REINDEX_ERROR: &str = "echovault://reindex-error";
 
 #[tauri::command]
 pub async fn write_text_file(file_path: String, content: String) -> Result<(), String> {
-    std::fs::write(&file_path, content).map_err(|e| format!("write_text_file: {e}"))
+    let path = PathBuf::from(&file_path);
+    if path.extension().and_then(|e| e.to_str()) != Some("md") {
+        return Err(format!("refusing to write non-markdown file: {file_path}"));
+    }
+    std::fs::write(&path, content).map_err(|e| format!("write_text_file: {e}"))
 }
 
 #[tauri::command]
@@ -41,6 +45,9 @@ pub async fn reveal_in_explorer(app: AppHandle, path: String) -> Result<(), Stri
 #[tauri::command]
 pub async fn open_in_claude_code(app: AppHandle, cwd: Option<String>) -> Result<String, String> {
     let target_dir = resolve_cwd(cwd);
+    if !std::path::Path::new(&target_dir).is_dir() {
+        return Err(format!("not a directory: {target_dir}"));
+    }
 
     use tauri_plugin_shell::ShellExt;
     app.shell()
