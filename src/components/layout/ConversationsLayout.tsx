@@ -59,7 +59,7 @@ export function ConversationsLayout() {
           <SessionViewer
             key={selectedSessionPath}
             filePath={selectedSessionPath}
-            sessionId={
+            title={
               selectedSession
                 ? sessionDisplayTitle(selectedSession)
                 : (selectedSessionPath
@@ -67,6 +67,7 @@ export function ConversationsLayout() {
                     .pop()
                     ?.replace(/\.jsonl$/, '') ?? 'session')
             }
+            session={selectedSession}
             onBack={() => setSelectedSessionPath(null)}
           />
         ) : (

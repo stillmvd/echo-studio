@@ -1,5 +1,6 @@
 import { open } from '@tauri-apps/plugin-shell';
 import { type ComponentProps, lazy, Suspense } from 'react';
+import { cn } from '@/lib/cn';
 
 function ExternalLink({ href, children, ...rest }: ComponentProps<'a'>) {
   return (
@@ -34,11 +35,17 @@ const ReactMarkdownLazy = lazy(async () => {
 
 interface Props {
   body: string;
+  className?: string;
 }
 
-export function Markdown({ body }: Props) {
+export function Markdown({ body, className }: Props) {
   return (
-    <article className="echo-markdown text-sm leading-relaxed text-[var(--color-text-secondary)]">
+    <article
+      className={cn(
+        'echo-markdown text-sm leading-relaxed text-[var(--color-text-secondary)]',
+        className,
+      )}
+    >
       <Suspense fallback={<pre className="whitespace-pre-wrap font-sans">{body}</pre>}>
         <ReactMarkdownLazy body={body} />
       </Suspense>

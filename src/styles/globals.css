@@ -228,3 +228,15 @@
   color: var(--color-text-primary);
   font-weight: 600;
 }
+
+.feed-md > :first-child {
+  margin-top: 0;
+}
+.feed-md > :last-child {
+  margin-bottom: 0;
+}
+
+::highlight(session-find) {
+  background-color: var(--color-accent-soft);
+  color: var(--color-text-primary);
+}
