@@ -20,9 +20,10 @@ AMBER_INK = "#2b1300"
 TEXT_LIGHT = "#161618"
 TEXT_DARK = "#ececef"
 
-FULL = {"width": 6, "gap": 14, "near": 17, "field": 54}
-SMALL = {"width": 7.4, "gap": 18, "near": 17.5, "field": 58}
+FULL = {"width": 6, "gap": 14, "field": 54}
+SMALL = {"width": 7.4, "gap": 18, "field": 58}
 CIRCLE_SHARE = 0.72
+LF = "\n"
 
 DOT = (16, 32, 6)
 OUTER = 28
@@ -37,8 +38,9 @@ def arc(cx, cy, r, a0, a1, step=2):
              cy + r * math.sin(math.radians(a0 + (a1 - a0) * i / (n - 1)))) for i in range(n)]
 
 
-def shape(width, gap, near, **_):
+def shape(width, gap, **_):
     cx, cy, r = DOT
+    near = (r + OUTER - width * OUTER_RATIO / 2) / 2
     items = [("fill", arc(cx, cy, r, 0, 360), 0), ("line", arc(cx, cy, near, -50, 50), width)]
     seg = (2 * SPAN - (DASHES - 1) * gap) / DASHES
     for i in range(DASHES):
@@ -111,8 +113,8 @@ def main():
         files[name] = doc(f'<path d="{full}" fill="{AMBER}"/>'
                           f'<path d="{words}" fill="{color}" transform="translate(76 0)"/>', view)
     for name, text in files.items():
-        (ROOT / name).write_text(text, encoding="utf-8")
-    TS_OUT.write_text(f"export const ECHO_MARK_PATH =\n  '{small}';\n", encoding="utf-8")
+        (ROOT / name).write_text(text, encoding="utf-8", newline=LF)
+    TS_OUT.write_text(f"export const ECHO_MARK_PATH =\n  '{small}';\n", encoding="utf-8", newline=LF)
     print("ok", len(files), "svg +", TS_OUT.name)
 
 
