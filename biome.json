@@ -11,7 +11,8 @@
       "!**/*.css",
       "!.planning",
       "!.claude",
-      "!.specify"
+      "!.specify",
+      "!brand"
     ]
   },
   "formatter": {

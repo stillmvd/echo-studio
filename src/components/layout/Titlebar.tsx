@@ -1,16 +1,10 @@
+import { ECHO_MARK_PATH } from './echoMarkPath';
 import { WindowControls } from './WindowControls';
 
 export function EchoMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 16 16" className={className} aria-hidden="true">
-      <circle cx="4" cy="8" r="1.9" fill="currentColor" />
-      <path
-        d="M7.2 4.6a4.8 4.8 0 0 1 0 6.8M10.2 2.4a8 8 0 0 1 0 11.2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
+    <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
+      <path d={ECHO_MARK_PATH} fill="currentColor" />
     </svg>
   );
 }
