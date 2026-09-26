@@ -19,7 +19,7 @@
 | 1 | Раскладка вкладки (T027): панель областей, заголовок, фильтр типов, строка, поиск, пусто/загрузка/ошибка | https://claude.ai/artifact/7Q1ntncbDJv6UY3tzhL1hh · `.planning/sketches/101-tools-layout/stand.html` (генератор `gen101.cjs`, данные `scan-raw.json`) | Панель областей A · Заголовок C · Фильтр типов B · Строка B · Поиск C · Пусто и ошибки A | — |
 | 2 | Детали элемента (T030): где детали, шапка, файл, текст, MCP, плагин, ошибка/удалён | https://claude.ai/artifact/CSXYZtYH6WUuL26sd8QT1n · `.planning/sketches/102-tool-detail/stand.html` (генератор `gen102.cjs`) | Где детали A · Шапка B · Файл B · Текст A · MCP B · Плагин C · Ошибка A | — |
 | 3 | Итог проекта (T034): источник, перекрытия, только проектное, заголовок проекта | https://claude.ai/artifact/CT51Hq3maM2JKV2ncodorJ · `.planning/sketches/103-project-view/stand.html` (генератор `gen103.cjs`) | Источник B · Перекрытия C · Только проектное C · Заголовок проекта C | — |
-| 4 | Переключатель (T040) | — | — | — |
+| 4 | Переключатель (T040): в строке, в деталях, выключенное, нельзя выключить, ошибка записи, где выключается | https://claude.ai/artifact/PzfXAff8se6YbNJoHjkxy1 · `.planning/sketches/104-tool-toggle/stand.html` (генератор `gen104.cjs`) | ждёт выбора | — |
 
 ## Стенд 1 — раскладка вкладки (выбор 2026-09-26)
 
