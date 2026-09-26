@@ -22,6 +22,8 @@
 | 4 | Переключатель (T040): в строке, в деталях, выключенное, нельзя выключить, ошибка записи, где выключается | https://claude.ai/artifact/PzfXAff8se6YbNJoHjkxy1 · `.planning/sketches/104-tool-toggle/stand.html` (генератор `gen104.cjs`) | В строке A · В деталях B · Выключенное B · Нельзя выключить A · Ошибка записи B · Где выключается A | — |
 | 5 | Группы skills (v0.3.1, T008): заголовок группы, по умолчанию, раскрытая группа, плагин и префикс | https://claude.ai/artifact/LbmfPDbyfcCmqCAGPQWtTR · `.planning/sketches/105-skill-groups/stand.html` (генератор `gen105.cjs`, данные `skills.json`) | Заголовок группы B · По умолчанию A · Раскрытая группа B · Плагин и префикс B | — |
 | 6 | Вопросы в сессии (v0.3.1, T011): где карточка, отметка выбора, свой ответ, заметка | https://claude.ai/artifact/Lzu13KMyJcYvdpnTtGub3C · `.planning/sketches/106-ask-card/stand.html` (генератор `gen106.cjs`, данные `asks.json`) | Где карточка A · Отметка выбора A · Свой ответ A · Заметка A | — |
+| 7 | Фоновые задачи в ленте (v0.4.0, T009): форма шага, агент/команда/прочее, статус, отчёт | https://claude.ai/artifact/5Gs3f8EL8TMHKbuq4Rj5B7 · `.planning/sketches/107-agent-notice/stand.html` (генератор `gen107.cjs`, данные `notices.json`) | ждёт выбора | — |
+| 8 | Одинаковые инструменты (v0.4.0, T010): перекрытый свой, пометка победителя, копии в строке, группа глобальных, Also found in, шапка | https://claude.ai/artifact/GCFB5n3PNGyXcTGEM2K2Ni · `.planning/sketches/108-shared-tools/stand.html` (генератор `gen108.cjs`, данные `data.json`) | ждёт выбора | — |
 
 ## Стенд 1 — раскладка вкладки (выбор 2026-09-26)
 
