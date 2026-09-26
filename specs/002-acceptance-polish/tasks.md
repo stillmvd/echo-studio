@@ -45,8 +45,8 @@
 ## Phase 4: User Story 1 — Группы skills (P1)
 
 - [X] T007 [US1] `src/lib/tooling.ts`: `groupSkills(items, openKeys, query)` → `ToolRowModel[]` по data-model; тесты: плагин, префикс ≥3, одиночки, `gsd` + `gsd-next`, пустая группа скрыта, поиск раскрывает
-- [ ] T008 [US1] Стенд 5 `.planning/sketches/105-skill-groups/` (генератор на базе `gen101.cjs`): варианты заголовка группы, состояния по умолчанию, отступа вложенных строк, отличия плагин/префикс; киоск на реальных skills. **Стоп до «Выбор: …»**
-- [ ] T009 [US1] Записать выбор стенда 5 в `.planning/TOOLING-STANDS.md`; `ui-store` `toolsOpenGroups` (persist); `ToolList.tsx` — строки-группы в виртуализаторе при типе Skills, компонент заголовка группы по выбору стенда
+- [X] T008 [US1] Стенд 5 `.planning/sketches/105-skill-groups/` (генератор на базе `gen101.cjs`): варианты заголовка группы, состояния по умолчанию, отступа вложенных строк, отличия плагин/префикс; киоск на реальных skills. **Стоп до «Выбор: …»**
+- [X] T009 [US1] Записать выбор стенда 5 в `.planning/TOOLING-STANDS.md`; `ui-store` `toolsOpenGroups` (persist); `ToolList.tsx` — строки-группы в виртуализаторе при типе Skills, компонент заголовка группы по выбору стенда
 
 **Checkpoint**: коммит `feat(tooling): skills grouped by vendor`.
 

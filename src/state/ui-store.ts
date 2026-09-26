@@ -23,6 +23,7 @@ interface UiState {
   toolsQuery: string;
   selectedToolId: string | null;
   toolsProjectOnly: boolean;
+  toolsOpenGroups: string[];
   toolToggleError: { id: string; message: string } | null;
   toolsDuplicatesOnly: boolean;
 
@@ -44,6 +45,7 @@ interface UiState {
   setToolsQuery: (q: string) => void;
   setSelectedToolId: (id: string | null) => void;
   setToolsProjectOnly: (on: boolean) => void;
+  toggleToolsGroup: (key: string) => void;
   setToolToggleError: (error: { id: string; message: string } | null) => void;
   setToolsDuplicatesOnly: (on: boolean) => void;
 }
@@ -74,6 +76,7 @@ export const useUiStore = create<UiState>()(
       toolsQuery: '',
       selectedToolId: null,
       toolsProjectOnly: false,
+      toolsOpenGroups: [],
       toolToggleError: null,
       toolsDuplicatesOnly: false,
 
@@ -115,6 +118,12 @@ export const useUiStore = create<UiState>()(
           toolToggleError: s.toolToggleError?.id === selectedToolId ? s.toolToggleError : null,
         })),
       setToolsProjectOnly: (toolsProjectOnly) => set({ toolsProjectOnly }),
+      toggleToolsGroup: (key) =>
+        set((s) => ({
+          toolsOpenGroups: s.toolsOpenGroups.includes(key)
+            ? s.toolsOpenGroups.filter((k) => k !== key)
+            : [...s.toolsOpenGroups, key],
+        })),
       setToolToggleError: (toolToggleError) => set({ toolToggleError }),
       setToolsDuplicatesOnly: (toolsDuplicatesOnly) => set({ toolsDuplicatesOnly }),
     }),
@@ -133,6 +142,7 @@ export const useUiStore = create<UiState>()(
         viewerShowThinking: s.viewerShowThinking,
         toolsScope: s.toolsScope,
         toolsType: s.toolsType,
+        toolsOpenGroups: s.toolsOpenGroups,
       }),
     },
   ),

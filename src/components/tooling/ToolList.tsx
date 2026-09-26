@@ -1,10 +1,17 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { CircleAlert, Search, X } from 'lucide-react';
+import { ChevronRight, CircleAlert, Search, X } from 'lucide-react';
 import { useMemo, useRef } from 'react';
 import { useConversationProjects } from '@/hooks/use-conversations';
 import { cn } from '@/lib/cn';
 import { splitTitle } from '@/lib/sessions';
-import { countByKind, filterTools, nestOverrides, samePath } from '@/lib/tooling';
+import {
+  countByKind,
+  filterTools,
+  groupSkills,
+  nestOverrides,
+  samePath,
+  type ToolRowModel,
+} from '@/lib/tooling';
 import type { ScanResult, ScopeRef } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { KIND_META } from './kinds';
@@ -13,6 +20,7 @@ import { TypeFilter } from './TypeFilter';
 
 const ROW = 60;
 const NESTED = 44;
+const GROUP = 36;
 const GAP = 2;
 const SORT_RANK = { skill: 0, plugin: 1, mcp: 2, command: 3, agent: 4 } as const;
 
@@ -162,6 +170,40 @@ function ProjectOnlyToggle({ on, onChange }: { on: boolean; onChange: (v: boolea
   );
 }
 
+function GroupRow({
+  row,
+  onToggle,
+}: {
+  row: Extract<ToolRowModel, { type: 'group' }>;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-expanded={row.open}
+      onClick={onToggle}
+      className="flex h-full w-full items-center gap-1.5 rounded-full pr-3 pl-2.5 text-left text-xs font-medium text-[var(--color-text-muted)] outline-none select-none hover:bg-[var(--color-hover)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+    >
+      <span className="grid h-[22px] w-[22px] shrink-0 place-items-center">
+        <ChevronRight
+          className={cn(
+            'h-3.5 w-3.5 transition-transform duration-200 ease-[var(--ease-trail)] motion-reduce:transition-none',
+            row.open && 'rotate-90',
+          )}
+          strokeWidth={1.75}
+        />
+      </span>
+      <b className="truncate font-bold text-[var(--color-text-primary)]">{row.title}</b>
+      {row.origin === 'plugin' && (
+        <span className="inline-flex h-5 shrink-0 items-center rounded-full bg-[var(--color-bg-tertiary)] px-2 text-[11px]">
+          plugin
+        </span>
+      )}
+      <span className="shrink-0 tabular-nums">{row.count}</span>
+    </button>
+  );
+}
+
 function MissingScope({ path }: { path: string }) {
   const projects = useConversationProjects();
   const setProjectId = useUiStore((s) => s.setConversationsProjectId);
@@ -239,14 +281,35 @@ export function ToolList({
     () => nestOverrides(type === 'all' ? matching : matching.filter((i) => i.kind === type)),
     [matching, type],
   );
+  const openGroups = useUiStore((s) => s.toolsOpenGroups);
+  const toggleGroup = useUiStore((s) => s.toggleToolsGroup);
+  const rows = useMemo<ToolRowModel[]>(
+    () =>
+      type === 'skill'
+        ? groupSkills(
+            base.filter((i) => i.kind === 'skill'),
+            visible,
+            new Set(openGroups),
+            query.trim() !== '',
+          )
+        : visible.map((item) => ({ type: 'item', item, grouped: false })),
+    [type, base, visible, openGroups, query],
+  );
   const failed = (scan?.sources ?? []).filter((s) => s.status === 'error');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
-    count: visible.length,
+    count: rows.length,
     getScrollElement: () => scrollRef.current,
-    getItemKey: (index) => visible[index]?.id ?? index,
-    estimateSize: (index) => (visible[index]?.conflict === 'overridden' ? NESTED : ROW) + GAP,
+    getItemKey: (index) => {
+      const row = rows[index];
+      return row ? (row.type === 'group' ? row.key : row.item.id) : index;
+    },
+    estimateSize: (index) => {
+      const row = rows[index];
+      if (row?.type === 'group') return GROUP + GAP;
+      return (row?.item.conflict === 'overridden' ? NESTED : ROW) + GAP;
+    },
     overscan: 8,
   });
 
@@ -303,20 +366,45 @@ export function ToolList({
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto pb-[88px]">
         <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
           {virtualizer.getVirtualItems().map((v) => {
-            const item = visible[v.index];
-            if (!item) return null;
+            const row = rows[v.index];
+            if (!row) return null;
+            if (row.type === 'group') {
+              return (
+                <div
+                  key={row.key}
+                  className="absolute inset-x-0"
+                  style={{ top: v.start, height: v.size - GAP }}
+                >
+                  <GroupRow row={row} onToggle={() => toggleGroup(row.key)} />
+                </div>
+              );
+            }
+            const { item, grouped } = row;
+            const next = rows[v.index + 1];
+            const lastGrouped = !(next?.type === 'item' && next.grouped);
             return (
               <div
                 key={item.id}
-                className="absolute inset-x-0"
-                style={{ top: v.start, height: v.size - GAP }}
+                className={cn('absolute inset-x-0', grouped && 'pl-8')}
+                style={{ top: v.start, height: grouped ? v.size : v.size - GAP }}
               >
-                <ToolRow
-                  item={item}
-                  query={query}
-                  selected={selectedId === item.id}
-                  onSelect={() => setSelectedId(selectedId === item.id ? null : item.id)}
-                />
+                {grouped && (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'absolute top-0 left-5 w-0.5 rounded-full bg-[var(--color-border)]',
+                      lastGrouped ? 'bottom-3' : 'bottom-0',
+                    )}
+                  />
+                )}
+                <div style={{ height: v.size - GAP }}>
+                  <ToolRow
+                    item={item}
+                    query={query}
+                    selected={selectedId === item.id}
+                    onSelect={() => setSelectedId(selectedId === item.id ? null : item.id)}
+                  />
+                </div>
               </div>
             );
           })}
