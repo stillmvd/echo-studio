@@ -17,7 +17,7 @@
 
 ## Phase 1: User Story 5 — Ровные блоки результата (P3, самое простое — первым)
 
-- [ ] T001 [US5] `src/components/conversations/SessionViewer.tsx` `ToolStepRow`: превью `<pre>` — `line-clamp-2` вместо `max-h-[3.2em]`; сверить через CDP отступы у превью в 1/2/много строк (R1)
+- [X] T001 [US5] `src/components/conversations/SessionViewer.tsx` `ToolStepRow`: превью `<pre>` — `line-clamp-2` вместо `max-h-[3.2em]`; сверить через CDP отступы у превью в 1/2/много строк (R1)
 
 **Checkpoint**: коммит `fix(conversations): even padding in tool result preview`.
 

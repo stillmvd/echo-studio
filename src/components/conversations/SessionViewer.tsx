@@ -552,7 +552,7 @@ function ToolStepRow({ step }: { step: ToolStep }) {
         output && (
           <pre
             className={cn(
-              'max-h-[3.2em] overflow-hidden rounded-xl bg-[var(--color-bg-primary)] px-2.5 py-1.5 font-mono text-xs leading-normal whitespace-pre-wrap [overflow-wrap:anywhere]',
+              'line-clamp-2 rounded-xl bg-[var(--color-bg-primary)] px-2.5 py-1.5 font-mono text-xs leading-normal whitespace-pre-wrap [overflow-wrap:anywhere]',
               error ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-muted)]',
             )}
           >
