@@ -38,6 +38,8 @@
 
 ### Дополнительно по видам
 
+В JSON — вложенными объектами `plugin`, `mcp`, `frontMatter` (null у других видов).
+
 - **plugin**: `version`, `marketplace`, `installedAt`, `lastUpdated`, `installPath`, `contents` — счётчики skills,
   commands, agents, mcp, hooks (hooks только числом, вне объёма фичи).
 - **mcp**: `transport` (`stdio` \| `http` \| `sse`), `command`, `args[]`, `url`, `env` (map), `headers` (map),

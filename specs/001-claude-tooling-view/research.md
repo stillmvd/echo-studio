@@ -27,6 +27,8 @@
   `.md`, подпапки через `:`; agent — `name` из front matter, иначе имя файла. У элементов плагина — префикс
   `<plugin>:`. Описание — `description` из front matter (для skill также `when_to_use`, если есть).
   Front matter — YAML между `---`; разбор тем же `serde_yaml`, что уже в проекте.
+  Если строгий YAML не разбирается (например, `: ` в описании без кавычек), берём строки `ключ: значение`
+  верхнего уровня — Claude Code такие skills загружает. Ошибка — только если нет ни `name`, ни `description`.
 - **Rationale**: так Claude Code формирует имена (skills.md, sub-agents.md).
 - **Alternatives**: брать первую строку markdown как описание — только запасной вариант, если `description` нет.
 

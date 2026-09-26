@@ -68,3 +68,80 @@ export interface SessionBulkDeleteResult {
   deleted: string[];
   failed: SessionDeleteFailure[];
 }
+
+export type ScopeKind = 'global' | 'project';
+export type ToolKind = 'skill' | 'command' | 'agent' | 'plugin' | 'mcp';
+export type ToolOrigin = 'user' | 'project' | 'local' | 'plugin';
+export type ToolState = 'enabled' | 'disabled' | 'unavailable' | 'error';
+export type ToolConflict = 'none' | 'overrides' | 'overridden' | 'sameName';
+
+export interface ScopeRef {
+  kind: ScopeKind;
+  path: string | null;
+  name: string;
+  available: boolean;
+}
+
+export interface ToggleTarget {
+  file: 'userSettings' | 'projectLocalSettings' | 'claudeJson';
+  projectPath: string | null;
+  key: 'enabledPlugins' | 'skillOverrides' | 'disabledMcpServers' | 'disabledMcpjsonServers';
+  name: string;
+}
+
+export interface PluginInfo {
+  version: string | null;
+  marketplace: string;
+  installedAt: string | null;
+  lastUpdated: string | null;
+  installPath: string;
+  contents: { skills: number; commands: number; agents: number; mcp: number; hooks: number };
+}
+
+export interface McpInfo {
+  transport: string;
+  command: string | null;
+  args: string[];
+  url: string | null;
+  env: Record<string, string>;
+  headers: Record<string, string>;
+  declaredIn: string;
+}
+
+export interface ToolItem {
+  id: string;
+  kind: ToolKind;
+  name: string;
+  qualifiedName: string;
+  description: string | null;
+  origin: ToolOrigin;
+  pluginKey: string | null;
+  filePath: string | null;
+  state: ToolState;
+  overrideMode: string | null;
+  toggle: ToggleTarget | null;
+  toggleHint: string | null;
+  conflict: ToolConflict;
+  error: string | null;
+  frontMatter: Record<string, unknown> | null;
+  plugin: PluginInfo | null;
+  mcp: McpInfo | null;
+}
+
+export interface SourceStatus {
+  path: string;
+  status: 'ok' | 'missing' | 'error';
+  error: string | null;
+}
+
+export interface ScanResult {
+  scope: ScopeRef;
+  items: ToolItem[];
+  sources: SourceStatus[];
+  counts: Partial<Record<ToolKind, number>>;
+}
+
+export interface ToolFile {
+  text: string;
+  truncatedAt: number | null;
+}

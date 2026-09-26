@@ -1,5 +1,6 @@
 mod commands;
 mod conversations;
+mod tooling;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -26,6 +27,9 @@ pub fn run() {
             commands::conversations::delete_conversation_session,
             commands::conversations::bulk_delete_conversation_sessions,
             commands::conversations::set_session_user_title,
+            commands::tooling::list_tool_scopes,
+            commands::tooling::scan_tool_scope,
+            commands::tooling::read_tool_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

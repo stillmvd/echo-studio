@@ -2,10 +2,29 @@ import { invoke } from '@tauri-apps/api/core';
 import type {
   ConversationProject,
   DisplayItem,
+  ScanResult,
+  ScopeKind,
+  ScopeRef,
   SessionBulkDeleteResult,
   SessionMeta,
   SessionSearchHit,
+  ToolFile,
 } from './types';
+
+export async function listToolScopes(): Promise<ScopeRef[]> {
+  return invoke<ScopeRef[]>('list_tool_scopes');
+}
+
+export async function scanToolScope(scope: {
+  kind: ScopeKind;
+  path: string | null;
+}): Promise<ScanResult> {
+  return invoke<ScanResult>('scan_tool_scope', { scope });
+}
+
+export async function readToolFile(path: string): Promise<ToolFile> {
+  return invoke<ToolFile>('read_tool_file', { path });
+}
 
 export async function openInClaudeCode(cwd?: string): Promise<string> {
   return invoke<string>('open_in_claude_code', { cwd });
