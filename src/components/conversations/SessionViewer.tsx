@@ -26,6 +26,7 @@ import {
 import type { DisplayItem, SessionMeta } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { AskQuestionCard } from './AskQuestionCard';
+import { NoticeStep } from './NoticeStep';
 
 interface Props {
   filePath: string;
@@ -356,7 +357,7 @@ function FeedRow({ node, showThinking }: { node: FeedNode; showThinking: boolean
     case 'tools':
       return <ToolSteps steps={node.steps} />;
     case 'notice':
-      return <SkillChip name={node.notice.summary} text={node.notice.result ?? ''} />;
+      return <NoticeStep notice={node.notice} />;
     case 'recap':
       return (
         <p className="px-1 text-[13px] leading-normal text-[var(--color-text-muted)] italic">
