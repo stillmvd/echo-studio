@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/logo/lockup-on-dark.svg" />
+    <img src="brand/logo/lockup.svg" alt="Echo Studio" height="64" />
+  </picture>
+</p>
+
 # Echo Studio
 
 A portable Windows desktop app for seeing the tools your AI coding agent CLI loads — skills, plugins, MCP servers, commands and agents, globally and per project — and for browsing its session logs, without leaving the keyboard.
