@@ -137,7 +137,7 @@ guard путей, фильтры фронтенда) — они включены
 ## Phase 8: Polish
 
 - [X] T047 [P] Обновить `CLAUDE.md` проекта: убрать инварианты EchoVault (index.db, FTS5, backup index.db, config.yaml), добавить инварианты фичи (запись только штатных ключей, копии в AppData, общий settings.json проекта не пишем, guard корней)
-- [ ] T048 [P] Обновить `.planning/ROADMAP.md` (v0.3.0 — статус), `.planning/STATE.md` (убрать «Plugin/skill viewer», «MCP server inspector» из backlog), README — без упоминаний Claude/Anthropic (решение A-41: нейтральные термины)
+- [X] T048 [P] Обновить `.planning/ROADMAP.md` (v0.3.0 — статус), `.planning/STATE.md` (убрать «Plugin/skill viewer», «MCP server inspector» из backlog), README — без упоминаний Claude/Anthropic (решение A-41: нейтральные термины)
 - [ ] T049 Прогон всего `quickstart.md` (1–9) пользователем; версия приложения `0.3.0` в `package.json` и `src-tauri/tauri.conf.json`
 
 ---

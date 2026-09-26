@@ -1,6 +1,13 @@
 # Echo Studio — STATE
 
-> Финальное состояние MVP1.
+> Состояние после MVP1 и фичи v0.3.0.
+
+## Status: v0.3.0 — реализован локально (2026-09-26)
+
+- Вкладка Tools вместо Memories: skills, plugins, MCP, commands, agents по областям, итог проекта,
+  включение/выключение (`tooling/write.rs`, копии в `config-backups`), автообновление по watcher.
+- EchoVault удалён целиком. Коммиты не отправлены в GitHub; релиз не собран.
+- Проверка пользователем: `specs/001-claude-tooling-view/quickstart.md` 1–9, T036.
 
 ## Status: SHIPPED — v0.1.0 portable release
 
@@ -73,8 +80,6 @@ Backlog (раздел Roadmap удалён из README в `5ad891a`):
 - Restore from backup в Settings
 - Light theme
 - macOS / Linux builds
-- Plugin/skill viewer
-- MCP server inspector
 - Code signing (требует EV-cert)
 - Single-instance lock (`tauri-plugin-single-instance`)
 - Auto-updater (`tauri-plugin-updater`)

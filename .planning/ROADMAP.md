@@ -35,12 +35,17 @@ Phases 1+2+3 (EchoVault) и 7+8+9 (Conversations) независимы — мо�
 ## Backlog (после v0.1.0)
 
 - v0.2.0: code-signing (если получим cert), NSIS installer, light theme, EN locale, sentry-tauri opt-in
-- v0.3.0: MCP-серверы / Skills / Commands viewer (по проекту + global) — **в работе с 2026-09-26**, см. ниже
+- v0.3.0: MCP-серверы / Skills / Commands viewer (по проекту + global) — **реализован 2026-09-26**, см. ниже
 - v0.4.0: macOS build, AppData-portable mode (no system writes)
 - v0.5.0: full edit для conversations (rename session, edit messages with confirmation)
 - v1.0.0: после полевого использования + минимум 2 release циклов
 
 ## v0.3.0 — обзор инструментов Claude (начат 2026-09-26)
+
+**Статус (2026-09-26):** реализовано всё по `specs/001-claude-tooling-view/tasks.md` — вкладка Tools
+(стенды 1–4), итог проекта, включение/выключение с копией конфига, автообновление, EchoVault удалён; версия
+0.3.0. Коммиты локальные, в GitHub не отправлены. Осталось за пользователем: `quickstart.md` 1–9 и сверка
+итога Breezee / Smart Control с живой сессией (T036).
 
 Вкладка вместо Memories: skills, plugins, MCP-серверы, commands и agents — глобальные, проектные и из
 плагинов. EchoVault вырезается целиком в рамках этой же фичи. Планирование — spec-kit
