@@ -13,7 +13,7 @@ skill > command, project > user для agents, local > project > user для MCP
 участвуют) — вместо `sameName` поля «кем перекрыт / кого перекрывает». Новый IPC `list_tool_copies` —
 индекс файлов skills/commands/agents по Global, известным проектам и плагинам с хэшем и mtime; из него
 фронтенд считает «also in N projects» и секцию «Also found in». Область проекта: свои сверху, глобальные — в
-группе «Inherited from Global · N»; «Project only» и «N duplicates» удалены, вместо них чип «N overridden».
+группе «From Global · N»; «Project only» и «N duplicates» удалены, вместо них чип «N overridden».
 
 ## Technical Context
 

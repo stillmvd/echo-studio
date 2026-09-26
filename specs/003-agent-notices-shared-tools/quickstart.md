@@ -11,7 +11,7 @@
 2. **Skill против команды.** В проекте `commands/qs-x.md` и `skills/qs-x/SKILL.md` — команда «Overridden by
    skill».
 3. **Плагин не конфликтует.** Skill плагина chisle и свой skill `chisle` (если есть) — без пометок.
-4. **Inherited from Global.** Проект Echo Studio: свои инструменты сверху, ниже свёрнутая «Inherited from
+4. **From Global.** Проект Echo Studio: свои инструменты сверху, ниже свёрнутая «Inherited from
    Global · N»; раскрытие запоминается после перезапуска; поиск по имени глобального skill показывает его
    без раскрытия; «Project only» нет.
 5. **Also in N projects.** Echo Studio → `redesign-stand`: в строке чип «+3 projects»; в деталях «Also found

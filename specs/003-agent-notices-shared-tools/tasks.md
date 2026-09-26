@@ -52,7 +52,7 @@ UI временно: `ToolRow` показывает `overriddenBy` старым 
 
 ## Phase 4: User Story 2 — Свои не тонут в глобальных (P1)
 
-- [X] T014 [US2] `src/state/ui-store.ts`: `toolsInheritedOpen` (persist, по умолчанию false), удалить `toolsProjectOnly` и `ProjectOnlyToggle`; `src/components/tooling/ToolList.tsx`: в области проекта строки `own`, затем группа «Inherited from Global · N» по стенду 8 (строка виртуализатора как группы skills; при типе Skills внутри — группы по вендору); авто-раскрытие при совпадениях поиска и при пустом `own`; `filterTools` без `projectOnly`
+- [X] T014 [US2] `src/state/ui-store.ts`: `toolsInheritedOpen` (persist, по умолчанию false), удалить `toolsProjectOnly` и `ProjectOnlyToggle`; `src/components/tooling/ToolList.tsx`: в области проекта строки `own`, затем группа «From Global · N» по стенду 8 (строка виртуализатора как группы skills; при типе Skills внутри — группы по вендору); авто-раскрытие при совпадениях поиска и при пустом `own`; `filterTools` без `projectOnly`
 
 - [X] T014a [US2] `src/components/tooling/ToolList.tsx`: `Tiles` — кнопки-фильтр (`aria-pressed`, выбранная `accent-soft` + кольцо 1.5 акцентом, повторный клик → `all`, ноль — `disabled`), при `compact` — капсулы 32 «N Label» в ряд; удалить `TypeFilter.tsx`; `SearchField` — в строку имени области справа (FR-018)
 

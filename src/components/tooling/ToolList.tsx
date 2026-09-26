@@ -210,7 +210,7 @@ function InheritedRow({
       className="flex h-full w-full items-center gap-2.5 rounded-full bg-[var(--color-bg-tertiary)] px-3.5 text-left text-[13px] font-medium text-[var(--color-text-muted)] outline-none select-none hover:bg-[var(--color-hover)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
     >
       <Globe className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-      <b className="truncate font-bold text-[var(--color-text-primary)]">Inherited from Global</b>
+      <b className="truncate font-bold text-[var(--color-text-primary)]">From Global</b>
       <span className="shrink-0 tabular-nums">{count}</span>
       <ChevronRight
         className={cn(

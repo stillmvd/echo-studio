@@ -43,7 +43,7 @@
 - **Rationale**: `DisplayItem.raw` уже содержит запись целиком; бэкенд не меняется.
 - **Факты**: в логах пользователя статусы completed 2655, failed 572, killed 51, stopped 22, running 1.
 
-## R5. Группа «Inherited from Global»
+## R5. Группа «From Global»
 
 - **Decision**: в области проекта элементы origin `project`/`local` — «свои», `user`/`plugin` и сами плагины —
   в группе. Группа — строка того же виртуализатора, что группы skills (стенд 5); внутри при типе Skills
