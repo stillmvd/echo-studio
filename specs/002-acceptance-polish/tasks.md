@@ -55,8 +55,8 @@
 ## Phase 5: User Story 4 — Карточка вопроса (P2)
 
 - [X] T010 [US4] `src/lib/ask-question.ts`: `parseAsk(use, result)` → `AskCard` (R2: toolUseResult, жадное сопоставление multiSelect, свой ответ, notes, fallback по тексту, «No answer»); тесты на данных формата из логов
-- [ ] T011 [US4] Стенд 6 `.planning/sketches/106-ask-card/`: варианты отметки выбора, своего ответа, multiSelect, «No answer», заметок; киоск на реальных вопросах. **Стоп до «Выбор: …»**
-- [ ] T012 [US4] Записать выбор стенда 6; `src/components/conversations/AskQuestionCard.tsx` по выбору; `SessionViewer.tsx` — шаг `AskUserQuestion` рендерится карточкой; `src/lib/session-export.ts` — «вопрос → ответ» (FR-012)
+- [X] T011 [US4] Стенд 6 `.planning/sketches/106-ask-card/`: варианты отметки выбора, своего ответа, multiSelect, «No answer», заметок; киоск на реальных вопросах. **Стоп до «Выбор: …»**
+- [X] T012 [US4] Записать выбор стенда 6; `src/components/conversations/AskQuestionCard.tsx` по выбору; `SessionViewer.tsx` — шаг `AskUserQuestion` рендерится карточкой; `src/lib/session-export.ts` — «вопрос → ответ» (FR-012)
 
 **Checkpoint**: коммит `feat(conversations): ask-question card`.
 

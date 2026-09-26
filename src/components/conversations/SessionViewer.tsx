@@ -6,6 +6,7 @@ import { Markdown } from '@/components/markdown/Markdown';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useSessionEvents } from '@/hooks/use-session';
 import { useDeleteSession } from '@/hooks/use-session-actions';
+import { parseAsk } from '@/lib/ask-question';
 import { cn } from '@/lib/cn';
 import { eventsToMarkdown } from '@/lib/session-export';
 import {
@@ -24,6 +25,7 @@ import {
 } from '@/lib/sessions';
 import type { DisplayItem, SessionMeta } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
+import { AskQuestionCard } from './AskQuestionCard';
 
 interface Props {
   filePath: string;
@@ -513,6 +515,13 @@ function ToolStepRow({ step }: { step: ToolStep }) {
   const { use, result } = step;
   const output = result?.text ?? '';
   const error = Boolean(result?.isError);
+  const ask = useMemo(
+    () => (use?.toolName === 'AskUserQuestion' ? parseAsk(use, result) : null),
+    [use, result],
+  );
+  const summary = ask
+    ? `${ask.questions.length} ${ask.questions.length === 1 ? 'question' : 'questions'}`
+    : (use?.toolInputSummary ?? '');
   return (
     <div
       className={cn(
@@ -536,11 +545,12 @@ function ToolStepRow({ step }: { step: ToolStep }) {
         >
           {use?.toolName ?? 'Result'}
         </b>
-        <span className="min-w-0 truncate font-mono text-xs">{use?.toolInputSummary ?? ''}</span>
+        <span className="min-w-0 truncate font-mono text-xs">{summary}</span>
         <span className="ml-auto shrink-0 text-[11px] tabular-nums">
           {formatTime((use ?? result)?.timestamp ?? null)}
         </span>
       </button>
+      {ask && <AskQuestionCard card={ask} />}
       {open ? (
         <div className="flex flex-col gap-1.5">
           {use && <CodeBlock label="Input" text={stepInput(use)} />}
@@ -549,7 +559,8 @@ function ToolStepRow({ step }: { step: ToolStep }) {
           )}
         </div>
       ) : (
-        output && (
+        output &&
+        !ask && (
           <pre
             className={cn(
               'line-clamp-2 rounded-xl bg-[var(--color-bg-primary)] px-2.5 py-1.5 font-mono text-xs leading-normal whitespace-pre-wrap [overflow-wrap:anywhere]',
