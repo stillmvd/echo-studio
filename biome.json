@@ -10,7 +10,8 @@
       "!pnpm-lock.yaml",
       "!**/*.css",
       "!.planning",
-      "!.claude"
+      "!.claude",
+      "!.specify"
     ]
   },
   "formatter": {
