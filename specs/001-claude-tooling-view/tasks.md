@@ -23,8 +23,8 @@ guard путей, фильтры фронтенда) — они включены
 
 ## Phase 1: Setup
 
-- [ ] T001 Включить фичу `preserve_order` у `serde_json` в `src-tauri/Cargo.toml` (R5) и убедиться, что `cargo build` проходит
-- [ ] T002 [P] Создать журнал стендов `.planning/TOOLING-STANDS.md`: ссылка на ROADMAP v0.3.0, таблица «# · компонент · стенд · выбор · коммит», правило «без блока «Сейчас», только части + киоск»
+- [X] T001 Включить фичу `preserve_order` у `serde_json` в `src-tauri/Cargo.toml` (R5) и убедиться, что `cargo build` проходит
+- [X] T002 [P] Создать журнал стендов `.planning/TOOLING-STANDS.md`: ссылка на ROADMAP v0.3.0, таблица «# · компонент · стенд · выбор · коммит», правило «без блока «Сейчас», только части + киоск»
 
 ---
 
@@ -34,18 +34,18 @@ guard путей, фильтры фронтенда) — они включены
 
 **Independent Test**: quickstart сценарий 1 — запуск без `~/.memory`, ни одного упоминания EchoVault/memories/Reindex, `~/.memory` не создан.
 
-- [ ] T003 [US4] Удалить Rust-модуль `src-tauri/src/echovault/` целиком, `src-tauri/src/commands/memories.rs`, `src-tauri/src/state.rs`, `src-tauri/src/services/` (file_watcher EchoVault) и их `mod`/`use` в `src-tauri/src/lib.rs` и `src-tauri/src/commands/mod.rs`
-- [ ] T004 [US4] В `src-tauri/src/lib.rs` убрать `manage(AppState)`, запуск слежения за `index.db`, команды memories, `trigger_reindex`, `read_echovault_config` из `generate_handler!`
-- [ ] T005 [US4] В `src-tauri/src/commands/system.rs` удалить `read_echovault_config` и `trigger_reindex`; в `open_in_claude_code` убрать чтение конфига EchoVault (строка ~64), cwd по умолчанию — домашняя папка
-- [ ] T006 [US4] Удалить зависимости `rusqlite`, `sqlite-vec`, `reqwest` из `src-tauri/Cargo.toml` (оставить `serde_yaml`, `notify`, `notify-debouncer-mini`, `humantime` — проверить использование `humantime`, удалить если не нужен); `cargo clippy` и `cargo test` зелёные
-- [ ] T007 [P] [US4] Удалить фронтенд memories: `src/components/memories/*`, `src/components/layout/MemoriesLayout.tsx`, `src/components/ui/Select.tsx`, `src/hooks/use-memories.ts`, `src/hooks/use-memory-actions.ts`, `src/hooks/use-db-watcher.ts`, `src/hooks/use-reindex.ts`, `src/lib/claude-templates.ts`, `src/lib/date-range.ts`, `src/lib/highlight.ts` (перед удалением `grep` — нет других потребителей)
-- [ ] T008 [US4] Почистить `src/lib/ipc.ts` и `src/lib/types.ts` от memories, backups index.db, `readEchovaultConfig`, `triggerReindex`, типов `Memory*`, `BackupInfo`, `EchoVaultConfig`
-- [ ] T009 [US4] В `src/state/ui-store.ts` заменить `AppTab` на `'tools' | 'conversations' | 'settings'`, удалить поля и экшены memories (`selectedMemoryId`, `status`, `pendingMemoryAction`, фильтры, `bulkSelectionIds` memories); при чтении persisted-состояния значение `'memories'` превращать в `'tools'`; обновить `src/state/ui-store.test.ts`
-- [ ] T010 [US4] В `src/lib/nav-history.ts` убрать `selectedMemoryId` из снимка экрана, обновить `src/lib/nav-history.test.ts`
-- [ ] T011 [US4] `src/components/layout/NavRail.tsx` и `src/components/layout/AppShell.tsx`: вкладка tools (значок из lucide, подпись «Tools») на месте Memories, рендер заглушки `src/components/layout/ToolsLayout.tsx` (карточка `panelCard` с текстом «Coming next»)
-- [ ] T012 [US4] `src/components/layout/StatusBar.tsx`: убрать `useDbWatcher`, `useReindex`, число memories и кнопку Reindex; капсула — только точка статуса без подписи «watching» (подпись появится в T045)
-- [ ] T013 [US4] `src/components/layout/SettingsLayout.tsx`: убрать секции EchoVault и Backups, ссылку «EchoVault ↗» в заголовке и `use-settings` EchoVault-запросы; оглавление — Claude config, Conversations; добавить секцию «Claude config» с путями `~/.claude`, `~/.claude/settings.json`, `~/.claude.json` и «Show in Explorer» (FR-020, форма — как секции шага 5); удалить `src/hooks/use-settings.ts`, если пуст
-- [ ] T014 [US4] Прогнать проверки и quickstart сценарий 1 в dev; `grep -ri "echovault\|memor" src src-tauri/src` — только допустимые остатки (например, `claude-mem` не касается)
+- [X] T003 [US4] Удалить Rust-модуль `src-tauri/src/echovault/` целиком, `src-tauri/src/commands/memories.rs`, `src-tauri/src/state.rs`, `src-tauri/src/services/` (file_watcher EchoVault) и их `mod`/`use` в `src-tauri/src/lib.rs` и `src-tauri/src/commands/mod.rs`
+- [X] T004 [US4] В `src-tauri/src/lib.rs` убрать `manage(AppState)`, запуск слежения за `index.db`, команды memories, `trigger_reindex`, `read_echovault_config` из `generate_handler!`
+- [X] T005 [US4] В `src-tauri/src/commands/system.rs` удалить `read_echovault_config` и `trigger_reindex`; в `open_in_claude_code` убрать чтение конфига EchoVault (строка ~64), cwd по умолчанию — домашняя папка
+- [X] T006 [US4] Удалить зависимости `rusqlite`, `sqlite-vec`, `reqwest` из `src-tauri/Cargo.toml` (оставить `serde_yaml`, `notify`, `notify-debouncer-mini`, `humantime` — проверить использование `humantime`, удалить если не нужен); `cargo clippy` и `cargo test` зелёные
+- [X] T007 [P] [US4] Удалить фронтенд memories: `src/components/memories/*`, `src/components/layout/MemoriesLayout.tsx`, `src/components/ui/Select.tsx`, `src/hooks/use-memories.ts`, `src/hooks/use-memory-actions.ts`, `src/hooks/use-db-watcher.ts`, `src/hooks/use-reindex.ts`, `src/lib/claude-templates.ts`, `src/lib/date-range.ts`, `src/lib/highlight.ts` (перед удалением `grep` — нет других потребителей)
+- [X] T008 [US4] Почистить `src/lib/ipc.ts` и `src/lib/types.ts` от memories, backups index.db, `readEchovaultConfig`, `triggerReindex`, типов `Memory*`, `BackupInfo`, `EchoVaultConfig`
+- [X] T009 [US4] В `src/state/ui-store.ts` заменить `AppTab` на `'tools' | 'conversations' | 'settings'`, удалить поля и экшены memories (`selectedMemoryId`, `status`, `pendingMemoryAction`, фильтры, `bulkSelectionIds` memories); при чтении persisted-состояния значение `'memories'` превращать в `'tools'`; обновить `src/state/ui-store.test.ts`
+- [X] T010 [US4] В `src/lib/nav-history.ts` убрать `selectedMemoryId` из снимка экрана, обновить `src/lib/nav-history.test.ts`
+- [X] T011 [US4] `src/components/layout/NavRail.tsx` и `src/components/layout/AppShell.tsx`: вкладка tools (значок из lucide, подпись «Tools») на месте Memories, рендер заглушки `src/components/layout/ToolsLayout.tsx` (карточка `panelCard` с текстом «Coming next»)
+- [X] T012 [US4] `src/components/layout/StatusBar.tsx`: убрать `useDbWatcher`, `useReindex`, число memories и кнопку Reindex; капсула — только точка статуса без подписи «watching» (подпись появится в T045)
+- [X] T013 [US4] `src/components/layout/SettingsLayout.tsx`: убрать секции EchoVault и Backups, ссылку «EchoVault ↗» в заголовке и `use-settings` EchoVault-запросы; оглавление — Claude config, Conversations; добавить секцию «Claude config» с путями `~/.claude`, `~/.claude/settings.json`, `~/.claude.json` и «Show in Explorer» (FR-020, форма — как секции шага 5); удалить `src/hooks/use-settings.ts`, если пуст
+- [X] T014 [US4] Прогнать проверки и quickstart сценарий 1 в dev; `grep -ri "echovault\|memor" src src-tauri/src` — только допустимые остатки (например, `claude-mem` не касается)
 
 **Checkpoint**: приложение без EchoVault, Conversations и Settings работают. Коммит `feat(tooling): remove EchoVault`.
 

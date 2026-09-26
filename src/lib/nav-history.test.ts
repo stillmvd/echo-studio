@@ -8,7 +8,6 @@ describe('nav history', () => {
       activeTab: 'conversations',
       conversationsProjectId: 'a',
       selectedSessionPath: null,
-      selectedMemoryId: null,
       conversationsBulkSelection: [],
     });
   });
@@ -33,7 +32,7 @@ describe('nav history', () => {
     const h = createNavHistory(useUiStore);
     useUiStore.getState().setActiveTab('settings');
     h.back();
-    useUiStore.getState().setActiveTab('memories');
+    useUiStore.getState().setActiveTab('tools');
     expect(h.forward()).toBe(false);
     expect(h.back()).toBe(true);
     expect(useUiStore.getState().activeTab).toBe('conversations');

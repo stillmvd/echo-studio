@@ -6,7 +6,6 @@ interface NavSnapshot {
   activeTab: UiState['activeTab'];
   conversationsProjectId: string | null;
   selectedSessionPath: string | null;
-  selectedMemoryId: string | null;
 }
 
 const LIMIT = 50;
@@ -16,7 +15,6 @@ function snapshot(s: UiState): NavSnapshot {
     activeTab: s.activeTab,
     conversationsProjectId: s.conversationsProjectId,
     selectedSessionPath: s.selectedSessionPath,
-    selectedMemoryId: s.selectedMemoryId,
   };
 }
 
@@ -24,8 +22,7 @@ function same(a: NavSnapshot, b: NavSnapshot): boolean {
   return (
     a.activeTab === b.activeTab &&
     a.conversationsProjectId === b.conversationsProjectId &&
-    a.selectedSessionPath === b.selectedSessionPath &&
-    a.selectedMemoryId === b.selectedMemoryId
+    a.selectedSessionPath === b.selectedSessionPath
   );
 }
 
@@ -51,7 +48,6 @@ export function createNavHistory(store: typeof useUiStore) {
     const projectChanged = target.conversationsProjectId !== current.conversationsProjectId;
     store.setState({
       ...target,
-      pendingMemoryAction: null,
       ...(projectChanged ? { conversationsBulkSelection: [] } : {}),
     });
     restoring = false;

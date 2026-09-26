@@ -1,34 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { homeDir, join } from '@tauri-apps/api/path';
-import { open } from '@tauri-apps/plugin-shell';
-import {
-  ChevronDown,
-  Database,
-  ExternalLink,
-  Folder,
-  type LucideIcon,
-  MessageSquare,
-  NotebookText,
-  X,
-} from 'lucide-react';
+import { FileCog, Folder, type LucideIcon, MessageSquare } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useConversationProjects } from '@/hooks/use-conversations';
-import { useMemoriesList } from '@/hooks/use-memories';
-import { useDbBackups, useEchovaultConfig } from '@/hooks/use-settings';
 import { cn } from '@/lib/cn';
 import { revealInExplorer } from '@/lib/ipc';
 import { formatBytes } from '@/lib/projects';
-import { dayLabel, formatTime } from '@/lib/sessions';
-import type { BackupInfo } from '@/lib/types';
 import { version } from '../../../package.json';
 import { panelCard } from './panels';
 import { EchoMark } from './Titlebar';
 
-const ECHOVAULT_REPO = 'https://github.com/mraza007/echovault';
-
 const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
-  { id: 'echovault', label: 'EchoVault', icon: NotebookText },
-  { id: 'backups', label: 'Backups', icon: Database },
+  { id: 'claude', label: 'Claude config', icon: FileCog },
   { id: 'conversations', label: 'Conversations', icon: MessageSquare },
 ];
 
@@ -36,31 +19,23 @@ const softFill = 'bg-[color-mix(in_srgb,var(--color-text-primary)_7%,transparent
 const focusRing =
   'outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-0';
 
-function isNotInitialized(error: unknown): boolean {
-  return String(error).includes('not initialized');
-}
-
-function stampToIso(stamp: string): string | null {
-  const m = stamp.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/);
-  return m ? `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z` : null;
-}
-
-function fileName(path: string): string {
-  return path.split(/[\\/]/).pop() ?? path;
-}
-
 function reveal(path: string) {
   revealInExplorer(path).catch(() => {});
 }
 
 export function SettingsLayout() {
-  const cfg = useEchovaultConfig();
-  const backups = useDbBackups();
-  const memories = useMemoriesList({ limit: 1, status: 'all' });
   const projects = useConversationProjects();
-  const projectsRoot = useQuery({
-    queryKey: ['settings', 'projects-root'],
-    queryFn: async () => join(await homeDir(), '.claude', 'projects'),
+  const paths = useQuery({
+    queryKey: ['settings', 'paths'],
+    queryFn: async () => {
+      const home = await homeDir();
+      return {
+        claudeDir: await join(home, '.claude'),
+        userSettings: await join(home, '.claude', 'settings.json'),
+        claudeJson: await join(home, '.claude.json'),
+        projectsRoot: await join(home, '.claude', 'projects'),
+      };
+    },
     staleTime: Number.POSITIVE_INFINITY,
   });
 
@@ -114,15 +89,7 @@ export function SettingsLayout() {
                 Echo <b className="font-bold">Studio</b>
               </h1>
               <span className="text-xs font-medium text-[var(--color-text-muted)]">
-                v{version} · Tauri 2 · React 19 · Rust ·{' '}
-                <button
-                  type="button"
-                  onClick={() => void open(ECHOVAULT_REPO)}
-                  title={ECHOVAULT_REPO}
-                  className={cn('rounded-sm text-[var(--color-accent)] hover:underline', focusRing)}
-                >
-                  EchoVault ↗
-                </button>
+                v{version} · Tauri 2 · React 19 · Rust
               </span>
             </span>
           </header>
@@ -154,119 +121,24 @@ export function SettingsLayout() {
 
             <div className="flex min-w-0 flex-col gap-3.5">
               <Section
-                id="echovault"
-                title="EchoVault"
-                subtitle="Memory store this app reads. Settings come from config.yaml; the app never writes it."
+                id="claude"
+                title="Claude config"
+                subtitle="Claude Code configuration the Tools tab reads."
               >
-                {cfg.isLoading ? (
-                  <Skeleton />
-                ) : cfg.isError ? (
-                  <Big
-                    icon={X}
-                    danger
-                    title={
-                      <>
-                        Couldn't read <b className="font-bold">config</b>
-                      </>
-                    }
-                    text={String(cfg.error)}
-                    action={{ label: 'Try again', onClick: () => void cfg.refetch() }}
-                  />
-                ) : cfg.data ? (
-                  <Rows>
-                    <Row label="Memory home">
-                      <PathValue path={cfg.data.memoryHome} />
-                      <Tag tone="ok">{cfg.data.homeSource}</Tag>
-                      <RevealButton path={cfg.data.memoryHome} />
-                    </Row>
-                    <Row label="Embedding">
-                      <Tag mono>{cfg.data.embeddingProvider}</Tag>
-                      <Tag mono>{cfg.data.embeddingModel}</Tag>
-                      {cfg.data.ollamaBaseUrl && <Tag mono>{cfg.data.ollamaBaseUrl}</Tag>}
-                    </Row>
-                    <Row label="config.yaml">
-                      <PathValue path={cfg.data.configYamlPath} />
-                      {cfg.data.configYamlExists ? (
-                        <RevealButton path={cfg.data.configYamlPath} />
-                      ) : (
-                        <Tag tone="warn">not present · defaults used</Tag>
-                      )}
-                    </Row>
-                    <Row label="Memories">
-                      {memories.data ? (
-                        <span className="text-[var(--color-text-muted)]">
-                          <b className="font-bold text-[var(--color-text-primary)]">
-                            {memories.data.total}
-                          </b>{' '}
-                          total ·{' '}
-                          <b className="font-bold text-[var(--color-text-primary)]">
-                            {memories.data.projects.length}
-                          </b>{' '}
-                          projects ·{' '}
-                          <b className="font-bold text-[var(--color-text-primary)]">
-                            {memories.data.categories.length}
-                          </b>{' '}
-                          categories
-                        </span>
-                      ) : memories.isError ? (
-                        <Tag tone="warn" title={String(memories.error)}>
-                          {isNotInitialized(memories.error) ? 'index.db not found' : 'unavailable'}
-                        </Tag>
-                      ) : (
-                        <Skeleton short />
-                      )}
-                    </Row>
-                  </Rows>
-                ) : null}
-              </Section>
-
-              <Section
-                id="backups"
-                title="Backups"
-                subtitle="Copy of index.db before every change. Last 20 kept."
-              >
-                {backups.isLoading ? (
-                  <Skeleton />
-                ) : backups.isError ? (
-                  isNotInitialized(backups.error) ? (
-                    <Big
-                      icon={Database}
-                      title={
-                        <>
-                          EchoVault <b className="font-bold">not found</b>
-                        </>
-                      }
-                      text={
-                        <>
-                          No <span className="font-mono text-xs">index.db</span> in{' '}
-                          <span className="font-mono text-xs">
-                            {cfg.data?.memoryHome ?? '~/.memory'}
-                          </span>
-                          . Backups appear after the first change to memories.
-                        </>
-                      }
-                      action={{
-                        label: 'Open EchoVault repo',
-                        icon: ExternalLink,
-                        onClick: () => void open(ECHOVAULT_REPO),
-                      }}
-                    />
-                  ) : (
-                    <Big
-                      icon={X}
-                      danger
-                      title={
-                        <>
-                          Couldn't list <b className="font-bold">backups</b>
-                        </>
-                      }
-                      text={String(backups.error)}
-                      action={{ label: 'Try again', onClick: () => void backups.refetch() }}
-                    />
-                  )
-                ) : (
-                  <Backups items={(backups.data ?? []).slice(0, 20)} />
-                )}
+                <Rows>
+                  <Row label="Config folder">
+                    <PathValue path={paths.data?.claudeDir ?? '~/.claude'} />
+                    {paths.data && <RevealButton path={paths.data.claudeDir} />}
+                  </Row>
+                  <Row label="User settings">
+                    <PathValue path={paths.data?.userSettings ?? '~/.claude/settings.json'} />
+                    {paths.data && <RevealButton path={paths.data.userSettings} />}
+                  </Row>
+                  <Row label="MCP & projects">
+                    <PathValue path={paths.data?.claudeJson ?? '~/.claude.json'} />
+                    {paths.data && <RevealButton path={paths.data.claudeJson} />}
+                  </Row>
+                </Rows>
               </Section>
 
               <Section
@@ -276,8 +148,8 @@ export function SettingsLayout() {
               >
                 <Rows>
                   <Row label="Projects root">
-                    <PathValue path={projectsRoot.data ?? '~/.claude/projects'} />
-                    {projectsRoot.data && <RevealButton path={projectsRoot.data} />}
+                    <PathValue path={paths.data?.projectsRoot ?? '~/.claude/projects'} />
+                    {paths.data && <RevealButton path={paths.data.projectsRoot} />}
                   </Row>
                   <Row label="Total">
                     {projects.isLoading ? (
@@ -424,168 +296,6 @@ function Tag({
       />
       {children}
     </span>
-  );
-}
-
-function SoftChip({ value, unit }: { value: string | number; unit: string }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex h-6 items-center rounded-full px-[9px] text-[11px] font-medium text-[var(--color-text-muted)] tabular-nums',
-        softFill,
-      )}
-    >
-      <b className="mr-1 font-bold text-[var(--color-text-primary)]">{value}</b>
-      {unit}
-    </span>
-  );
-}
-
-function Backups({ items }: { items: BackupInfo[] }) {
-  const [openList, setOpenList] = useState(false);
-  const latest = items[0];
-  if (!latest) {
-    return (
-      <Big
-        icon={Database}
-        title={
-          <>
-            No backups <b className="font-bold">yet</b>
-          </>
-        }
-        text="They appear after the first archive, edit or delete."
-      />
-    );
-  }
-  const total = items.reduce((s, b) => s + b.sizeBytes, 0);
-  const [totalValue = '', totalUnit = ''] = formatBytes(total).split(' ');
-  const latestIso = stampToIso(latest.createdAt);
-  const latestDay = dayLabel(latestIso);
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="flex flex-1 flex-wrap gap-1.5">
-          <SoftChip value={items.length} unit={items.length === 1 ? 'copy' : 'copies'} />
-          <SoftChip value={totalValue} unit={totalUnit} />
-          <SoftChip
-            value={`${latestDay.lead ?? latestDay.date} ${formatTime(latestIso)}`}
-            unit="latest"
-          />
-        </span>
-        <RevealButton path={latest.path} label="Open folder" inline />
-        <button
-          type="button"
-          onClick={() => setOpenList((v) => !v)}
-          aria-expanded={openList}
-          className={cn(
-            'inline-flex h-8 items-center gap-1.5 rounded-full pr-2.5 pl-3 text-xs font-medium text-[var(--color-text-primary)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] active:scale-[.96]',
-            softFill,
-            focusRing,
-          )}
-        >
-          {openList ? 'Hide list' : 'Show list'}
-          <ChevronDown
-            className={cn(
-              'h-3.5 w-3.5 text-[var(--color-text-muted)] transition-transform duration-200 ease-[var(--ease-trail)]',
-              openList && 'rotate-180',
-            )}
-            strokeWidth={1.75}
-          />
-        </button>
-      </div>
-      {openList && (
-        <ul className="flex flex-col gap-1">
-          {items.map((b) => {
-            const iso = stampToIso(b.createdAt);
-            return (
-              <li
-                key={b.path}
-                className="grid h-11 grid-cols-[120px_64px_minmax(0,1fr)_32px] items-center gap-x-3 rounded-full pr-1.5 pl-4 text-[13px] font-medium tabular-nums hover:bg-[color-mix(in_srgb,var(--color-text-primary)_6%,transparent)] @max-[640px]:grid-cols-[110px_60px_minmax(0,1fr)_32px]"
-              >
-                <span className="text-[var(--color-text-primary)]">
-                  {iso ? `${dayLabel(iso).date} · ${formatTime(iso)}` : b.createdAt}
-                </span>
-                <span className="text-xs text-[var(--color-text-muted)]">
-                  {formatBytes(b.sizeBytes)}
-                </span>
-                <span
-                  className="min-w-0 truncate font-mono text-[11px] font-normal text-[var(--color-text-muted)]"
-                  title={b.path}
-                >
-                  {fileName(b.path)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => reveal(b.path)}
-                  title="Show in Explorer"
-                  aria-label={`Show ${fileName(b.path)} in Explorer`}
-                  className={cn(
-                    'grid h-8 w-8 place-items-center rounded-full text-[var(--color-text-muted)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]',
-                    softFill,
-                    focusRing,
-                  )}
-                >
-                  <Folder className="h-4 w-4" strokeWidth={1.75} />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function Big({
-  icon: Icon,
-  title,
-  text,
-  action,
-  danger,
-}: {
-  icon: LucideIcon;
-  title: React.ReactNode;
-  text: React.ReactNode;
-  action?: { label: string; onClick: () => void; icon?: LucideIcon };
-  danger?: boolean;
-}) {
-  const ActionIcon = action?.icon;
-  return (
-    <div className="flex flex-col items-center gap-2.5 px-3 pt-[18px] pb-5 text-center">
-      <span
-        className={cn(
-          'grid h-14 w-14 place-items-center rounded-full',
-          danger
-            ? 'bg-[var(--color-danger-soft)] text-[var(--color-danger)]'
-            : cn(softFill, 'text-[var(--color-text-muted)]'),
-        )}
-      >
-        <Icon className="h-[22px] w-[22px]" strokeWidth={1.6} />
-      </span>
-      <h3 className="text-[22px] leading-[1.06] font-light tracking-[-0.02em] text-[var(--color-text-primary)]">
-        {title}
-      </h3>
-      <p className="max-w-[420px] text-[13px] font-medium [overflow-wrap:anywhere] text-[var(--color-text-muted)]">
-        {text}
-      </p>
-      {action && (
-        <button
-          type="button"
-          onClick={action.onClick}
-          className={cn(
-            'inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-[13px] font-medium text-[var(--color-text-primary)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] active:scale-[.96]',
-            softFill,
-            focusRing,
-          )}
-        >
-          {ActionIcon && (
-            <ActionIcon className="h-3.5 w-3.5 text-[var(--color-text-muted)]" strokeWidth={1.75} />
-          )}
-          {action.label}
-        </button>
-      )}
-    </div>
   );
 }
 

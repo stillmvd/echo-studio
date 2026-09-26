@@ -1,9 +1,9 @@
-import { type LucideIcon, MessageSquare, NotebookText, Settings } from 'lucide-react';
+import { Blocks, type LucideIcon, MessageSquare, Settings } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { type AppTab, useUiStore } from '@/state/ui-store';
 
 const sections: { id: AppTab; label: string; Icon: LucideIcon }[] = [
-  { id: 'memories', label: 'Memories', Icon: NotebookText },
+  { id: 'tools', label: 'Tools', Icon: Blocks },
   { id: 'conversations', label: 'Conversations', Icon: MessageSquare },
 ];
 
