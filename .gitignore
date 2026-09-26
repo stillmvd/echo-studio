@@ -24,3 +24,5 @@ desktop.ini
 # Override global .gitignore_global which may exclude .planning/
 !.planning/
 !.planning/**
+
+.planning/sketches/
