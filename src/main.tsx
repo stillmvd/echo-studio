@@ -1,4 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
+import { invoke } from '@tauri-apps/api/core';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from '@/App';
@@ -23,3 +24,9 @@ ReactDOM.createRoot(rootEl).render(
     </ErrorBoundary>
   </React.StrictMode>,
 );
+
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    invoke('app_ready').catch(() => {});
+  });
+});

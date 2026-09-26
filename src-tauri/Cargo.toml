@@ -1,7 +1,7 @@
 [package]
 name = "echo-studio"
-version = "0.3.0"
-description = "Visual manager for EchoVault memories and AI coding agent session logs"
+version = "0.3.1"
+description = "Tooling overview and session log viewer for an AI coding agent CLI"
 authors = ["stillmvd"]
 edition = "2021"
 
@@ -27,6 +27,15 @@ serde_yaml = "0.9"
 notify = "8"
 notify-debouncer-mini = "0.7"
 humantime = "2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_UI_HiDpi",
+    "Win32_UI_WindowsAndMessaging",
+] }
 
 [profile.release]
 opt-level = "s"

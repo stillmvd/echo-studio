@@ -1,22 +1,54 @@
 mod commands;
 mod conversations;
+mod splash;
 mod tooling;
+
+use tauri::Manager;
+use tauri_plugin_window_state::{AppHandleExt, StateFlags};
+
+fn window_flags() -> StateFlags {
+    StateFlags::all() & !StateFlags::DECORATIONS & !StateFlags::VISIBLE
+}
+
+#[tauri::command]
+fn app_ready(window: tauri::WebviewWindow, splash: tauri::State<Option<splash::Splash>>) {
+    match splash.inner() {
+        Some(s) => s.ready(),
+        None => splash::show_main(&window),
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let context = tauri::generate_context!();
+    let splash = splash::show(&context.config().identifier);
     tauri::Builder::default()
         .plugin(
             tauri_plugin_window_state::Builder::new()
-                .with_state_flags(
-                    tauri_plugin_window_state::StateFlags::all()
-                        & !tauri_plugin_window_state::StateFlags::DECORATIONS,
-                )
+                .with_state_flags(window_flags())
                 .build(),
         )
+        .manage(splash)
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                let _ = window.app_handle().save_window_state(window_flags());
+            }
+        })
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                if let Some(s) = app.state::<Option<splash::Splash>>().inner() {
+                    s.attach(window.clone());
+                }
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(10));
+                    if !window.is_visible().unwrap_or(true) {
+                        splash::show_main(&window);
+                    }
+                });
+            }
             if let Some(home) = dirs::home_dir() {
                 let handle = app.handle().clone();
                 std::thread::spawn(move || {
@@ -46,7 +78,8 @@ pub fn run() {
             commands::tooling::read_tool_file,
             commands::tooling::set_tool_enabled,
             commands::tooling::list_config_backups,
+            app_ready,
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }
