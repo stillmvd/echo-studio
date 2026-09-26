@@ -70,6 +70,11 @@ export function BulkActionBar() {
               : 'Delete all'
         }
         danger={confirm === 'delete'}
+        subject={
+          confirm === 'delete'
+            ? { title: 'Selected memories', chips: [`${ids.length} memories`] }
+            : null
+        }
         onConfirm={onConfirm}
         onCancel={() => setConfirm(null)}
       />

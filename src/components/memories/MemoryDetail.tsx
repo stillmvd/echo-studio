@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Markdown } from '@/components/markdown/Markdown';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { fieldInput } from '@/components/ui/Field';
 import { useArchiveMemory, useDeleteMemory, useRestoreMemory } from '@/hooks/use-memory-actions';
 import { cn } from '@/lib/cn';
 import type { MemoryWithBody } from '@/lib/types';
@@ -198,6 +199,11 @@ export function MemoryDetail({ data }: Props) {
           dialog === 'archive' ? 'Archive' : dialog === 'restore' ? 'Restore' : 'Delete'
         }
         danger={dialog === 'delete'}
+        subject={
+          dialog === 'delete'
+            ? { title: data.title, chips: data.category ? [data.category] : [] }
+            : null
+        }
         onConfirm={onConfirm}
         onCancel={() => {
           setDialog(null);
@@ -209,7 +215,8 @@ export function MemoryDetail({ data }: Props) {
             value={archiveReason}
             onChange={(e) => setArchiveReason(e.target.value)}
             placeholder="Reason (optional)"
-            className="h-8 w-full rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] px-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+            aria-label="Archive reason"
+            className={fieldInput}
             // biome-ignore lint/a11y/noAutofocus: dialog focus
             autoFocus
           />

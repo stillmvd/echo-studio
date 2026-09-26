@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { ConfirmDialog, DialogNote } from '@/components/ui/ConfirmDialog';
+import { Field, fieldArea, fieldInput } from '@/components/ui/Field';
 import { buildPrompt, type ClaudeTemplate, TEMPLATE_LABELS } from '@/lib/claude-templates';
 import { cn } from '@/lib/cn';
 import { openInClaudeCode } from '@/lib/ipc';
@@ -15,6 +16,12 @@ interface Props {
 }
 
 const templates: ClaudeTemplate[] = ['save', 'update', 'investigate'];
+
+const TEMPLATE_HINTS: Record<ClaudeTemplate, string> = {
+  save: 'New memory from this session',
+  update: 'Rewrite the selected memory',
+  investigate: 'Ask Claude to dig into a question',
+};
 
 export function ClaudeCodeDialog({
   open,
@@ -69,77 +76,82 @@ export function ClaudeCodeDialog({
   return (
     <ConfirmDialog
       open={open}
+      wide
       title="Open in Claude Code"
+      description="Opens Windows Terminal in the folder and copies the prompt. Paste it in Claude with Ctrl+Shift+V."
       busy={busy}
       confirmLabel="Launch"
       onConfirm={launch}
       onCancel={onClose}
     >
-      <div className="flex flex-col gap-3">
-        <div className="flex gap-1 rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] p-0.5">
-          {templates.map((t) => (
+      <fieldset aria-label="Template" className="grid min-w-0 grid-cols-3 gap-2">
+        {templates.map((t) => {
+          const disabled = t === 'update' && !memory;
+          return (
             <button
               type="button"
               key={t}
+              aria-pressed={t === template}
               onClick={() => setTemplate(t)}
-              disabled={t === 'update' && !memory}
+              disabled={disabled}
               className={cn(
-                'flex-1 rounded-sm px-2 py-1 text-xs transition-colors',
+                'flex flex-col items-start gap-1 rounded-[20px] bg-[var(--color-bg-tertiary)] px-3.5 py-3 text-left outline-none transition-[box-shadow,background-color] duration-200 ease-[var(--ease-trail)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-secondary)]',
                 t === template
-                  ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)]'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]',
-                t === 'update' && !memory && 'cursor-not-allowed opacity-40',
+                  ? 'shadow-[inset_0_0_0_2px_var(--color-accent)]'
+                  : 'hover:bg-[var(--color-hover)]',
+                disabled && 'cursor-not-allowed opacity-40',
               )}
             >
-              {TEMPLATE_LABELS[t]}
+              <span className="text-[13px] font-bold text-[var(--color-text-primary)]">
+                {TEMPLATE_LABELS[t]}
+              </span>
+              <span className="text-xs leading-snug font-medium text-[var(--color-text-muted)]">
+                {TEMPLATE_HINTS[t]}
+              </span>
             </button>
-          ))}
-        </div>
+          );
+        })}
+      </fieldset>
 
-        <FormField label={template === 'investigate' ? 'Question' : 'Topic / changes'}>
+      <Field label={template === 'investigate' ? 'Question' : 'Topic'}>
+        {(id) => (
           <input
+            id={id}
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="(short summary)"
-            className="h-8 w-full rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] px-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+            placeholder="Short summary"
+            className={fieldInput}
           />
-        </FormField>
+        )}
+      </Field>
 
-        <FormField label="Working directory (cwd for `claude`)">
+      <Field label="Working directory">
+        {(id) => (
           <input
+            id={id}
             value={cwd}
             onChange={(e) => setCwd(e.target.value)}
             spellCheck={false}
-            className="h-8 w-full rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] px-2 font-mono text-xs text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+            className={cn(fieldInput, 'font-mono text-xs font-normal')}
           />
-        </FormField>
+        )}
+      </Field>
 
-        <FormField label="Prompt (editable, copied to clipboard on launch)">
+      <Field label="Prompt · copied on launch">
+        {(id) => (
           <textarea
+            id={id}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             rows={9}
-            className="w-full resize-y rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] px-2 py-1.5 font-mono text-[11px] leading-snug text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+            className={cn(fieldArea, 'font-mono text-xs font-normal')}
           />
-        </FormField>
-
-        {status && (
-          <div className="rounded-sm border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/10 px-2 py-1 text-[11px] text-[var(--color-accent)]">
-            {status}
-          </div>
         )}
-      </div>
-    </ConfirmDialog>
-  );
-}
+      </Field>
 
-function FormField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
-        {label}
-      </span>
-      {children}
-    </div>
+      {status && (
+        <DialogNote tone={status.startsWith('Failed') ? 'danger' : 'accent'}>{status}</DialogNote>
+      )}
+    </ConfirmDialog>
   );
 }

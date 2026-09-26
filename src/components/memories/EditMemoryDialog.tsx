@@ -1,5 +1,7 @@
+import { ChevronDown, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { ConfirmDialog, DialogNote } from '@/components/ui/ConfirmDialog';
+import { Field, fieldArea, fieldInput, fieldSurface } from '@/components/ui/Field';
 import { useUpdateMemory } from '@/hooks/use-memory-actions';
 import { cn } from '@/lib/cn';
 import type { MemoryWithBody } from '@/lib/types';
@@ -90,6 +92,7 @@ export function EditMemoryDialog({ open, data, onClose }: Props) {
   return (
     <ConfirmDialog
       open={open}
+      wide
       title="Edit memory"
       description="Changes write to index.db only. Markdown in vault/ stays as-is until next EchoVault CLI reindex."
       busy={update.isPending}
@@ -97,50 +100,79 @@ export function EditMemoryDialog({ open, data, onClose }: Props) {
       onConfirm={submit}
       onCancel={cancel}
     >
-      <div className="flex flex-col gap-2.5 max-h-[60vh] overflow-y-auto pr-1">
-        <Field label="Title *">
-          <Input value={title} onChange={setTitle} />
+      <Field label="Title *">
+        {(id) => (
+          <input
+            id={id}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className={fieldInput}
+          />
+        )}
+      </Field>
+
+      <div className="grid grid-cols-2 gap-2.5">
+        <Field label="Category">
+          {(id) => (
+            <span className="relative flex">
+              <select
+                id={id}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className={cn(fieldInput, 'appearance-none pr-10')}
+              >
+                <option value="">(none)</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                className="pointer-events-none absolute top-1/2 right-4 h-3.5 w-3.5 -translate-y-1/2 text-[var(--color-text-muted)]"
+                strokeWidth={1.75}
+              />
+            </span>
+          )}
         </Field>
+        <Field label="Project · read-only">
+          {(id) => (
+            <input
+              id={id}
+              value={data?.project ?? ''}
+              readOnly
+              className={cn(fieldInput, 'text-[var(--color-text-muted)]')}
+            />
+          )}
+        </Field>
+      </div>
 
-        <div className="flex gap-2">
-          <Field label="Category" className="flex-1">
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="h-8 w-full rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] px-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
-            >
-              <option value="">(none)</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Project (read-only)" className="flex-1">
-            <Input value={data?.project ?? ''} onChange={() => {}} disabled />
-          </Field>
-        </div>
-
-        <Field label="Tags">
-          <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] px-2 py-1.5">
+      <Field label="Tags">
+        {(id) => (
+          <div
+            className={cn(
+              fieldSurface,
+              'flex min-h-11 flex-wrap items-center gap-1.5 rounded-[22px] px-3 py-2 focus-within:bg-[var(--color-bg-primary)] focus-within:shadow-[inset_0_0_0_1.5px_var(--color-accent)]',
+            )}
+          >
             {tags.map((t) => (
               <span
                 key={t}
-                className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)] px-2 py-0.5 text-[10px] text-[var(--color-text-secondary)]"
+                className="inline-flex h-[26px] items-center gap-1 rounded-full bg-[var(--color-bg-secondary)] pr-1.5 pl-2.5 text-xs font-medium text-[var(--color-text-primary)]"
               >
-                #{t}
+                {t}
                 <button
                   type="button"
                   onClick={() => removeTag(t)}
-                  className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-                  aria-label={`remove ${t}`}
+                  className="grid h-4 w-4 place-items-center rounded-full text-[var(--color-text-muted)] outline-none hover:text-[var(--color-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+                  aria-label={`Remove tag ${t}`}
                 >
-                  ✕
+                  <X className="h-3 w-3" strokeWidth={2} />
                 </button>
               </span>
             ))}
             <input
+              id={id}
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               onKeyDown={(e) => {
@@ -153,96 +185,59 @@ export function EditMemoryDialog({ open, data, onClose }: Props) {
                 }
               }}
               onBlur={addTag}
-              placeholder="add tag, press Enter"
-              className="min-w-[120px] flex-1 bg-transparent text-xs text-[var(--color-text-primary)] focus:outline-none"
+              placeholder="Add tag, press Enter"
+              className="min-w-[120px] flex-1 bg-transparent px-1.5 text-sm font-medium text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
             />
           </div>
-        </Field>
-
-        <Field label="What *">
-          <Textarea value={what} onChange={setWhat} rows={3} />
-        </Field>
-        <Field label="Why">
-          <Textarea value={why} onChange={setWhy} rows={3} />
-        </Field>
-        <Field label="Impact">
-          <Textarea value={impact} onChange={setImpact} rows={3} />
-        </Field>
-        <Field label="Details (markdown body)">
-          <Textarea value={body} onChange={setBody} rows={8} mono />
-        </Field>
-
-        {status && (
-          <div className="rounded-sm border border-[var(--color-danger)]/40 bg-[var(--color-danger)]/10 px-2 py-1 text-[11px] text-[var(--color-danger)]">
-            {status}
-          </div>
         )}
-      </div>
+      </Field>
+
+      <Field label="What *">
+        {(id) => (
+          <textarea
+            id={id}
+            value={what}
+            onChange={(e) => setWhat(e.target.value)}
+            rows={3}
+            className={fieldArea}
+          />
+        )}
+      </Field>
+      <Field label="Why">
+        {(id) => (
+          <textarea
+            id={id}
+            value={why}
+            onChange={(e) => setWhy(e.target.value)}
+            rows={3}
+            className={fieldArea}
+          />
+        )}
+      </Field>
+      <Field label="Impact">
+        {(id) => (
+          <textarea
+            id={id}
+            value={impact}
+            onChange={(e) => setImpact(e.target.value)}
+            rows={3}
+            className={fieldArea}
+          />
+        )}
+      </Field>
+      <Field label="Details · markdown">
+        {(id) => (
+          <textarea
+            id={id}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={8}
+            className={cn(fieldArea, 'font-mono text-xs font-normal')}
+          />
+        )}
+      </Field>
+
+      {status && <DialogNote tone="danger">{status}</DialogNote>}
     </ConfirmDialog>
-  );
-}
-
-function Field({
-  label,
-  className,
-  children,
-}: {
-  label: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={cn('flex flex-col gap-1', className)}>
-      <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
-        {label}
-      </span>
-      {children}
-    </div>
-  );
-}
-
-function Input({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={disabled}
-      className={cn(
-        'h-8 w-full rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] px-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none',
-        disabled && 'opacity-60',
-      )}
-    />
-  );
-}
-
-function Textarea({
-  value,
-  onChange,
-  rows,
-  mono,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  rows: number;
-  mono?: boolean;
-}) {
-  return (
-    <textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      rows={rows}
-      className={cn(
-        'w-full resize-y rounded-md border border-[var(--color-border-subtle)] bg-[var(--color-bg-tertiary)] px-2 py-1.5 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none',
-        mono && 'font-mono text-[11px] leading-snug',
-      )}
-    />
   );
 }

@@ -1,3 +1,14 @@
+import { formatBytes } from './projects';
+import { type SessionMeta, sessionDisplayTitle } from './types';
+
+export function sessionSubject(s: SessionMeta) {
+  return {
+    title: sessionDisplayTitle(s),
+    id: s.sessionId.slice(0, 8),
+    chips: [`${s.messageCount} msgs`, formatBytes(s.sizeBytes)],
+  };
+}
+
 export function formatDuration(ms: number): string {
   if (ms < 1000) return '<1s';
   const seconds = Math.floor(ms / 1000);

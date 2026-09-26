@@ -93,6 +93,10 @@ export function SessionBulkBar({ sessions, visiblePaths }: Props) {
         busy={del.isPending}
         title={`Delete ${ids.length} sessions permanently?`}
         description="The .jsonl files will be removed from disk. This cannot be undone via this app."
+        subject={{
+          title: 'Selected sessions',
+          chips: [`${ids.length} sessions`, formatBytes(selectedBytes)],
+        }}
         confirmLabel="Delete all"
         danger
         onConfirm={onConfirm}

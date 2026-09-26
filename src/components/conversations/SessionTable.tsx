@@ -9,7 +9,14 @@ import { cn } from '@/lib/cn';
 import { menuPoint } from '@/lib/context-menu';
 import { revealInExplorer } from '@/lib/ipc';
 import { formatBytes } from '@/lib/projects';
-import { dayLabel, formatDateTime, formatDuration, formatTime, splitTitle } from '@/lib/sessions';
+import {
+  dayLabel,
+  formatDateTime,
+  formatDuration,
+  formatTime,
+  sessionSubject,
+  splitTitle,
+} from '@/lib/sessions';
 import { type SessionMeta, sessionDisplayTitle } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { RenameSessionDialog } from './RenameSessionDialog';
@@ -454,9 +461,8 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
         open={!!deleteTarget}
         danger
         title="Delete conversation?"
-        description={
-          deleteTarget ? `«${sessionDisplayTitle(deleteTarget)}» будет удалён безвозвратно.` : ''
-        }
+        description="The .jsonl file will be removed from disk. This cannot be undone via this app."
+        subject={deleteTarget ? sessionSubject(deleteTarget) : null}
         confirmLabel="Delete"
         busy={del.isPending}
         onCancel={() => setDeleteTarget(null)}

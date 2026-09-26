@@ -15,7 +15,13 @@ import {
   nodeText,
   type ToolStep,
 } from '@/lib/session-feed';
-import { formatDateTime, formatDuration, formatTime, splitTitle } from '@/lib/sessions';
+import {
+  formatDateTime,
+  formatDuration,
+  formatTime,
+  sessionSubject,
+  splitTitle,
+} from '@/lib/sessions';
 import type { DisplayItem, SessionMeta } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 
@@ -270,6 +276,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
         busy={del.isPending}
         title="Delete this session permanently?"
         description="The .jsonl file will be removed from disk. This cannot be undone via this app."
+        subject={session ? sessionSubject(session) : { title }}
         confirmLabel="Delete"
         danger
         onConfirm={async () => {
