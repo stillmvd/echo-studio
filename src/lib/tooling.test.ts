@@ -53,12 +53,6 @@ describe('tooling filters', () => {
     expect(filterTools(items, { kind: 'mcp', query: 'cloud' })).toHaveLength(0);
   });
 
-  it('keeps only project and local items when asked', () => {
-    expect(
-      filterTools(items, { kind: 'all', query: '', projectOnly: true }).map((i) => i.origin),
-    ).toEqual(['project', 'local']);
-  });
-
   it('counts kinds', () => {
     expect(countByKind(items)).toEqual({
       all: 4,

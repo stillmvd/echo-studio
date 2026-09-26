@@ -1,28 +1,36 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ChevronRight, CircleAlert, Search, X } from 'lucide-react';
+import { ChevronRight, CircleAlert, Globe, Search, X } from 'lucide-react';
 import { useMemo, useRef } from 'react';
 import { useConversationProjects } from '@/hooks/use-conversations';
+import { useToolCopies } from '@/hooks/use-tooling';
 import { cn } from '@/lib/cn';
 import { splitTitle } from '@/lib/sessions';
 import {
+  alsoInProjects,
   countByKind,
   filterTools,
   groupSkills,
+  type KindFilter,
   nestOverrides,
+  overrideKey,
   samePath,
+  splitInherited,
   type ToolRowModel,
 } from '@/lib/tooling';
-import type { ScanResult, ScopeRef } from '@/lib/types';
+import type { ScanResult, ScopeRef, ToolItem } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { KIND_META } from './kinds';
 import { ToolRow } from './ToolRow';
-import { TypeFilter } from './TypeFilter';
 
 const ROW = 60;
 const NESTED = 44;
 const GROUP = 36;
+const INHERITED_ROW = 44;
+const INHERITED = 'inherited';
 const GAP = 2;
 const SORT_RANK = { skill: 0, plugin: 1, mcp: 2, command: 3, agent: 4 } as const;
+
+type Row = ToolRowModel | { type: 'inherited'; count: number; open: boolean };
 
 function CenterNote({ children }: { children: React.ReactNode }) {
   return (
@@ -32,24 +40,67 @@ function CenterNote({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Tiles({ counts }: { counts: Record<string, number> }) {
+function Tiles({
+  counts,
+  value,
+  compact,
+  onChange,
+}: {
+  counts: Record<KindFilter, number>;
+  value: KindFilter;
+  compact: boolean;
+  onChange: (v: KindFilter) => void;
+}) {
   const kinds = ['skill', 'plugin', 'mcp', 'command', 'agent'] as const;
   return (
-    <div className="grid grid-cols-5 gap-2 @max-[560px]:grid-cols-3">
-      {kinds.map((k) => (
-        <span
-          key={k}
-          className="flex min-w-0 flex-col gap-0.5 rounded-[20px] bg-[var(--color-bg-tertiary)] px-3 py-2.5"
-        >
-          <b className="text-[22px] leading-[1.1] font-light tracking-[-0.02em] text-[var(--color-text-primary)] tabular-nums">
-            {counts[k] ?? 0}
-          </b>
-          <span className="truncate text-[11px] font-medium text-[var(--color-text-muted)]">
-            {KIND_META[k].label}
-          </span>
-        </span>
-      ))}
-    </div>
+    <fieldset
+      aria-label="Filter by type"
+      className={cn(
+        'm-0 min-w-0 border-0 p-0',
+        compact ? 'flex flex-wrap gap-1.5' : 'grid grid-cols-5 gap-2 @max-[560px]:grid-cols-3',
+      )}
+    >
+      {kinds.map((k) => {
+        const on = value === k;
+        const n = counts[k];
+        return (
+          <button
+            key={k}
+            type="button"
+            aria-pressed={on}
+            disabled={n === 0 && !on}
+            onClick={() => onChange(on ? 'all' : k)}
+            className={cn(
+              'outline-none transition-[background-color,box-shadow] duration-200 ease-[var(--ease-trail)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] enabled:active:scale-[.97] disabled:opacity-50',
+              compact
+                ? 'inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium whitespace-nowrap'
+                : 'flex min-w-0 flex-col gap-0.5 rounded-[20px] px-3 py-2.5 text-left',
+              on
+                ? 'bg-[var(--color-accent-soft)] shadow-[inset_0_0_0_1.5px_var(--color-accent)]'
+                : 'bg-[var(--color-bg-tertiary)] enabled:hover:bg-[var(--color-hover)]',
+            )}
+          >
+            <b
+              className={cn(
+                'text-[var(--color-text-primary)] tabular-nums',
+                compact ? 'font-bold' : 'text-[22px] leading-[1.1] font-light tracking-[-0.02em]',
+              )}
+            >
+              {n}
+            </b>
+            <span
+              className={cn(
+                'truncate font-medium',
+                compact ? 'text-[13px]' : 'text-[11px]',
+                on ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)]',
+              )}
+            >
+              {KIND_META[k].label}
+            </span>
+          </button>
+        );
+      })}
+    </fieldset>
   );
 }
 
@@ -57,7 +108,7 @@ function SearchField({ total, shown }: { total: number; shown: number }) {
   const query = useUiStore((s) => s.toolsQuery);
   const setQuery = useUiStore((s) => s.setToolsQuery);
   return (
-    <label className="ml-auto flex h-10 w-[220px] shrink-0 items-center gap-2 rounded-full bg-[var(--color-bg-primary)] pr-1.5 pl-4 shadow-[inset_0_1px_3px_var(--color-press-shade)] focus-within:outline-2 focus-within:outline-[var(--color-accent)] @max-[560px]:ml-0 @max-[560px]:w-full">
+    <label className="flex h-10 w-[220px] shrink-0 items-center gap-2 rounded-full bg-[var(--color-bg-primary)] pr-1.5 pl-4 shadow-[inset_0_1px_3px_var(--color-press-shade)] focus-within:outline-2 focus-within:outline-[var(--color-accent)] @max-[560px]:w-[180px]">
       <Search className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" strokeWidth={1.75} />
       <input
         value={query}
@@ -91,20 +142,19 @@ function SearchField({ total, shown }: { total: number; shown: number }) {
 
 function ScopeChips({
   items,
-  duplicates,
+  overridden,
   isProject,
-  duplicatesOnly,
-  onDuplicates,
+  overriddenOnly,
+  onOverridden,
 }: {
   items: ScanResult['items'];
-  duplicates: number;
+  overridden: number;
   isProject: boolean;
-  duplicatesOnly: boolean;
-  onDuplicates: () => void;
+  overriddenOnly: boolean;
+  onOverridden: () => void;
 }) {
-  if (!isProject && duplicates === 0) return null;
+  if (!isProject && overridden === 0) return null;
   const own = items.filter((i) => i.origin === 'project' || i.origin === 'local').length;
-  const overrides = items.filter((i) => i.conflict === 'overrides').length;
   const chip =
     'inline-flex h-6 items-center rounded-full px-[9px] text-[11px] font-medium tabular-nums';
   return (
@@ -114,30 +164,23 @@ function ScopeChips({
           <b className="mr-1 font-bold">{own}</b>from this project
         </span>
       )}
-      {isProject && overrides > 0 && (
-        <span
-          className={`${chip} bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)]`}
-        >
-          <b className="mr-1 font-bold">{overrides}</b>
-          {overrides === 1 ? 'override' : 'overrides'}
-        </span>
-      )}
-      {duplicates > 0 && (
+      {overridden > 0 && (
         <button
           type="button"
-          aria-pressed={duplicatesOnly}
-          onClick={onDuplicates}
-          title={duplicatesOnly ? 'Show all tools' : 'Show only tools with the same name'}
+          aria-pressed={overriddenOnly}
+          onClick={onOverridden}
+          title={
+            overriddenOnly ? 'Show all tools' : 'Show only overridden tools and what overrides them'
+          }
           className={cn(
             chip,
             'outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] active:scale-[.96]',
-            duplicatesOnly
+            overriddenOnly
               ? 'bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)] shadow-[inset_0_0_0_1.5px_var(--color-warning)]'
               : 'bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)] hover:bg-[color-mix(in_srgb,var(--color-warning)_22%,transparent)]',
           )}
         >
-          <b className="mr-1 font-bold">{duplicates}</b>
-          {duplicates === 1 ? 'duplicate' : 'duplicates'}
+          <b className="mr-1 font-bold">{overridden}</b>overridden
         </button>
       )}
       {isProject && (
@@ -150,23 +193,32 @@ function ScopeChips({
   );
 }
 
-function ProjectOnlyToggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+function InheritedRow({
+  count,
+  open,
+  onToggle,
+}: {
+  count: number;
+  open: boolean;
+  onToggle: () => void;
+}) {
   return (
     <button
       type="button"
-      role="switch"
-      aria-checked={on}
-      onClick={() => onChange(!on)}
-      className={`inline-flex shrink-0 items-center gap-2.5 rounded-full py-1 pr-1 pl-1 text-[13px] font-medium whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] ${on ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)]'}`}
+      aria-expanded={open}
+      onClick={onToggle}
+      className="flex h-full w-full items-center gap-2.5 rounded-full bg-[var(--color-bg-tertiary)] px-3.5 text-left text-[13px] font-medium text-[var(--color-text-muted)] outline-none select-none hover:bg-[var(--color-hover)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
     >
-      <span
-        className={`relative h-[22px] w-9 rounded-full transition-colors duration-200 ease-[var(--ease-trail)] ${on ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-bg-tertiary)] shadow-[inset_0_0_0_1px_var(--color-border)]'}`}
-      >
-        <span
-          className={`absolute top-[3px] left-[3px] h-4 w-4 rounded-full transition-transform duration-200 ease-[var(--ease-trail)] motion-reduce:transition-none ${on ? 'translate-x-3.5 bg-[var(--color-accent-fg)]' : 'bg-[var(--color-text-muted)]'}`}
-        />
-      </span>
-      Project only
+      <Globe className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+      <b className="truncate font-bold text-[var(--color-text-primary)]">Inherited from Global</b>
+      <span className="shrink-0 tabular-nums">{count}</span>
+      <ChevronRight
+        className={cn(
+          'ml-auto h-3.5 w-3.5 shrink-0 transition-transform duration-200 ease-[var(--ease-trail)] motion-reduce:transition-none',
+          open && 'rotate-90',
+        )}
+        strokeWidth={1.75}
+      />
     </button>
   );
 }
@@ -255,12 +307,12 @@ export function ToolList({
   const setQuery = useUiStore((s) => s.setToolsQuery);
   const selectedId = useUiStore((s) => s.selectedToolId);
   const setSelectedId = useUiStore((s) => s.setSelectedToolId);
-  const projectOnlyPref = useUiStore((s) => s.toolsProjectOnly);
-  const setProjectOnly = useUiStore((s) => s.setToolsProjectOnly);
-  const duplicatesOnly = useUiStore((s) => s.toolsDuplicatesOnly);
-  const setDuplicatesOnly = useUiStore((s) => s.setToolsDuplicatesOnly);
+  const overriddenOnly = useUiStore((s) => s.toolsOverriddenOnly);
+  const setOverriddenOnly = useUiStore((s) => s.setToolsOverriddenOnly);
+  const openGroups = useUiStore((s) => s.toolsOpenGroups);
+  const toggleGroup = useUiStore((s) => s.toggleToolsGroup);
+  const copies = useToolCopies().data;
   const isProject = scope.kind === 'project';
-  const projectOnly = isProject && projectOnlyPref;
 
   const sorted = useMemo(
     () =>
@@ -270,32 +322,47 @@ export function ToolList({
       ),
     [scan],
   );
-  const scoped = useMemo(
-    () => (projectOnly ? filterTools(sorted, { kind: 'all', query: '', projectOnly }) : sorted),
-    [sorted, projectOnly],
+  const overridden = useMemo(
+    () => sorted.filter((i) => i.conflict === 'overridden').length,
+    [sorted],
   );
-  const duplicates = useMemo(() => scoped.filter((i) => i.conflict !== 'none'), [scoped]);
-  const base = duplicatesOnly ? duplicates : scoped;
+  const base = useMemo(
+    () => (overriddenOnly ? sorted.filter((i) => i.conflict !== 'none') : sorted),
+    [sorted, overriddenOnly],
+  );
   const matching = useMemo(() => filterTools(base, { kind: 'all', query }), [base, query]);
   const counts = useMemo(() => countByKind(matching), [matching]);
-  const visible = useMemo(
-    () => nestOverrides(type === 'all' ? matching : matching.filter((i) => i.kind === type)),
-    [matching, type],
-  );
-  const openGroups = useUiStore((s) => s.toolsOpenGroups);
-  const toggleGroup = useUiStore((s) => s.toggleToolsGroup);
-  const rows = useMemo<ToolRowModel[]>(
-    () =>
-      type === 'skill'
+  const { rows, shown, nested } = useMemo(() => {
+    const searching = query.trim() !== '';
+    const open = new Set(openGroups);
+    const typed = type === 'all' ? matching : matching.filter((i) => i.kind === type);
+    const nestedIds = new Set<string>();
+    const section = (list: ToolItem[], all: ToolItem[]): Row[] => {
+      const winners = new Set(list.filter((i) => i.conflict === 'overrides').map(overrideKey));
+      for (const i of list)
+        if (i.conflict === 'overridden' && winners.has(overrideKey(i))) nestedIds.add(i.id);
+      const ordered = nestOverrides(list);
+      return type === 'skill'
         ? groupSkills(
-            base.filter((i) => i.kind === 'skill'),
-            visible,
-            new Set(openGroups),
-            query.trim() !== '',
+            all.filter((i) => i.kind === 'skill'),
+            ordered,
+            open,
+            searching,
           )
-        : visible.map((item) => ({ type: 'item', item, grouped: false })),
-    [type, base, visible, openGroups, query],
-  );
+        : ordered.map((item) => ({ type: 'item', item, grouped: false }));
+    };
+    if (!isProject) return { rows: section(typed, base), shown: typed.length, nested: nestedIds };
+    const mine = splitInherited(typed);
+    const all = splitInherited(base);
+    const inheritedOpen =
+      open.has(INHERITED) || searching || overriddenOnly || mine.own.length === 0;
+    const out = section(mine.own, all.own);
+    if (mine.inherited.length > 0) {
+      out.push({ type: 'inherited', count: mine.inherited.length, open: inheritedOpen });
+      if (inheritedOpen) out.push(...section(mine.inherited, all.inherited));
+    }
+    return { rows: out, shown: typed.length, nested: nestedIds };
+  }, [type, matching, base, openGroups, query, isProject, overriddenOnly]);
   const failed = (scan?.sources ?? []).filter((s) => s.status === 'error');
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -304,12 +371,15 @@ export function ToolList({
     getScrollElement: () => scrollRef.current,
     getItemKey: (index) => {
       const row = rows[index];
-      return row ? (row.type === 'group' ? row.key : row.item.id) : index;
+      if (!row) return index;
+      if (row.type === 'inherited') return INHERITED;
+      return row.type === 'group' ? row.key : row.item.id;
     },
     estimateSize: (index) => {
       const row = rows[index];
       if (row?.type === 'group') return GROUP + GAP;
-      return (row?.item.conflict === 'overridden' ? NESTED : ROW) + GAP;
+      if (row?.type === 'inherited') return INHERITED_ROW + GAP;
+      return (row && nested.has(row.item.id) ? NESTED : ROW) + GAP;
     },
     overscan: 8,
   });
@@ -343,7 +413,7 @@ export function ToolList({
         </button>
       </CenterNote>
     );
-  } else if (visible.length === 0) {
+  } else if (shown === 0) {
     body = (
       <CenterNote>
         {query ? (
@@ -369,6 +439,21 @@ export function ToolList({
           {virtualizer.getVirtualItems().map((v) => {
             const row = rows[v.index];
             if (!row) return null;
+            if (row.type === 'inherited') {
+              return (
+                <div
+                  key={INHERITED}
+                  className="absolute inset-x-0"
+                  style={{ top: v.start, height: v.size - GAP }}
+                >
+                  <InheritedRow
+                    count={row.count}
+                    open={row.open}
+                    onToggle={() => toggleGroup(INHERITED)}
+                  />
+                </div>
+              );
+            }
             if (row.type === 'group') {
               return (
                 <div
@@ -403,6 +488,8 @@ export function ToolList({
                     item={item}
                     query={query}
                     selected={selectedId === item.id}
+                    nested={nested.has(item.id)}
+                    copies={copies ? alsoInProjects(item, copies, scope.path) : 0}
                     onSelect={() => setSelectedId(selectedId === item.id ? null : item.id)}
                   />
                 </div>
@@ -422,30 +509,26 @@ export function ToolList({
             {lightName}
             <b className="font-bold">{boldName}</b>
           </h2>
-          {isProject && scope.available && (
-            <ProjectOnlyToggle on={projectOnlyPref} onChange={setProjectOnly} />
+          {scope.available && (
+            <SearchField
+              total={type === 'all' ? base.length : base.filter((i) => i.kind === type).length}
+              shown={shown}
+            />
           )}
         </div>
         {scan && !isLoading && (
           <ScopeChips
             items={scan.items}
-            duplicates={duplicates.length}
+            overridden={overridden}
             isProject={isProject}
-            duplicatesOnly={duplicatesOnly}
-            onDuplicates={() => setDuplicatesOnly(!duplicatesOnly)}
+            overriddenOnly={overriddenOnly}
+            onOverridden={() => setOverriddenOnly(!overriddenOnly)}
           />
         )}
-        {scan && !isLoading && !compact && <Tiles counts={scan.counts} />}
+        {scan && !isLoading && scope.available && (
+          <Tiles counts={counts} value={type} compact={compact} onChange={setType} />
+        )}
       </div>
-      {scope.available && (
-        <div className="flex flex-wrap items-center gap-2.5 px-1">
-          <TypeFilter value={type} counts={counts} onChange={setType} />
-          <SearchField
-            total={type === 'all' ? base.length : base.filter((i) => i.kind === type).length}
-            shown={visible.length}
-          />
-        </div>
-      )}
       {failed.map((s) => (
         <div
           key={s.path}

@@ -43,8 +43,8 @@ UI временно: `ToolRow` показывает `overriddenBy` старым 
 
 ## Phase 3: User Story 1 — Видно, какая версия сработает (P1)
 
-- [ ] T012 [US1] `src/components/tooling/ToolRow.tsx`: пометки «Overridden by …» / «Overrides …» по стенду 8, удалить «same name»
-- [ ] T013 [US1] `src/state/ui-store.ts`: `toolsOverriddenOnly` вместо `toolsDuplicatesOnly` (не persist, сброс в `setToolsScope`); `src/components/tooling/ToolList.tsx`: чип «N overridden» (N — элементы с `conflict !== 'none'`) с фильтром; вложенность проигравших — по стенду 8
+- [X] T012 [US1] `src/components/tooling/ToolRow.tsx`: пометки «Overridden by …» / «Overrides …» по стенду 8, удалить «same name»
+- [X] T013 [US1] `src/state/ui-store.ts`: `toolsOverriddenOnly` вместо `toolsDuplicatesOnly` (не persist, сброс в `setToolsScope`); `src/components/tooling/ToolList.tsx`: чип «N overridden» (N — элементы с `conflict !== 'none'`) с фильтром; вложенность проигравших — по стенду 8
 
 **Checkpoint**: CDP-проверка quickstart 1–3; коммит `feat(tooling): show which copy Claude Code runs`.
 
@@ -52,9 +52,9 @@ UI временно: `ToolRow` показывает `overriddenBy` старым 
 
 ## Phase 4: User Story 2 — Свои не тонут в глобальных (P1)
 
-- [ ] T014 [US2] `src/state/ui-store.ts`: `toolsInheritedOpen` (persist, по умолчанию false), удалить `toolsProjectOnly` и `ProjectOnlyToggle`; `src/components/tooling/ToolList.tsx`: в области проекта строки `own`, затем группа «Inherited from Global · N» по стенду 8 (строка виртуализатора как группы skills; при типе Skills внутри — группы по вендору); авто-раскрытие при совпадениях поиска и при пустом `own`; `filterTools` без `projectOnly`
+- [X] T014 [US2] `src/state/ui-store.ts`: `toolsInheritedOpen` (persist, по умолчанию false), удалить `toolsProjectOnly` и `ProjectOnlyToggle`; `src/components/tooling/ToolList.tsx`: в области проекта строки `own`, затем группа «Inherited from Global · N» по стенду 8 (строка виртуализатора как группы skills; при типе Skills внутри — группы по вендору); авто-раскрытие при совпадениях поиска и при пустом `own`; `filterTools` без `projectOnly`
 
-- [ ] T014a [US2] `src/components/tooling/ToolList.tsx`: `Tiles` — кнопки-фильтр (`aria-pressed`, выбранная `accent-soft` + кольцо 1.5 акцентом, повторный клик → `all`, ноль — `disabled`), при `compact` — капсулы 32 «N Label» в ряд; удалить `TypeFilter.tsx`; `SearchField` — в строку имени области справа (FR-018)
+- [X] T014a [US2] `src/components/tooling/ToolList.tsx`: `Tiles` — кнопки-фильтр (`aria-pressed`, выбранная `accent-soft` + кольцо 1.5 акцентом, повторный клик → `all`, ноль — `disabled`), при `compact` — капсулы 32 «N Label» в ряд; удалить `TypeFilter.tsx`; `SearchField` — в строку имени области справа (FR-018)
 
 **Checkpoint**: CDP-проверка quickstart 4; коммит `feat(tooling): own tools first, inherited from global in a group`.
 
@@ -62,8 +62,8 @@ UI временно: `ToolRow` показывает `overriddenBy` старым 
 
 ## Phase 5: User Story 3 — Где ещё копия (P2)
 
-- [ ] T015 [US3] `src/components/tooling/ToolRow.tsx`: «also in N projects» по стенду 8 (только origin project/local, N из `alsoInProjects`)
-- [ ] T016 [US3] `src/components/tooling/ToolDetail.tsx`: секция «Also found in» по стенду 8 — места из `copiesFor`, Same/Differs/«unreadable», дата у Differs, первые 6 и «N more», «Show in folder» → `revealInExplorer(copy.filePath)`; нет мест — нет секции
+- [X] T015 [US3] `src/components/tooling/ToolRow.tsx`: «also in N projects» по стенду 8 (только origin project/local, N из `alsoInProjects`)
+- [X] T016 [US3] `src/components/tooling/ToolDetail.tsx`: секция «Also found in» по стенду 8 — места из `copiesFor`, Same/Differs/«unreadable», дата у Differs, первые 6 и «N more», «Show in folder» → `revealInExplorer(copy.filePath)`; нет мест — нет секции
 
 **Checkpoint**: CDP-проверка quickstart 5; коммит `feat(tooling): copies of a tool in other projects`.
 
@@ -71,7 +71,7 @@ UI временно: `ToolRow` показывает `overriddenBy` старым 
 
 ## Phase 6: User Story 4 — Отчёт агента (P2)
 
-- [ ] T017 [US4] `src/components/conversations/AgentNoticeStep.tsx` (новый) по стенду 7: описание, статус (не-completed отличается), свёрнутый отчёт через существующий `Markdown`; `SessionViewer.tsx` рендерит узел `agent`
+- [X] T017 [US4] `src/components/conversations/AgentNoticeStep.tsx` (новый) по стенду 7: описание, статус (не-completed отличается), свёрнутый отчёт через существующий `Markdown`; `SessionViewer.tsx` рендерит узел `agent`
 
 **Checkpoint**: CDP-проверка quickstart 6; коммит `feat(conversations): background agent reports as feed steps`.
 
@@ -79,7 +79,7 @@ UI временно: `ToolRow` показывает `overriddenBy` старым 
 
 ## Phase 7: Polish
 
-- [ ] T018 Проверки: `pnpm biome check src`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `cargo clippy --all-targets -- -D warnings`, `cargo test`
+- [X] T018 Проверки: `pnpm biome check src`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `cargo clippy --all-targets -- -D warnings`, `cargo test`
 - [ ] T019 Версия 0.4.0 (`package.json`, `src-tauri/Cargo.toml`, `tauri.conf.json`), `.planning/HANDOFF.md`, `pnpm tauri build --no-bundle`; коммит `chore: bump version to 0.4.0`
 
 ## Dependencies

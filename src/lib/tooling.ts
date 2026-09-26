@@ -5,7 +5,6 @@ export type KindFilter = ToolKind | 'all';
 export interface ToolFilter {
   kind: KindFilter;
   query: string;
-  projectOnly?: boolean;
 }
 
 export interface Segment {
@@ -23,10 +22,7 @@ function matches(item: ToolItem, q: string): boolean {
 export function filterTools(items: ToolItem[], f: ToolFilter): ToolItem[] {
   const q = f.query.trim().toLowerCase();
   return items.filter(
-    (i) =>
-      (f.kind === 'all' || i.kind === f.kind) &&
-      (!f.projectOnly || i.origin === 'project' || i.origin === 'local') &&
-      (q === '' || matches(i, q)),
+    (i) => (f.kind === 'all' || i.kind === f.kind) && (q === '' || matches(i, q)),
   );
 }
 
@@ -82,8 +78,12 @@ export function applyToggle(items: ToolItem[], target: ToggleTarget, enabled: bo
   });
 }
 
+export function overrideKey(i: ToolItem): string {
+  return `${i.kind === 'command' ? 'skill' : i.kind}:${i.name.toLowerCase()}`;
+}
+
 export function nestOverrides(items: ToolItem[]): ToolItem[] {
-  const key = (i: ToolItem) => `${i.kind === 'command' ? 'skill' : i.kind}:${i.name.toLowerCase()}`;
+  const key = overrideKey;
   const winners = new Set(items.filter((i) => i.conflict === 'overrides').map(key));
   const out: ToolItem[] = [];
   for (const i of items) {

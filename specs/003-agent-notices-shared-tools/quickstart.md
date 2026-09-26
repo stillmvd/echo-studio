@@ -6,7 +6,7 @@
 
 1. **Перекрытие global → project.** Создать `~/.claude/skills/qs-demo/SKILL.md` и
    `<проект>/.claude/skills/qs-demo/SKILL.md`. Tools → проект: проектный `qs-demo` — «Overridden by global»,
-   глобальный — «Overrides project»; чип «2 overridden» фильтрует до двух строк. Выключить глобальный —
+   глобальный — «Overrides project»; чип «1 overridden» фильтрует до двух строк (свой сверху, глобальный в раскрытой группе). Выключить глобальный —
    пометки и чип исчезают. Удалить обе папки после проверки.
 2. **Skill против команды.** В проекте `commands/qs-x.md` и `skills/qs-x/SKILL.md` — команда «Overridden by
    skill».

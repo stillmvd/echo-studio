@@ -1,9 +1,11 @@
 import { CircleAlert, Folder, X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Markdown } from '@/components/markdown/Markdown';
-import { useToolFile } from '@/hooks/use-tooling';
+import { useToolCopies, useToolFile } from '@/hooks/use-tooling';
 import { cn } from '@/lib/cn';
 import { revealInExplorer } from '@/lib/ipc';
+import { formatShortDateTime } from '@/lib/projects';
+import { copiesFor, copyHash } from '@/lib/tooling';
 import type { ToolItem } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { McpDetail } from './McpDetail';
@@ -139,15 +141,89 @@ function FileText({ path, itemError }: { path: string; itemError: string | null 
   );
 }
 
+function AlsoFoundIn({ item, scopePath }: { item: ToolItem; scopePath: string | null }) {
+  const copies = useToolCopies().data;
+  const [all, setAll] = useState(false);
+  if (!copies) return null;
+  const list = copiesFor(item, copies, scopePath);
+  if (list.length === 0) return null;
+  const own = copyHash(item, copies);
+  const shown = all ? list : list.slice(0, 6);
+  return (
+    <section className="flex flex-col gap-1.5">
+      <h3 className="py-1 text-xs font-medium text-[var(--color-text-muted)]">
+        Also found in <b className="font-bold text-[var(--color-text-primary)]">{list.length}</b>
+      </h3>
+      {shown.map((c) => {
+        const same = own !== null && c.hash === own;
+        return (
+          <div key={c.filePath} className="flex h-[34px] items-center gap-2 px-1">
+            <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-medium text-[var(--color-text-primary)]">
+              <Folder
+                className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]"
+                strokeWidth={1.75}
+              />
+              <span className="truncate" title={c.filePath}>
+                {c.scope.label}
+              </span>
+            </span>
+            <span
+              className={cn(
+                'inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[11px] font-medium',
+                c.hash === null
+                  ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]'
+                  : same
+                    ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]'
+                    : 'bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)]',
+              )}
+            >
+              {c.hash === null ? 'Unreadable' : same ? 'Same' : 'Differs'}
+            </span>
+            {!same && c.hash !== null && c.modifiedMs !== null && (
+              <span className="shrink-0 font-mono text-[11px] text-[var(--color-text-muted)]">
+                {formatShortDateTime(new Date(c.modifiedMs).toISOString())}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => reveal(c.filePath)}
+              className={cn(
+                'shrink-0 rounded-full px-1 text-[11px] font-medium whitespace-nowrap text-[var(--color-accent)] hover:underline',
+                focusRing,
+              )}
+            >
+              Show in folder
+            </button>
+          </div>
+        );
+      })}
+      {list.length > 6 && !all && (
+        <button
+          type="button"
+          onClick={() => setAll(true)}
+          className={cn(
+            'self-start rounded-full px-1 text-[11px] font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
+            focusRing,
+          )}
+        >
+          and {list.length - 6} more
+        </button>
+      )}
+    </section>
+  );
+}
+
 export function ToolDetail({
   item,
   removed,
   items,
+  scopePath,
   onClose,
 }: {
   item: ToolItem;
   removed: boolean;
   items: ToolItem[];
+  scopePath: string | null;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -252,6 +328,7 @@ export function ToolDetail({
             )}
             <Chip title={source(item)}>{source(item)}</Chip>
           </div>
+          {isMarkdown && <AlsoFoundIn item={item} scopePath={scopePath} />}
           {isMarkdown && item.filePath && (
             <FileText key={item.filePath} path={item.filePath} itemError={item.error} />
           )}

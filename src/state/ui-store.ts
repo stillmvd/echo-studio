@@ -22,10 +22,9 @@ interface UiState {
   toolsType: KindFilter;
   toolsQuery: string;
   selectedToolId: string | null;
-  toolsProjectOnly: boolean;
   toolsOpenGroups: string[];
   toolToggleError: { id: string; message: string } | null;
-  toolsDuplicatesOnly: boolean;
+  toolsOverriddenOnly: boolean;
 
   setActiveTab: (tab: AppTab) => void;
   setConversationsProjectId: (id: string | null) => void;
@@ -44,10 +43,9 @@ interface UiState {
   setToolsType: (type: KindFilter) => void;
   setToolsQuery: (q: string) => void;
   setSelectedToolId: (id: string | null) => void;
-  setToolsProjectOnly: (on: boolean) => void;
   toggleToolsGroup: (key: string) => void;
   setToolToggleError: (error: { id: string; message: string } | null) => void;
-  setToolsDuplicatesOnly: (on: boolean) => void;
+  setToolsOverriddenOnly: (on: boolean) => void;
 }
 
 export function migrateUiState(persisted: unknown): unknown {
@@ -75,10 +73,9 @@ export const useUiStore = create<UiState>()(
       toolsType: 'all',
       toolsQuery: '',
       selectedToolId: null,
-      toolsProjectOnly: false,
       toolsOpenGroups: [],
       toolToggleError: null,
-      toolsDuplicatesOnly: false,
+      toolsOverriddenOnly: false,
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setConversationsProjectId: (conversationsProjectId) =>
@@ -108,7 +105,7 @@ export const useUiStore = create<UiState>()(
           toolsScope,
           selectedToolId: null,
           toolToggleError: null,
-          toolsDuplicatesOnly: false,
+          toolsOverriddenOnly: false,
         }),
       setToolsType: (toolsType) => set({ toolsType }),
       setToolsQuery: (toolsQuery) => set({ toolsQuery }),
@@ -117,7 +114,6 @@ export const useUiStore = create<UiState>()(
           selectedToolId,
           toolToggleError: s.toolToggleError?.id === selectedToolId ? s.toolToggleError : null,
         })),
-      setToolsProjectOnly: (toolsProjectOnly) => set({ toolsProjectOnly }),
       toggleToolsGroup: (key) =>
         set((s) => ({
           toolsOpenGroups: s.toolsOpenGroups.includes(key)
@@ -125,7 +121,7 @@ export const useUiStore = create<UiState>()(
             : [...s.toolsOpenGroups, key],
         })),
       setToolToggleError: (toolToggleError) => set({ toolToggleError }),
-      setToolsDuplicatesOnly: (toolsDuplicatesOnly) => set({ toolsDuplicatesOnly }),
+      setToolsOverriddenOnly: (toolsOverriddenOnly) => set({ toolsOverriddenOnly }),
     }),
     {
       name: 'echo-studio.ui',

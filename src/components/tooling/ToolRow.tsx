@@ -1,3 +1,4 @@
+import { Copy } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { highlightSegments } from '@/lib/tooling';
 import type { ToolItem } from '@/lib/types';
@@ -35,11 +36,15 @@ export function describeTool(item: ToolItem): string {
 
 type Tone = 'mono' | 'warn' | 'danger' | 'mine';
 
-function tags(item: ToolItem): { text: string; tone?: Tone }[] {
-  const out: { text: string; tone?: Tone }[] = [];
+function tags(item: ToolItem, copies: number): { text: string; tone?: Tone; copy?: boolean }[] {
+  const out: { text: string; tone?: Tone; copy?: boolean }[] = [];
   if (item.origin === 'project' || item.origin === 'local')
     out.push({ text: item.origin, tone: 'mine' });
-  if (item.overriddenBy) out.push({ text: `overridden by ${item.overriddenBy}`, tone: 'warn' });
+  if (item.overriddenBy) out.push({ text: `Overridden by ${item.overriddenBy}`, tone: 'warn' });
+  if (item.overrides.length > 0)
+    out.push({ text: `Overrides ${item.overrides.join(', ')}`, tone: 'warn' });
+  if (copies > 0)
+    out.push({ text: `+${copies} ${copies === 1 ? 'project' : 'projects'}`, copy: true });
   if (item.kind === 'plugin' && item.plugin?.version) {
     out.push({ text: item.plugin.version, tone: 'mono' });
   }
@@ -56,17 +61,20 @@ export function ToolRow({
   item,
   query,
   selected,
+  nested = false,
+  copies = 0,
   onSelect,
 }: {
   item: ToolItem;
   query: string;
   selected: boolean;
+  nested?: boolean;
+  copies?: number;
   onSelect: () => void;
 }) {
   const Icon = KIND_META[item.kind].icon;
   const name = item.kind === 'plugin' ? item.name : item.qualifiedName;
   const dim = item.state === 'disabled' || item.state === 'unavailable';
-  const nested = item.conflict === 'overridden';
 
   return (
     <div
@@ -103,7 +111,13 @@ export function ToolRow({
           <Icon className={nested ? 'h-3.5 w-3.5' : 'h-4 w-4'} strokeWidth={1.75} />
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate text-sm font-bold">
+          <span
+            className={cn(
+              'truncate text-sm font-bold',
+              item.overriddenBy &&
+                'line-through decoration-[color-mix(in_srgb,currentColor_45%,transparent)]',
+            )}
+          >
             <Highlight text={name} query={query} />
           </span>
           <span
@@ -114,16 +128,15 @@ export function ToolRow({
                 : 'text-[var(--color-text-muted)]',
             )}
           >
-            {nested && <span className="text-[var(--color-warning)]">overridden · </span>}
             <Highlight text={describeTool(item)} query={query} />
           </span>
         </span>
         <span className="flex shrink-0 gap-1.5">
-          {tags(item).map((t) => (
+          {tags(item, copies).map((t) => (
             <span
               key={t.text}
               className={cn(
-                'inline-flex h-[22px] items-center rounded-full px-2 text-[11px] font-medium whitespace-nowrap',
+                'inline-flex h-[22px] items-center gap-1 rounded-full px-2 text-[11px] font-medium whitespace-nowrap',
                 selected
                   ? 'bg-[color-mix(in_srgb,var(--color-bg-primary)_16%,transparent)] text-[color-mix(in_srgb,var(--color-bg-primary)_70%,transparent)]'
                   : t.tone === 'danger'
@@ -139,6 +152,7 @@ export function ToolRow({
                 t.tone === 'mono' && 'font-mono font-normal',
               )}
             >
+              {t.copy && <Copy className="h-3 w-3" strokeWidth={1.75} />}
               {t.text}
             </span>
           ))}

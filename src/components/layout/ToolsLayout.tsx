@@ -74,6 +74,7 @@ export function ToolsLayout() {
                 item={shown}
                 removed={!current}
                 items={items}
+                scopePath={scope.path}
                 onClose={close}
               />
             </div>
