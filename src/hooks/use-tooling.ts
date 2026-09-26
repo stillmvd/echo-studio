@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { listen } from '@tauri-apps/api/event';
+import { useEffect } from 'react';
 import {
   listConfigBackups,
   listToolScopes,
@@ -60,4 +62,24 @@ export function useSetToolEnabled() {
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ['tooling'] }),
   });
+}
+
+export function useToolingWatch() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    let off: (() => void) | undefined;
+    let cancelled = false;
+    listen('tooling://changed', () => {
+      void qc.invalidateQueries({ queryKey: ['tooling'] });
+    })
+      .then((un) => {
+        if (cancelled) un();
+        else off = un;
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      off?.();
+    };
+  }, [qc]);
 }
