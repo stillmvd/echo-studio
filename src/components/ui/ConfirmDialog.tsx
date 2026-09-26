@@ -152,9 +152,7 @@ export function ConfirmDialog({
           </div>
         )}
         {children && (
-          <div className="-mr-2 flex min-h-0 flex-col gap-3 overflow-y-auto pr-2 [scrollbar-width:thin]">
-            {children}
-          </div>
+          <div className="-mr-2 flex min-h-0 flex-col gap-3 overflow-y-auto pr-2">{children}</div>
         )}
         {error && <DialogNote tone="danger">{error}</DialogNote>}
         <div className="flex justify-end gap-2">

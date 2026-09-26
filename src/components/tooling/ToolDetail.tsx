@@ -238,7 +238,7 @@ export function ToolDetail({
           <LinkButton onClick={onClose}>Back to list</LinkButton>
         </Note>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-[88px] [scrollbar-width:thin]">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-[88px]">
           {toggleError && <ErrorPlate text={toggleError} />}
           <div className="flex flex-wrap gap-1.5">
             {item.filePath && (

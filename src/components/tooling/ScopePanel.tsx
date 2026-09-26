@@ -84,7 +84,7 @@ export function ScopePanel({ scopes, selectedPath, globalCount, onSelect }: Prop
       <h2 className="px-2 text-[22px] leading-[1.06] font-light tracking-[-0.02em] text-[var(--color-text-primary)]">
         All <b className="font-bold">scopes</b>
       </h2>
-      <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto [scrollbar-width:thin]">
+      <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
         <ScopeRow
           icon={Globe}
           name="Global"

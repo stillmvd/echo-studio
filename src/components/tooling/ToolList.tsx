@@ -236,10 +236,7 @@ export function ToolList({
     );
   } else {
     body = (
-      <div
-        ref={scrollRef}
-        className="min-h-0 flex-1 overflow-y-auto pb-[88px] [scrollbar-width:thin]"
-      >
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto pb-[88px]">
         <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
           {virtualizer.getVirtualItems().map((v) => {
             const item = visible[v.index];

@@ -95,11 +95,7 @@ export function SettingsLayout() {
 
   return (
     <div className={cn(panelCard, 'h-full @container')}>
-      <div
-        ref={scrollRef}
-        onScroll={onScroll}
-        className="h-full overflow-y-auto px-4 pt-6 pb-24 [scrollbar-width:thin]"
-      >
+      <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto px-4 pt-6 pb-24">
         <div className="mx-auto flex max-w-[940px] flex-col gap-[22px]">
           <header className="flex items-center gap-4 px-1">
             <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-[var(--color-bg-tertiary)] text-[var(--color-accent)]">
