@@ -64,8 +64,11 @@
 
 ## Phase 6: Polish
 
-- [ ] T013 Проверки (biome, typecheck, test, build, clippy, cargo test), адверсариальный ревью (`adversary`, sonnet) на FR-001…FR-014
-- [ ] T014 Версия 0.3.1 (`package.json`, `tauri.conf.json`, `Cargo.toml`); ROADMAP — строка v0.3.1; quickstart 1–5 — пользователь
+- [X] T013 Проверки (biome, typecheck, test, build, clippy, cargo test), адверсариальный ревью (`adversary`, sonnet) на FR-001…FR-014
+- [X] T014 Версия 0.3.1 (`package.json`, `tauri.conf.json`, `Cargo.toml`); ROADMAP — строка v0.3.1; quickstart 1–5 — пользователь
+
+- [X] T015 Заставка при запуске (`src-tauri/src/splash.rs`): окно-слой поверх рабочего стола, знак рисуется кодом — точка, ближняя дуга, внешние штрихи от центра; главное окно стартует скрытым и показывается, когда дорисована последняя дуга и фронтенд прислал `app_ready`; таймаут 8 с + страховка 10 с
+- [X] T016 Положение окна: состояние сохраняется явно при закрытии окна (раньше — только на `RunEvent::Exit`), флаг `VISIBLE` исключён — окно показывает заставка
 
 ## Dependencies
 

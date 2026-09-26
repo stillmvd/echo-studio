@@ -36,6 +36,7 @@ Phases 1+2+3 (EchoVault) и 7+8+9 (Conversations) независимы — мо�
 
 - v0.2.0: code-signing (если получим cert), NSIS installer, light theme, EN locale, sentry-tauri opt-in
 - v0.3.0: MCP-серверы / Skills / Commands viewer (по проекту + global) — **реализован 2026-09-26**, см. ниже
+- v0.3.1: доработки после приёмки (`specs/002-acceptance-polish/`) — группы skills по вендору, дубликаты со skills плагинов и фильтр, missing-проекты в группе, карточка вопросов в ленте, отступы результата, заставка с рисующимся знаком, запоминание положения окна; стенды 5–6 — **реализовано 2026-09-26**
 - v0.4.0: macOS build, AppData-portable mode (no system writes)
 - v0.5.0: full edit для conversations (rename session, edit messages with confirmation)
 - v1.0.0: после полевого использования + минимум 2 release циклов
