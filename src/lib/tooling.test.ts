@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyToggle, countByKind, filterTools, highlightSegments } from './tooling';
+import { applyToggle, countByKind, filterTools, highlightSegments, nestOverrides } from './tooling';
 import type { ToolItem } from './types';
 
 function item(p: Partial<ToolItem> & Pick<ToolItem, 'kind' | 'qualifiedName'>): ToolItem {
@@ -87,5 +87,27 @@ describe('applyToggle', () => {
       'enabled',
       'enabled',
     ]);
+  });
+});
+
+describe('nestOverrides', () => {
+  it('puts the overridden item right under its winner', () => {
+    const list = [
+      item({ kind: 'mcp', qualifiedName: 'a' }),
+      item({ kind: 'mcp', qualifiedName: 'dup', conflict: 'overridden' }),
+      item({ kind: 'mcp', qualifiedName: 'z' }),
+      item({ kind: 'mcp', qualifiedName: 'dup', origin: 'project', conflict: 'overrides' }),
+    ];
+    expect(nestOverrides(list).map((i) => `${i.name}:${i.origin}`)).toEqual([
+      'a:user',
+      'z:user',
+      'dup:project',
+      'dup:user',
+    ]);
+  });
+
+  it('keeps an overridden item when its winner is filtered out', () => {
+    const lone = [item({ kind: 'agent', qualifiedName: 'r', conflict: 'overridden' })];
+    expect(nestOverrides(lone)).toHaveLength(1);
   });
 });

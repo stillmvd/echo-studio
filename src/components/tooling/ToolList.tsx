@@ -2,7 +2,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { CircleAlert, Search, X } from 'lucide-react';
 import { useMemo, useRef } from 'react';
 import { splitTitle } from '@/lib/sessions';
-import { countByKind, filterTools } from '@/lib/tooling';
+import { countByKind, filterTools, nestOverrides } from '@/lib/tooling';
 import type { ScanResult, ScopeRef } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { KIND_META } from './kinds';
@@ -10,6 +10,7 @@ import { ToolRow } from './ToolRow';
 import { TypeFilter } from './TypeFilter';
 
 const ROW = 60;
+const NESTED = 44;
 const GAP = 2;
 const SORT_RANK = { skill: 0, plugin: 1, mcp: 2, command: 3, agent: 4 } as const;
 
@@ -78,6 +79,53 @@ function SearchField({ total, shown }: { total: number; shown: number }) {
   );
 }
 
+function ProjectChips({ items }: { items: ScanResult['items'] }) {
+  const own = items.filter((i) => i.origin === 'project' || i.origin === 'local').length;
+  const overrides = items.filter((i) => i.conflict === 'overrides').length;
+  const chip =
+    'inline-flex h-6 items-center rounded-full px-[9px] text-[11px] font-medium tabular-nums';
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      <span className={`${chip} bg-[var(--color-accent-soft)] text-[var(--color-text-primary)]`}>
+        <b className="mr-1 font-bold">{own}</b>from this project
+      </span>
+      {overrides > 0 && (
+        <span
+          className={`${chip} bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)]`}
+        >
+          <b className="mr-1 font-bold">{overrides}</b>
+          {overrides === 1 ? 'override' : 'overrides'}
+        </span>
+      )}
+      <span className={`${chip} bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]`}>
+        <b className="mr-1 font-bold text-[var(--color-text-primary)]">{items.length}</b>
+        Claude sees in total
+      </span>
+    </div>
+  );
+}
+
+function ProjectOnlyToggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={() => onChange(!on)}
+      className={`inline-flex shrink-0 items-center gap-2.5 rounded-full py-1 pr-1 pl-1 text-[13px] font-medium whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] ${on ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)]'}`}
+    >
+      <span
+        className={`relative h-[22px] w-9 rounded-full transition-colors duration-200 ease-[var(--ease-trail)] ${on ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-bg-tertiary)] shadow-[inset_0_0_0_1px_var(--color-border)]'}`}
+      >
+        <span
+          className={`absolute top-[3px] left-[3px] h-4 w-4 rounded-full transition-transform duration-200 ease-[var(--ease-trail)] motion-reduce:transition-none ${on ? 'translate-x-3.5 bg-[var(--color-accent-fg)]' : 'bg-[var(--color-text-muted)]'}`}
+        />
+      </span>
+      Project only
+    </button>
+  );
+}
+
 export function ToolList({
   scope,
   scan,
@@ -99,6 +147,10 @@ export function ToolList({
   const setQuery = useUiStore((s) => s.setToolsQuery);
   const selectedId = useUiStore((s) => s.selectedToolId);
   const setSelectedId = useUiStore((s) => s.setSelectedToolId);
+  const projectOnlyPref = useUiStore((s) => s.toolsProjectOnly);
+  const setProjectOnly = useUiStore((s) => s.setToolsProjectOnly);
+  const isProject = scope.kind === 'project';
+  const projectOnly = isProject && projectOnlyPref;
 
   const sorted = useMemo(
     () =>
@@ -108,10 +160,14 @@ export function ToolList({
       ),
     [scan],
   );
-  const matching = useMemo(() => filterTools(sorted, { kind: 'all', query }), [sorted, query]);
+  const base = useMemo(
+    () => (projectOnly ? filterTools(sorted, { kind: 'all', query: '', projectOnly }) : sorted),
+    [sorted, projectOnly],
+  );
+  const matching = useMemo(() => filterTools(base, { kind: 'all', query }), [base, query]);
   const counts = useMemo(() => countByKind(matching), [matching]);
   const visible = useMemo(
-    () => (type === 'all' ? matching : matching.filter((i) => i.kind === type)),
+    () => nestOverrides(type === 'all' ? matching : matching.filter((i) => i.kind === type)),
     [matching, type],
   );
   const failed = (scan?.sources ?? []).filter((s) => s.status === 'error');
@@ -120,7 +176,8 @@ export function ToolList({
   const virtualizer = useVirtualizer({
     count: visible.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => ROW + GAP,
+    getItemKey: (index) => visible[index]?.id ?? index,
+    estimateSize: (index) => (visible[index]?.conflict === 'overridden' ? NESTED : ROW) + GAP,
     overscan: 8,
   });
 
@@ -191,7 +248,7 @@ export function ToolList({
               <div
                 key={item.id}
                 className="absolute inset-x-0"
-                style={{ top: v.start, height: ROW }}
+                style={{ top: v.start, height: v.size - GAP }}
               >
                 <ToolRow
                   item={item}
@@ -210,17 +267,23 @@ export function ToolList({
   return (
     <div className="@container flex h-full flex-col gap-3.5 overflow-hidden px-4 pt-5">
       <div className="flex flex-col gap-2.5 pr-1 pl-2">
-        <h2 className="truncate text-[22px] leading-[1.06] font-light tracking-[-0.02em] text-[var(--color-text-primary)]">
-          {lightName}
-          <b className="font-bold">{boldName}</b>
-        </h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="min-w-0 truncate text-[22px] leading-[1.06] font-light tracking-[-0.02em] text-[var(--color-text-primary)]">
+            {lightName}
+            <b className="font-bold">{boldName}</b>
+          </h2>
+          {isProject && scope.available && (
+            <ProjectOnlyToggle on={projectOnlyPref} onChange={setProjectOnly} />
+          )}
+        </div>
+        {isProject && scan && !isLoading && <ProjectChips items={scan.items} />}
         {scan && !isLoading && !compact && <Tiles counts={scan.counts} />}
       </div>
       {scope.available && (
         <div className="flex flex-wrap items-center gap-2.5 px-1">
           <TypeFilter value={type} counts={counts} onChange={setType} />
           <SearchField
-            total={type === 'all' ? sorted.length : sorted.filter((i) => i.kind === type).length}
+            total={type === 'all' ? base.length : base.filter((i) => i.kind === type).length}
             shown={visible.length}
           />
         </div>

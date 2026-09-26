@@ -81,3 +81,17 @@ export function applyToggle(items: ToolItem[], target: ToggleTarget, enabled: bo
     return i;
   });
 }
+
+export function nestOverrides(items: ToolItem[]): ToolItem[] {
+  const key = (i: ToolItem) => `${i.kind}:${i.name.toLowerCase()}`;
+  const winners = new Set(items.filter((i) => i.conflict === 'overrides').map(key));
+  const out: ToolItem[] = [];
+  for (const i of items) {
+    if (i.conflict === 'overridden' && winners.has(key(i))) continue;
+    out.push(i);
+    if (i.conflict === 'overrides') {
+      for (const o of items) if (o.conflict === 'overridden' && key(o) === key(i)) out.push(o);
+    }
+  }
+  return out;
+}

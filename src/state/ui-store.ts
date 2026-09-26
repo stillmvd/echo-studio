@@ -22,6 +22,7 @@ interface UiState {
   toolsType: KindFilter;
   toolsQuery: string;
   selectedToolId: string | null;
+  toolsProjectOnly: boolean;
 
   setActiveTab: (tab: AppTab) => void;
   setConversationsProjectId: (id: string | null) => void;
@@ -40,6 +41,7 @@ interface UiState {
   setToolsType: (type: KindFilter) => void;
   setToolsQuery: (q: string) => void;
   setSelectedToolId: (id: string | null) => void;
+  setToolsProjectOnly: (on: boolean) => void;
 }
 
 export function migrateUiState(persisted: unknown): unknown {
@@ -67,6 +69,7 @@ export const useUiStore = create<UiState>()(
       toolsType: 'all',
       toolsQuery: '',
       selectedToolId: null,
+      toolsProjectOnly: false,
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setConversationsProjectId: (conversationsProjectId) =>
@@ -95,6 +98,7 @@ export const useUiStore = create<UiState>()(
       setToolsType: (toolsType) => set({ toolsType }),
       setToolsQuery: (toolsQuery) => set({ toolsQuery }),
       setSelectedToolId: (selectedToolId) => set({ selectedToolId }),
+      setToolsProjectOnly: (toolsProjectOnly) => set({ toolsProjectOnly }),
     }),
     {
       name: 'echo-studio.ui',

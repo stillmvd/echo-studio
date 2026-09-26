@@ -95,7 +95,7 @@ guard путей, фильтры фронтенда) — они включены
 **Independent Test**: quickstart сценарий 4.
 
 - [X] T034 [US2] Стенд 3 «Итог проекта» — только если выбор стендов 1–2 не покрывает метки источника (`user` / `project` / `local` / плагин), `conflict` и переключатель «только проектное»; иначе записать в журнал «без стенда, на базе 1–2». **СТОП до выбора, если стенд делается**
-- [ ] T035 [US2] `src/components/tooling/ToolRow.tsx` и `ToolDetail.tsx`: метки источника и конфликта; `src/components/tooling/ScopeHeader` — «только проектное» (фильтр `origin ∈ {project, local}` в `src/lib/tooling.ts` + тест); недоступный проект — состояние из стенда 1
+- [X] T035 [US2] `src/components/tooling/ToolRow.tsx` и `ToolDetail.tsx`: метки источника и конфликта; `src/components/tooling/ScopeHeader` — «только проектное» (фильтр `origin ∈ {project, local}` в `src/lib/tooling.ts` + тест); недоступный проект — состояние из стенда 1
 - [ ] T036 [US2] Сверка SC-002 на Breezee и Smart Control: список итога против того, что Claude Code показывает в сессии (`/mcp`, skills); расхождения — исправить в `src-tauri/src/tooling/effective.rs` с тестом
 
 **Checkpoint**: коммит `feat(tooling): project effective view`.

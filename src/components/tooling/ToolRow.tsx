@@ -32,8 +32,13 @@ export function describeTool(item: ToolItem): string {
   return item.description ?? '';
 }
 
-function tags(item: ToolItem): { text: string; tone?: 'mono' | 'warn' | 'danger' }[] {
-  const out: { text: string; tone?: 'mono' | 'warn' | 'danger' }[] = [];
+type Tone = 'mono' | 'warn' | 'danger' | 'mine';
+
+function tags(item: ToolItem): { text: string; tone?: Tone }[] {
+  const out: { text: string; tone?: Tone }[] = [];
+  if (item.origin === 'project' || item.origin === 'local')
+    out.push({ text: item.origin, tone: 'mine' });
+  if (item.conflict === 'sameName') out.push({ text: 'same name', tone: 'warn' });
   if (item.kind === 'plugin' && item.plugin?.version) {
     out.push({ text: item.plugin.version, tone: 'mono' });
   }
@@ -61,6 +66,7 @@ export function ToolRow({
   const Icon = KIND_META[item.kind].icon;
   const name = item.kind === 'plugin' ? item.name : item.qualifiedName;
   const muted = item.state === 'disabled';
+  const nested = item.conflict === 'overridden';
 
   return (
     <button
@@ -69,7 +75,10 @@ export function ToolRow({
       aria-current={selected ? 'true' : undefined}
       title={item.error ?? undefined}
       className={cn(
-        'flex h-[60px] w-full items-center gap-3 rounded-[20px] pr-3 pl-2.5 text-left transition-colors duration-200 ease-[var(--ease-trail)] outline-none select-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]',
+        'flex w-full items-center gap-3 pr-3 pl-2.5 text-left transition-colors duration-200 ease-[var(--ease-trail)] outline-none select-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]',
+        nested
+          ? 'ml-12 h-11 w-[calc(100%-3rem)] rounded-full opacity-70'
+          : 'h-[60px] rounded-[20px]',
         selected
           ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-primary)]'
           : 'text-[var(--color-text-primary)] hover:bg-[var(--color-hover)]',
@@ -78,13 +87,14 @@ export function ToolRow({
     >
       <span
         className={cn(
-          'grid h-9 w-9 shrink-0 place-items-center rounded-full',
+          'grid shrink-0 place-items-center rounded-full',
+          nested ? 'h-7 w-7' : 'h-9 w-9',
           selected
             ? 'bg-[color-mix(in_srgb,var(--color-bg-primary)_16%,transparent)] text-[color-mix(in_srgb,var(--color-bg-primary)_62%,transparent)]'
             : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]',
         )}
       >
-        <Icon className="h-4 w-4" strokeWidth={1.75} />
+        <Icon className={nested ? 'h-3.5 w-3.5' : 'h-4 w-4'} strokeWidth={1.75} />
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span
@@ -103,6 +113,7 @@ export function ToolRow({
               : 'text-[var(--color-text-muted)]',
           )}
         >
+          {nested && <span className="text-[var(--color-warning)]">overridden · </span>}
           <Highlight text={describeTool(item)} query={query} />
         </span>
       </span>
@@ -116,12 +127,14 @@ export function ToolRow({
                 ? 'bg-[color-mix(in_srgb,var(--color-bg-primary)_16%,transparent)] text-[color-mix(in_srgb,var(--color-bg-primary)_70%,transparent)]'
                 : t.tone === 'danger'
                   ? 'bg-[var(--color-danger-soft)] text-[var(--color-danger)]'
-                  : cn(
-                      'bg-[var(--color-bg-tertiary)]',
-                      t.tone === 'warn'
-                        ? 'text-[var(--color-warning)]'
-                        : 'text-[var(--color-text-muted)]',
-                    ),
+                  : t.tone === 'mine'
+                    ? 'bg-[var(--color-accent-soft)] text-[var(--color-text-primary)]'
+                    : cn(
+                        'bg-[var(--color-bg-tertiary)]',
+                        t.tone === 'warn'
+                          ? 'text-[var(--color-warning)]'
+                          : 'text-[var(--color-text-muted)]',
+                      ),
               t.tone === 'mono' && 'font-mono font-normal',
             )}
           >
