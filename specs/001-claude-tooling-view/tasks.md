@@ -94,7 +94,7 @@ guard путей, фильтры фронтенда) — они включены
 
 **Independent Test**: quickstart сценарий 4.
 
-- [ ] T034 [US2] Стенд 3 «Итог проекта» — только если выбор стендов 1–2 не покрывает метки источника (`user` / `project` / `local` / плагин), `conflict` и переключатель «только проектное»; иначе записать в журнал «без стенда, на базе 1–2». **СТОП до выбора, если стенд делается**
+- [X] T034 [US2] Стенд 3 «Итог проекта» — только если выбор стендов 1–2 не покрывает метки источника (`user` / `project` / `local` / плагин), `conflict` и переключатель «только проектное»; иначе записать в журнал «без стенда, на базе 1–2». **СТОП до выбора, если стенд делается**
 - [ ] T035 [US2] `src/components/tooling/ToolRow.tsx` и `ToolDetail.tsx`: метки источника и конфликта; `src/components/tooling/ScopeHeader` — «только проектное» (фильтр `origin ∈ {project, local}` в `src/lib/tooling.ts` + тест); недоступный проект — состояние из стенда 1
 - [ ] T036 [US2] Сверка SC-002 на Breezee и Smart Control: список итога против того, что Claude Code показывает в сессии (`/mcp`, skills); расхождения — исправить в `src-tauri/src/tooling/effective.rs` с тестом
 
@@ -127,8 +127,8 @@ guard путей, фильтры фронтенда) — они включены
 **Independent Test**: quickstart сценарий 8.
 
 - [X] T044 [US5] `src-tauri/src/tooling/watch.rs`: debouncer 500 мс; рекурсивно `~/.claude/{skills,commands,agents}` и `<project>/.claude` известных доступных проектов; без рекурсии `~/.claude/settings.json`, `~/.claude/plugins/installed_plugins.json`, `~/.claude.json`, `<project>/.mcp.json`; для `~/.claude.json` — сравнить срез (`mcpServers`, `disabledMcpServers` и те же ключи в `projects[*]`) с прошлым и не слать событие без изменений; событие `tooling://changed`; запуск в `src-tauri/src/lib.rs`
-- [ ] T045 [US5] `src/hooks/use-tooling.ts`: подписка на `tooling://changed` → `invalidateQueries(['tooling'])`; детали удалённого элемента — состояние «удалён» (из стенда 2); `src/components/layout/StatusBar.tsx` — подпись «watching» появляется и отражает работу watcher'а
-- [ ] T046 [US5] Проверки; quickstart 8 в dev
+- [X] T045 [US5] `src/hooks/use-tooling.ts`: подписка на `tooling://changed` → `invalidateQueries(['tooling'])`; детали удалённого элемента — состояние «удалён» (из стенда 2); `src/components/layout/StatusBar.tsx` — подпись «watching» появляется и отражает работу watcher'а
+- [X] T046 [US5] Проверки; quickstart 8 в dev
 
 **Checkpoint**: коммит `feat(tooling): live updates`.
 
