@@ -91,16 +91,17 @@ function SearchField({ total, shown }: { total: number; shown: number }) {
 
 function ScopeChips({
   items,
+  duplicates,
   isProject,
   duplicatesOnly,
   onDuplicates,
 }: {
   items: ScanResult['items'];
+  duplicates: number;
   isProject: boolean;
   duplicatesOnly: boolean;
   onDuplicates: () => void;
 }) {
-  const duplicates = items.filter((i) => i.conflict === 'sameName').length;
   if (!isProject && duplicates === 0) return null;
   const own = items.filter((i) => i.origin === 'project' || i.origin === 'local').length;
   const overrides = items.filter((i) => i.conflict === 'overrides').length;
@@ -269,12 +270,12 @@ export function ToolList({
       ),
     [scan],
   );
-  const base = useMemo(() => {
-    const scoped = projectOnly
-      ? filterTools(sorted, { kind: 'all', query: '', projectOnly })
-      : sorted;
-    return duplicatesOnly ? scoped.filter((i) => i.conflict === 'sameName') : scoped;
-  }, [sorted, projectOnly, duplicatesOnly]);
+  const scoped = useMemo(
+    () => (projectOnly ? filterTools(sorted, { kind: 'all', query: '', projectOnly }) : sorted),
+    [sorted, projectOnly],
+  );
+  const duplicates = useMemo(() => scoped.filter((i) => i.conflict === 'sameName'), [scoped]);
+  const base = duplicatesOnly ? duplicates : scoped;
   const matching = useMemo(() => filterTools(base, { kind: 'all', query }), [base, query]);
   const counts = useMemo(() => countByKind(matching), [matching]);
   const visible = useMemo(
@@ -428,6 +429,7 @@ export function ToolList({
         {scan && !isLoading && (
           <ScopeChips
             items={scan.items}
+            duplicates={duplicates.length}
             isProject={isProject}
             duplicatesOnly={duplicatesOnly}
             onDuplicates={() => setDuplicatesOnly(!duplicatesOnly)}

@@ -16,7 +16,11 @@ function askResults(events: DisplayItem[]): Map<DisplayItem, DisplayItem | null>
   const taken = new Set<DisplayItem>();
   events.forEach((ev, i) => {
     if (ev.kind !== 'tool_use' || ev.toolName !== 'AskUserQuestion') return;
-    const rest = events.slice(i + 1).filter((r) => r.kind === 'tool_result' && !taken.has(r));
+    const after = events.slice(i + 1);
+    const end = after.findIndex((r) => r.kind !== 'tool_use' && r.kind !== 'tool_result');
+    const rest = (end === -1 ? after : after.slice(0, end)).filter(
+      (r) => r.kind === 'tool_result' && !taken.has(r),
+    );
     const result = rest.find((r) => r.parentUuid === ev.uuid.split(':')[0]) ?? rest[0] ?? null;
     if (result) taken.add(result);
     out.set(ev, result);
