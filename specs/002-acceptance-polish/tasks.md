@@ -34,9 +34,9 @@
 
 ## Phase 3: User Story 3 — Missing-проекты (P2)
 
-- [ ] T004 [US3] `src/lib/tooling.ts`: `samePath(a, b)` (регистр, `\`/`/`, хвостовой слэш) + тест
-- [ ] T005 [US3] `src/components/tooling/ScopePanel.tsx`: live-проекты, затем группа «Missing · N» (заголовок как «Projects · N», шеврон), свёрнута по умолчанию, раскрыта при выбранном missing-проекте
-- [ ] T006 [US3] `src/components/tooling/ToolList.tsx`: экран missing-проекта — путь, число сессий из `useConversationProjects` по `samePath`, «Open in Conversations» (`setConversationsProjectId` + `setActiveTab`), «No sessions» при 0
+- [X] T004 [US3] `src/lib/tooling.ts`: `samePath(a, b)` (регистр, `\`/`/`, хвостовой слэш) + тест
+- [X] T005 [US3] `src/components/tooling/ScopePanel.tsx`: live-проекты, затем группа «Missing · N» (заголовок как «Projects · N», шеврон), свёрнута по умолчанию, раскрыта при выбранном missing-проекте
+- [X] T006 [US3] `src/components/tooling/ToolList.tsx`: экран missing-проекта — путь, число сессий из `useConversationProjects` по `samePath`, «Open in Conversations» (`setConversationsProjectId` + `setActiveTab`), «No sessions» при 0
 
 **Checkpoint**: коммит `feat(tooling): missing projects grouped with a link to sessions`.
 

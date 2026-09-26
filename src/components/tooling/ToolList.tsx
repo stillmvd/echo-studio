@@ -1,9 +1,10 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { CircleAlert, Search, X } from 'lucide-react';
 import { useMemo, useRef } from 'react';
+import { useConversationProjects } from '@/hooks/use-conversations';
 import { cn } from '@/lib/cn';
 import { splitTitle } from '@/lib/sessions';
-import { countByKind, filterTools, nestOverrides } from '@/lib/tooling';
+import { countByKind, filterTools, nestOverrides, samePath } from '@/lib/tooling';
 import type { ScanResult, ScopeRef } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { KIND_META } from './kinds';
@@ -161,6 +162,35 @@ function ProjectOnlyToggle({ on, onChange }: { on: boolean; onChange: (v: boolea
   );
 }
 
+function MissingScope({ path }: { path: string }) {
+  const projects = useConversationProjects();
+  const setProjectId = useUiStore((s) => s.setConversationsProjectId);
+  const setTab = useUiStore((s) => s.setActiveTab);
+  const project = projects.data?.find((p) => samePath(p.cwd, path));
+  const sessions = project?.sessionCount ?? 0;
+  return (
+    <CenterNote>
+      <span>This project folder no longer exists.</span>
+      <span className="font-mono text-xs font-normal [overflow-wrap:anywhere]">{path}</span>
+      {!projects.isLoading &&
+        (project && sessions > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setProjectId(project.id);
+              setTab('conversations');
+            }}
+            className="mt-2 inline-flex h-10 items-center rounded-full bg-[color-mix(in_srgb,var(--color-text-primary)_7%,transparent)] px-[18px] text-[13px] font-bold text-[var(--color-text-primary)] outline-none hover:bg-[var(--color-hover)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] active:scale-[.96]"
+          >
+            Open {sessions} {sessions === 1 ? 'session' : 'sessions'} in Conversations
+          </button>
+        ) : (
+          <span className="mt-2">No sessions</span>
+        ))}
+    </CenterNote>
+  );
+}
+
 export function ToolList({
   scope,
   scan,
@@ -224,12 +254,7 @@ export function ToolList({
 
   let body: React.ReactNode;
   if (!scope.available) {
-    body = (
-      <CenterNote>
-        <span>This project folder no longer exists.</span>
-        <span className="font-mono text-xs font-normal [overflow-wrap:anywhere]">{scope.path}</span>
-      </CenterNote>
-    );
+    body = <MissingScope path={scope.path ?? ''} />;
   } else if (isLoading) {
     body = (
       <CenterNote>

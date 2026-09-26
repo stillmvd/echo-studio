@@ -1,4 +1,12 @@
-import { Copy, Folder, FolderOpen, Globe, SquareTerminal } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Folder,
+  FolderOpen,
+  Globe,
+  SquareTerminal,
+} from 'lucide-react';
 import { useState } from 'react';
 import { ContextMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
@@ -32,7 +40,6 @@ function ScopeRow({
   onClick: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
 }) {
-  const chip = missing ? 'missing' : count;
   return (
     <li className="shrink-0">
       <button
@@ -58,7 +65,7 @@ function ScopeRow({
         <span className={cn('min-w-0 flex-1 truncate', missing && !selected && 'opacity-60')}>
           {name}
         </span>
-        {chip !== undefined && (
+        {count !== undefined && (
           <span
             className={cn(
               'inline-flex h-6 shrink-0 items-center rounded-full px-[9px] text-[11px] font-medium tabular-nums',
@@ -67,7 +74,7 @@ function ScopeRow({
                 : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]',
             )}
           >
-            {chip}
+            {count}
           </span>
         )}
       </button>
@@ -77,7 +84,27 @@ function ScopeRow({
 
 export function ScopePanel({ scopes, selectedPath, globalCount, onSelect }: Props) {
   const projects = scopes.filter((s) => s.kind === 'project');
+  const live = projects.filter((s) => s.available);
+  const missing = projects.filter((s) => !s.available);
+  const missingSelected = missing.some((s) => s.path === selectedPath);
+  const [missingOpen, setMissingOpen] = useState(false);
+  const showMissing = missingOpen || missingSelected;
   const [menu, setMenu] = useState<{ x: number; y: number; path: string } | null>(null);
+  const projectRow = (s: ScopeRef) => (
+    <ScopeRow
+      key={s.path}
+      icon={Folder}
+      name={s.name}
+      title={s.path ?? undefined}
+      selected={selectedPath === s.path}
+      missing={!s.available}
+      onClick={() => onSelect(s.path)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        if (s.path && s.available) setMenu({ ...menuPoint(e), path: s.path });
+      }}
+    />
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 px-3 pt-5 pb-3">
@@ -94,23 +121,28 @@ export function ScopePanel({ scopes, selectedPath, globalCount, onSelect }: Prop
           onClick={() => onSelect(null)}
         />
         <li className="shrink-0 px-3.5 pt-2.5 pb-1 text-xs font-medium text-[var(--color-text-muted)]">
-          Projects · {projects.length}
+          Projects · {live.length}
         </li>
-        {projects.map((s) => (
-          <ScopeRow
-            key={s.path}
-            icon={Folder}
-            name={s.name}
-            title={s.path ?? undefined}
-            selected={selectedPath === s.path}
-            missing={!s.available}
-            onClick={() => onSelect(s.path)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              if (s.path && s.available) setMenu({ ...menuPoint(e), path: s.path });
-            }}
-          />
-        ))}
+        {live.map(projectRow)}
+        {missing.length > 0 && (
+          <li className="shrink-0 pt-1.5">
+            <button
+              type="button"
+              aria-expanded={showMissing}
+              disabled={missingSelected}
+              onClick={() => setMissingOpen((o) => !o)}
+              className="flex w-full items-center gap-1.5 rounded-full px-3.5 py-1.5 text-left text-xs font-medium text-[var(--color-text-muted)] outline-none hover:text-[var(--color-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] disabled:hover:text-[var(--color-text-muted)]"
+            >
+              {showMissing ? (
+                <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.75} />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+              )}
+              Missing · {missing.length}
+            </button>
+          </li>
+        )}
+        {showMissing && missing.map(projectRow)}
       </ul>
       {menu && (
         <ContextMenu

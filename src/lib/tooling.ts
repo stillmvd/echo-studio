@@ -95,3 +95,11 @@ export function nestOverrides(items: ToolItem[]): ToolItem[] {
   }
   return out;
 }
+
+function normalizePath(p: string): string {
+  return p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+}
+
+export function samePath(a: string, b: string): boolean {
+  return normalizePath(a) === normalizePath(b);
+}

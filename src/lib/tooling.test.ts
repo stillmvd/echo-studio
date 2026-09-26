@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { applyToggle, countByKind, filterTools, highlightSegments, nestOverrides } from './tooling';
+import {
+  applyToggle,
+  countByKind,
+  filterTools,
+  highlightSegments,
+  nestOverrides,
+  samePath,
+} from './tooling';
 import type { ToolItem } from './types';
 
 function item(p: Partial<ToolItem> & Pick<ToolItem, 'kind' | 'qualifiedName'>): ToolItem {
@@ -109,5 +116,12 @@ describe('nestOverrides', () => {
   it('keeps an overridden item when its winner is filtered out', () => {
     const lone = [item({ kind: 'agent', qualifiedName: 'r', conflict: 'overridden' })];
     expect(nestOverrides(lone)).toHaveLength(1);
+  });
+});
+
+describe('samePath', () => {
+  it('ignores case, slash style and a trailing slash', () => {
+    expect(samePath('c:/Users/X/p', 'C:\\users\\x\\P\\')).toBe(true);
+    expect(samePath('C:/a/b', 'C:/a/bc')).toBe(false);
   });
 });
