@@ -21,6 +21,7 @@
 | 3 | Итог проекта (T034): источник, перекрытия, только проектное, заголовок проекта | https://claude.ai/artifact/CT51Hq3maM2JKV2ncodorJ · `.planning/sketches/103-project-view/stand.html` (генератор `gen103.cjs`) | Источник B · Перекрытия C · Только проектное C · Заголовок проекта C | — |
 | 4 | Переключатель (T040): в строке, в деталях, выключенное, нельзя выключить, ошибка записи, где выключается | https://claude.ai/artifact/PzfXAff8se6YbNJoHjkxy1 · `.planning/sketches/104-tool-toggle/stand.html` (генератор `gen104.cjs`) | В строке A · В деталях B · Выключенное B · Нельзя выключить A · Ошибка записи B · Где выключается A | — |
 | 5 | Группы skills (v0.3.1, T008): заголовок группы, по умолчанию, раскрытая группа, плагин и префикс | https://claude.ai/artifact/LbmfPDbyfcCmqCAGPQWtTR · `.planning/sketches/105-skill-groups/stand.html` (генератор `gen105.cjs`, данные `skills.json`) | Заголовок группы B · По умолчанию A · Раскрытая группа B · Плагин и префикс B | — |
+| 6 | Вопросы в сессии (v0.3.1, T011): где карточка, отметка выбора, свой ответ, заметка | https://claude.ai/artifact/Lzu13KMyJcYvdpnTtGub3C · `.planning/sketches/106-ask-card/stand.html` (генератор `gen106.cjs`, данные `asks.json`) | — | — |
 
 ## Стенд 1 — раскладка вкладки (выбор 2026-09-26)
 

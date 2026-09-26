@@ -23,6 +23,8 @@ export interface AskCard {
 
 type Obj = Record<string, unknown>;
 
+const NOTES_ONLY = '(notes only)';
+
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v: unknown): string | null => (typeof v === 'string' ? v : null);
 
@@ -31,6 +33,7 @@ function pick(
   labels: string[],
   multi: boolean,
 ): { picked: Set<string>; other: string | null } {
+  if (answer === NOTES_ONLY) return { picked: new Set(), other: null };
   if (labels.includes(answer)) return { picked: new Set([answer]), other: null };
   if (!multi) return { picked: new Set(), other: answer };
   const picked = new Set<string>();
@@ -43,7 +46,7 @@ function pick(
     picked.add(next);
     rest = rest.slice(next.length).replace(/^, /, '');
   }
-  return { picked, other: rest || null };
+  return { picked, other: rest.replace(/^"([\s\S]*)"$/, '$1') || null };
 }
 
 function answersFromText(text: string): Record<string, string> {

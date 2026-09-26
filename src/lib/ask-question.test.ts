@@ -64,6 +64,27 @@ describe('parseAsk', () => {
     expect(card?.questions[1]?.other).toBeNull();
   });
 
+  it('splits a quoted custom answer from multi picks', () => {
+    const card = parseAsk(
+      use,
+      result({ answers: { 'Что проверить?': 'Линт, "и e2e, если успеем"' } }),
+    );
+    expect(card?.questions[1]?.options.map((o) => o.picked)).toEqual([false, true, false]);
+    expect(card?.questions[1]?.other).toBe('и e2e, если успеем');
+  });
+
+  it('treats a notes-only answer as no pick and no custom text', () => {
+    const card = parseAsk(
+      use,
+      result({
+        answers: { 'Как чистить AMD?': '(notes only)' },
+        annotations: { 'Как чистить AMD?': { notes: 'сам посмотрю' } },
+      }),
+    );
+    expect(card?.questions[0]?.other).toBeNull();
+    expect(card?.questions[0]?.notes).toBe('сам посмотрю');
+  });
+
   it('keeps a custom answer as text', () => {
     const card = parseAsk(use, result({ answers: { 'Как чистить AMD?': 'Сам решу' } }));
     expect(card?.questions[0]?.other).toBe('Сам решу');
