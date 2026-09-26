@@ -14,7 +14,7 @@
 4. **Inherited from Global.** Проект Echo Studio: свои инструменты сверху, ниже свёрнутая «Inherited from
    Global · N»; раскрытие запоминается после перезапуска; поиск по имени глобального skill показывает его
    без раскрытия; «Project only» нет.
-5. **Also in N projects.** Echo Studio → `redesign-stand`: в строке «also in 3 projects»; в деталях «Also found
+5. **Also in N projects.** Echo Studio → `redesign-stand`: в строке чип «+3 projects»; в деталях «Also found
    in» — Booked, Horizon, Markdown, у каждого Same/Differs, у Differs дата; «Show in folder» открывает папку.
 6. **Уведомления агентов.** Conversations → Unmasking_Julia → сессия `7c2e3786`: уведомления — шаги «Agent
    "…" finished · completed» без «You»; отчёт свёрнут, раскрывается markdown. Экспорт сессии — блок «Agent».

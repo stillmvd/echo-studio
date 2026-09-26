@@ -80,7 +80,7 @@ UI временно: `ToolRow` показывает `overriddenBy` старым 
 ## Phase 7: Polish
 
 - [X] T018 Проверки: `pnpm biome check src`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `cargo clippy --all-targets -- -D warnings`, `cargo test`
-- [ ] T019 Версия 0.4.0 (`package.json`, `src-tauri/Cargo.toml`, `tauri.conf.json`), `.planning/HANDOFF.md`, `pnpm tauri build --no-bundle`; коммит `chore: bump version to 0.4.0`
+- [X] T019 Версия 0.4.0 (`package.json`, `src-tauri/Cargo.toml`, `tauri.conf.json`), `.planning/HANDOFF.md`, `pnpm tauri build --no-bundle`; коммит `chore: bump version to 0.4.0`
 
 ## Dependencies
 
