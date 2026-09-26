@@ -215,7 +215,8 @@ fn mark_conflicts(items: &mut [ToolItem]) {
     };
     let mut groups: HashMap<(Kind, String), Vec<usize>> = HashMap::new();
     for (i, item) in items.iter().enumerate() {
-        if item.origin != Origin::Plugin && item.kind != Kind::Plugin {
+        if item.kind != Kind::Plugin && (item.origin != Origin::Plugin || item.kind == Kind::Skill)
+        {
             groups
                 .entry((item.kind, item.name.to_lowercase()))
                 .or_default()
@@ -223,8 +224,11 @@ fn mark_conflicts(items: &mut [ToolItem]) {
         }
     }
     for ((kind, _), idx) in groups {
-        let origins: HashSet<Origin> = idx.iter().map(|&i| items[i].origin).collect();
-        if origins.len() < 2 {
+        let sources: HashSet<(Origin, Option<&str>)> = idx
+            .iter()
+            .map(|&i| (items[i].origin, items[i].plugin_key.as_deref()))
+            .collect();
+        if sources.len() < 2 {
             continue;
         }
         match kind {
@@ -288,6 +292,7 @@ pub fn scan_global(home: &Path) -> ScanResult {
     ));
     add_plugins(home, None, &mut items, &mut sources);
     apply_states(&mut items, &toggles, None);
+    mark_conflicts(&mut items);
 
     ScanResult {
         scope: global_scope(),
@@ -512,6 +517,36 @@ mod tests {
         assert_eq!(fs_mcp.state, State::Enabled);
         assert_eq!(fs_mcp.toggle.as_ref().unwrap().file, ToggleFile::ClaudeJson);
         assert!(r.items.iter().all(|i| i.conflict == Conflict::None));
+    }
+
+    fn skill(origin: Origin, name: &str, plugin: Option<&str>) -> ToolItem {
+        let qualified = plugin.map_or(name.to_string(), |p| format!("{p}:{name}"));
+        let mut item = ToolItem::new(Kind::Skill, origin, name.into(), qualified);
+        item.plugin_key = plugin.map(|p| format!("{p}@mkt"));
+        item
+    }
+
+    #[test]
+    fn plugin_skills_join_same_name_groups() {
+        let mut items = vec![
+            skill(Origin::User, "chisle", None),
+            skill(Origin::Plugin, "chisle", Some("chisle")),
+            skill(Origin::Plugin, "lint", Some("a")),
+            skill(Origin::Plugin, "lint", Some("b")),
+            skill(Origin::Plugin, "solo", Some("a")),
+        ];
+        mark_conflicts(&mut items);
+        let conflicts: Vec<Conflict> = items.iter().map(|i| i.conflict).collect();
+        assert_eq!(
+            conflicts,
+            vec![
+                Conflict::SameName,
+                Conflict::SameName,
+                Conflict::SameName,
+                Conflict::SameName,
+                Conflict::None
+            ]
+        );
     }
 
     #[test]

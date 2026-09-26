@@ -24,6 +24,7 @@ interface UiState {
   selectedToolId: string | null;
   toolsProjectOnly: boolean;
   toolToggleError: { id: string; message: string } | null;
+  toolsDuplicatesOnly: boolean;
 
   setActiveTab: (tab: AppTab) => void;
   setConversationsProjectId: (id: string | null) => void;
@@ -44,6 +45,7 @@ interface UiState {
   setSelectedToolId: (id: string | null) => void;
   setToolsProjectOnly: (on: boolean) => void;
   setToolToggleError: (error: { id: string; message: string } | null) => void;
+  setToolsDuplicatesOnly: (on: boolean) => void;
 }
 
 export function migrateUiState(persisted: unknown): unknown {
@@ -73,6 +75,7 @@ export const useUiStore = create<UiState>()(
       selectedToolId: null,
       toolsProjectOnly: false,
       toolToggleError: null,
+      toolsDuplicatesOnly: false,
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setConversationsProjectId: (conversationsProjectId) =>
@@ -98,7 +101,12 @@ export const useUiStore = create<UiState>()(
       toggleViewerShowSystem: () => set((s) => ({ viewerShowSystem: !s.viewerShowSystem })),
       toggleViewerShowThinking: () => set((s) => ({ viewerShowThinking: !s.viewerShowThinking })),
       setToolsScope: (toolsScope) =>
-        set({ toolsScope, selectedToolId: null, toolToggleError: null }),
+        set({
+          toolsScope,
+          selectedToolId: null,
+          toolToggleError: null,
+          toolsDuplicatesOnly: false,
+        }),
       setToolsType: (toolsType) => set({ toolsType }),
       setToolsQuery: (toolsQuery) => set({ toolsQuery }),
       setSelectedToolId: (selectedToolId) =>
@@ -108,6 +116,7 @@ export const useUiStore = create<UiState>()(
         })),
       setToolsProjectOnly: (toolsProjectOnly) => set({ toolsProjectOnly }),
       setToolToggleError: (toolToggleError) => set({ toolToggleError }),
+      setToolsDuplicatesOnly: (toolsDuplicatesOnly) => set({ toolsDuplicatesOnly }),
     }),
     {
       name: 'echo-studio.ui',

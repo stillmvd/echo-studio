@@ -1,6 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { CircleAlert, Search, X } from 'lucide-react';
 import { useMemo, useRef } from 'react';
+import { cn } from '@/lib/cn';
 import { splitTitle } from '@/lib/sessions';
 import { countByKind, filterTools, nestOverrides } from '@/lib/tooling';
 import type { ScanResult, ScopeRef } from '@/lib/types';
@@ -79,17 +80,31 @@ function SearchField({ total, shown }: { total: number; shown: number }) {
   );
 }
 
-function ProjectChips({ items }: { items: ScanResult['items'] }) {
+function ScopeChips({
+  items,
+  isProject,
+  duplicatesOnly,
+  onDuplicates,
+}: {
+  items: ScanResult['items'];
+  isProject: boolean;
+  duplicatesOnly: boolean;
+  onDuplicates: () => void;
+}) {
+  const duplicates = items.filter((i) => i.conflict === 'sameName').length;
+  if (!isProject && duplicates === 0) return null;
   const own = items.filter((i) => i.origin === 'project' || i.origin === 'local').length;
   const overrides = items.filter((i) => i.conflict === 'overrides').length;
   const chip =
     'inline-flex h-6 items-center rounded-full px-[9px] text-[11px] font-medium tabular-nums';
   return (
     <div className="flex flex-wrap gap-1.5">
-      <span className={`${chip} bg-[var(--color-accent-soft)] text-[var(--color-text-primary)]`}>
-        <b className="mr-1 font-bold">{own}</b>from this project
-      </span>
-      {overrides > 0 && (
+      {isProject && (
+        <span className={`${chip} bg-[var(--color-accent-soft)] text-[var(--color-text-primary)]`}>
+          <b className="mr-1 font-bold">{own}</b>from this project
+        </span>
+      )}
+      {isProject && overrides > 0 && (
         <span
           className={`${chip} bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)]`}
         >
@@ -97,10 +112,30 @@ function ProjectChips({ items }: { items: ScanResult['items'] }) {
           {overrides === 1 ? 'override' : 'overrides'}
         </span>
       )}
-      <span className={`${chip} bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]`}>
-        <b className="mr-1 font-bold text-[var(--color-text-primary)]">{items.length}</b>
-        Claude sees in total
-      </span>
+      {duplicates > 0 && (
+        <button
+          type="button"
+          aria-pressed={duplicatesOnly}
+          onClick={onDuplicates}
+          title={duplicatesOnly ? 'Show all tools' : 'Show only tools with the same name'}
+          className={cn(
+            chip,
+            'outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] active:scale-[.96]',
+            duplicatesOnly
+              ? 'bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)] shadow-[inset_0_0_0_1.5px_var(--color-warning)]'
+              : 'bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)] hover:bg-[color-mix(in_srgb,var(--color-warning)_22%,transparent)]',
+          )}
+        >
+          <b className="mr-1 font-bold">{duplicates}</b>
+          {duplicates === 1 ? 'duplicate' : 'duplicates'}
+        </button>
+      )}
+      {isProject && (
+        <span className={`${chip} bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]`}>
+          <b className="mr-1 font-bold text-[var(--color-text-primary)]">{items.length}</b>
+          Claude sees in total
+        </span>
+      )}
     </div>
   );
 }
@@ -149,6 +184,8 @@ export function ToolList({
   const setSelectedId = useUiStore((s) => s.setSelectedToolId);
   const projectOnlyPref = useUiStore((s) => s.toolsProjectOnly);
   const setProjectOnly = useUiStore((s) => s.setToolsProjectOnly);
+  const duplicatesOnly = useUiStore((s) => s.toolsDuplicatesOnly);
+  const setDuplicatesOnly = useUiStore((s) => s.setToolsDuplicatesOnly);
   const isProject = scope.kind === 'project';
   const projectOnly = isProject && projectOnlyPref;
 
@@ -160,10 +197,12 @@ export function ToolList({
       ),
     [scan],
   );
-  const base = useMemo(
-    () => (projectOnly ? filterTools(sorted, { kind: 'all', query: '', projectOnly }) : sorted),
-    [sorted, projectOnly],
-  );
+  const base = useMemo(() => {
+    const scoped = projectOnly
+      ? filterTools(sorted, { kind: 'all', query: '', projectOnly })
+      : sorted;
+    return duplicatesOnly ? scoped.filter((i) => i.conflict === 'sameName') : scoped;
+  }, [sorted, projectOnly, duplicatesOnly]);
   const matching = useMemo(() => filterTools(base, { kind: 'all', query }), [base, query]);
   const counts = useMemo(() => countByKind(matching), [matching]);
   const visible = useMemo(
@@ -273,7 +312,14 @@ export function ToolList({
             <ProjectOnlyToggle on={projectOnlyPref} onChange={setProjectOnly} />
           )}
         </div>
-        {isProject && scan && !isLoading && <ProjectChips items={scan.items} />}
+        {scan && !isLoading && (
+          <ScopeChips
+            items={scan.items}
+            isProject={isProject}
+            duplicatesOnly={duplicatesOnly}
+            onDuplicates={() => setDuplicatesOnly(!duplicatesOnly)}
+          />
+        )}
         {scan && !isLoading && !compact && <Tiles counts={scan.counts} />}
       </div>
       {scope.available && (

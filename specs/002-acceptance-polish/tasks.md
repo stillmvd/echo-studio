@@ -25,8 +25,8 @@
 
 ## Phase 2: User Story 2 — Дубликаты (P2)
 
-- [ ] T002 [US2] `src-tauri/src/tooling/effective.rs` `mark_conflicts`: skills плагинов входят в группы имён по короткому `name`; источник — (origin, pluginKey); тесты: user+plugin → SameName, plugin A + plugin B → SameName, один плагин — без конфликта (R3)
-- [ ] T003 [US2] `src/state/ui-store.ts`: `toolsDuplicatesOnly` (не persist, сброс в `setToolsScope`); `src/components/tooling/ToolList.tsx`: чип «N duplicates» в шапке рядом с «override», клик — фильтр `conflict === 'sameName'`, активное состояние чипа как у выбранного фильтра типа
+- [X] T002 [US2] `src-tauri/src/tooling/effective.rs` `mark_conflicts`: skills плагинов входят в группы имён по короткому `name`; источник — (origin, pluginKey); тесты: user+plugin → SameName, plugin A + plugin B → SameName, один плагин — без конфликта (R3)
+- [X] T003 [US2] `src/state/ui-store.ts`: `toolsDuplicatesOnly` (не persist, сброс в `setToolsScope`); `src/components/tooling/ToolList.tsx`: чип «N duplicates» в шапке рядом с «override», клик — фильтр `conflict === 'sameName'`, активное состояние чипа как у выбранного фильтра типа
 
 **Checkpoint**: коммит `feat(tooling): duplicates across plugins with a filter chip`.
 
