@@ -37,7 +37,7 @@ UI временно: `ToolRow` показывает `overriddenBy` старым 
 
 - [X] T009 [US4] Стенд 7 «Шаг агента» — `.planning/sketches/107-agent-notice/` (генератор `gen107.cjs` на базе `001-shell/stand.template.html`, данные — уведомления сессии `7c2e3786`, фоновые команды completed/failed, монитор): части «Форма шага», «Агент / команда / прочее», «Статус», «Отчёт свёрнут/раскрыт»; публикация артефактом, запись в `.planning/TOOLING-STANDS.md`
 - [X] T010 [US1] Стенд 8 «Одинаковые инструменты» — `.planning/sketches/108-shared-tools/` (генератор `gen108.cjs`, данные — итог Echo Studio и индекс копий этой машины): части «Перекрытый свой» (наверху среди своих / вложенно под победителем), «Пометка победителя», «Копии в строке» (тихий суффикс / чип / ничего), «Группа Inherited» (подпись-разделитель стенда 5 / плашка), «Also found in» (список / таблица), «Шапка» (чип «N overridden»); киоск; публикация, запись в журнал
-- [ ] T011 Остановка: ждать «Выбор: …» по стендам 7 и 8, записать выбор в `.planning/TOOLING-STANDS.md`
+- [X] T011 Остановка: ждать «Выбор: …» по стендам 7 и 8, записать выбор в `.planning/TOOLING-STANDS.md`
 
 ---
 
@@ -53,6 +53,8 @@ UI временно: `ToolRow` показывает `overriddenBy` старым 
 ## Phase 4: User Story 2 — Свои не тонут в глобальных (P1)
 
 - [ ] T014 [US2] `src/state/ui-store.ts`: `toolsInheritedOpen` (persist, по умолчанию false), удалить `toolsProjectOnly` и `ProjectOnlyToggle`; `src/components/tooling/ToolList.tsx`: в области проекта строки `own`, затем группа «Inherited from Global · N» по стенду 8 (строка виртуализатора как группы skills; при типе Skills внутри — группы по вендору); авто-раскрытие при совпадениях поиска и при пустом `own`; `filterTools` без `projectOnly`
+
+- [ ] T014a [US2] `src/components/tooling/ToolList.tsx`: `Tiles` — кнопки-фильтр (`aria-pressed`, выбранная `accent-soft` + кольцо 1.5 акцентом, повторный клик → `all`, ноль — `disabled`), при `compact` — капсулы 32 «N Label» в ряд; удалить `TypeFilter.tsx`; `SearchField` — в строку имени области справа (FR-018)
 
 **Checkpoint**: CDP-проверка quickstart 4; коммит `feat(tooling): own tools first, inherited from global in a group`.
 
