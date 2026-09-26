@@ -23,6 +23,7 @@ interface UiState {
   toolsQuery: string;
   selectedToolId: string | null;
   toolsProjectOnly: boolean;
+  toolToggleError: { id: string; message: string } | null;
 
   setActiveTab: (tab: AppTab) => void;
   setConversationsProjectId: (id: string | null) => void;
@@ -42,6 +43,7 @@ interface UiState {
   setToolsQuery: (q: string) => void;
   setSelectedToolId: (id: string | null) => void;
   setToolsProjectOnly: (on: boolean) => void;
+  setToolToggleError: (error: { id: string; message: string } | null) => void;
 }
 
 export function migrateUiState(persisted: unknown): unknown {
@@ -70,6 +72,7 @@ export const useUiStore = create<UiState>()(
       toolsQuery: '',
       selectedToolId: null,
       toolsProjectOnly: false,
+      toolToggleError: null,
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setConversationsProjectId: (conversationsProjectId) =>
@@ -94,11 +97,17 @@ export const useUiStore = create<UiState>()(
         set({ conversationsAgeFilter, conversationsBulkSelection: [] }),
       toggleViewerShowSystem: () => set((s) => ({ viewerShowSystem: !s.viewerShowSystem })),
       toggleViewerShowThinking: () => set((s) => ({ viewerShowThinking: !s.viewerShowThinking })),
-      setToolsScope: (toolsScope) => set({ toolsScope, selectedToolId: null }),
+      setToolsScope: (toolsScope) =>
+        set({ toolsScope, selectedToolId: null, toolToggleError: null }),
       setToolsType: (toolsType) => set({ toolsType }),
       setToolsQuery: (toolsQuery) => set({ toolsQuery }),
-      setSelectedToolId: (selectedToolId) => set({ selectedToolId }),
+      setSelectedToolId: (selectedToolId) =>
+        set((s) => ({
+          selectedToolId,
+          toolToggleError: s.toolToggleError?.id === selectedToolId ? s.toolToggleError : null,
+        })),
       setToolsProjectOnly: (toolsProjectOnly) => set({ toolsProjectOnly }),
+      setToolToggleError: (toolToggleError) => set({ toolToggleError }),
     }),
     {
       name: 'echo-studio.ui',

@@ -10,6 +10,7 @@ import {
 } from '@/lib/ipc';
 import { applyToggle } from '@/lib/tooling';
 import type { ScanResult, ScopeKind, ToggleTarget } from '@/lib/types';
+import { useUiStore } from '@/state/ui-store';
 
 export function useToolScopes() {
   return useQuery({
@@ -44,10 +45,13 @@ export function useConfigBackups() {
   });
 }
 
+export const TOGGLE_KEY = ['tooling', 'toggle'];
+
 export function useSetToolEnabled() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ target, enabled }: { target: ToggleTarget; enabled: boolean }) =>
+    mutationKey: TOGGLE_KEY,
+    mutationFn: ({ target, enabled }: { id: string; target: ToggleTarget; enabled: boolean }) =>
       setToolEnabled(target, enabled),
     onMutate: async ({ target, enabled }) => {
       await qc.cancelQueries({ queryKey: ['tooling', 'scan'] });
@@ -57,8 +61,16 @@ export function useSetToolEnabled() {
       );
       return { previous };
     },
-    onError: (_error, _vars, context) => {
+    onError: (error, { id }, context) => {
       for (const [key, data] of context?.previous ?? []) qc.setQueryData(key, data);
+      const ui = useUiStore.getState();
+      ui.setToolToggleError({ id, message: String(error) });
+      ui.setSelectedToolId(id);
+    },
+    onSuccess: (_item, { id }) => {
+      if (useUiStore.getState().toolToggleError?.id === id) {
+        useUiStore.getState().setToolToggleError(null);
+      }
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ['tooling'] }),
   });

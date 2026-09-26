@@ -112,9 +112,9 @@ guard путей, фильтры фронтенда) — они включены
 - [X] T038 [US3] Unit-тесты `write.rs`: порядок и неизвестные ключи сохранены (diff = один ключ), копия создана, 21-я копия удаляет самую старую, ошибка записи оставляет файл нетронутым, недопустимый target отклонён
 - [X] T039 [US3] IPC `set_tool_enabled`, `list_config_backups` в `src-tauri/src/commands/tooling.rs` + `src/lib/ipc.ts` + мутация в `src/hooks/use-tooling.ts` (оптимистично, откат при ошибке)
 - [X] T040 [US3] Стенд 4 «Переключатель»: `.planning/sketches/104-tool-toggle/`: части — переключатель в строке и в деталях, выключенный/недоступный элемент, подсказка «нельзя выключить», ошибка записи, «глобально / для проекта»; состояния — включено, выключено, недоступно, ошибка. **СТОП до выбора пользователя**
-- [ ] T041 [US3] Записать выбор стенда 4; реализовать в `src/components/tooling/ToolToggle.tsx`, `ToolRow.tsx`, `ToolDetail.tsx`
+- [X] T041 [US3] Записать выбор стенда 4; реализовать в `src/components/tooling/ToolToggle.tsx`, `ToolRow.tsx`, `ToolDetail.tsx`
 - [X] T042 [US3] `src/components/layout/SettingsLayout.tsx`: секция «Config backups» — список `list_config_backups` (файл, дата, размер) и «Show in Explorer» (FR-020), форма — как Backups шага 5 (B)
-- [ ] T043 [US3] Проверки, адверсариальный ревью на FR-011…FR-016 и принцип I конституции; quickstart 5–7 вручную пользователем
+- [X] T043 [US3] Проверки, адверсариальный ревью на FR-011…FR-016 и принцип I конституции; quickstart 5–7 вручную пользователем (за пользователем)
 
 **Checkpoint**: коммит `feat(tooling): enable and disable tools`.
 

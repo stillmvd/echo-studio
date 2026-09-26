@@ -9,6 +9,15 @@ describe('ui-store', () => {
     expect(useUiStore.getState().conversationsBulkSelection).toEqual([]);
   });
 
+  it('keeps a toggle error only while its tool is selected', () => {
+    const s = useUiStore.getState();
+    s.setToolToggleError({ id: 'a', message: 'denied' });
+    s.setSelectedToolId('a');
+    expect(useUiStore.getState().toolToggleError?.message).toBe('denied');
+    s.setSelectedToolId('b');
+    expect(useUiStore.getState().toolToggleError).toBeNull();
+  });
+
   it('turns a persisted memories tab into tools', () => {
     expect(migrateUiState({ activeTab: 'memories', projectsSort: 'name' })).toEqual({
       activeTab: 'tools',

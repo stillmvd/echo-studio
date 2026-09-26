@@ -5,8 +5,10 @@ import { useToolFile } from '@/hooks/use-tooling';
 import { cn } from '@/lib/cn';
 import { revealInExplorer } from '@/lib/ipc';
 import type { ToolItem } from '@/lib/types';
+import { useUiStore } from '@/state/ui-store';
 import { McpDetail } from './McpDetail';
 import { PluginDetail } from './PluginDetail';
+import { DetailToggle } from './ToolToggle';
 
 const KIND_LABEL: Record<ToolItem['kind'], string> = {
   skill: 'Skill',
@@ -159,6 +161,9 @@ export function ToolDetail({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  const toggleError = useUiStore((s) =>
+    s.toolToggleError?.id === item.id ? s.toolToggleError.message : null,
+  );
   const name = item.kind === 'plugin' ? item.name : item.qualifiedName;
   const [light, bold] = splitName(name);
   const meta = [
@@ -193,18 +198,20 @@ export function ToolDetail({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
+          {!removed && <DetailToggle item={item} />}
           {item.filePath && !removed && (
             <button
               type="button"
+              title="Show in Explorer"
               onClick={() => reveal(item.plugin?.installPath ?? item.filePath)}
               className={cn(
-                'inline-flex h-8 items-center gap-1.5 rounded-full pr-3 pl-2.5 text-xs font-medium whitespace-nowrap hover:bg-[var(--color-hover)] active:scale-[.96] @max-[420px]:hidden',
+                'inline-flex h-8 items-center justify-center gap-1.5 rounded-full pr-3 pl-2.5 text-xs font-medium whitespace-nowrap hover:bg-[var(--color-hover)] active:scale-[.96] @max-[600px]:w-8 @max-[600px]:px-0 @max-[420px]:hidden',
                 soft,
                 focusRing,
               )}
             >
               <Folder className="h-3.5 w-3.5 text-[var(--color-text-muted)]" strokeWidth={1.75} />
-              Show in Explorer
+              <span className="@max-[600px]:sr-only">Show in Explorer</span>
             </button>
           )}
           <button
@@ -232,6 +239,7 @@ export function ToolDetail({
         </Note>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-[88px] [scrollbar-width:thin]">
+          {toggleError && <ErrorPlate text={toggleError} />}
           <div className="flex flex-wrap gap-1.5">
             {item.filePath && (
               <Chip title={item.filePath} onClick={() => reveal(item.filePath)}>

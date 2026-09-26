@@ -85,7 +85,7 @@
 - **Заголовок проекта C, «чипы сводки».** Над плитками чипы 24: «N from this project» (`accent-soft`),
   «N override» (warn, если есть), «N Claude sees in total».
 
-## Стенд 4 — переключатель (выбор 2026-09-26, реализация — в следующей сессии)
+## Стенд 4 — переключатель (выбор и реализация 2026-09-26)
 
 Стенд `.planning/sketches/104-tool-toggle/stand.template.html` (генератор `gen104.cjs`).
 
