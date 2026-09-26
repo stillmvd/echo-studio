@@ -3,6 +3,7 @@ import {
   applyToggle,
   countByKind,
   filterTools,
+  groupSkills,
   highlightSegments,
   nestOverrides,
   samePath,
@@ -123,5 +124,55 @@ describe('samePath', () => {
   it('ignores case, slash style and a trailing slash', () => {
     expect(samePath('c:/Users/X/p', 'C:\\users\\x\\P\\')).toBe(true);
     expect(samePath('C:/a/b', 'C:/a/bc')).toBe(false);
+  });
+});
+
+describe('groupSkills', () => {
+  const s = (name: string, plugin?: string) =>
+    item({
+      kind: 'skill',
+      qualifiedName: plugin ? `${plugin}:${name}` : name,
+      name,
+      origin: plugin ? 'plugin' : 'user',
+      pluginKey: plugin ? `${plugin}@mkt` : null,
+    });
+  const all = [
+    s('gsd'),
+    s('gsd-next'),
+    s('gsd-plan'),
+    s('better-ui'),
+    s('better-colors'),
+    s('audit', 'chisle'),
+    s('zeta'),
+  ];
+  const shape = (rows: ReturnType<typeof groupSkills>) =>
+    rows.map((r) => (r.type === 'group' ? `[${r.title} ${r.count}]` : r.item.name));
+
+  it('groups plugins and prefixes with 3+ skills, closed by default', () => {
+    expect(shape(groupSkills(all, all, new Set(), false))).toEqual([
+      'better-colors',
+      'better-ui',
+      '[chisle 1]',
+      '[gsd 3]',
+      'zeta',
+    ]);
+  });
+
+  it('shows members of open groups', () => {
+    expect(shape(groupSkills(all, all, new Set(['prefix:gsd']), false))).toEqual([
+      'better-colors',
+      'better-ui',
+      '[chisle 1]',
+      '[gsd 3]',
+      'gsd',
+      'gsd-next',
+      'gsd-plan',
+      'zeta',
+    ]);
+  });
+
+  it('keeps groups from the full list while searching and opens them', () => {
+    const shown = all.filter((i) => i.name === 'gsd-next');
+    expect(shape(groupSkills(all, shown, new Set(), true))).toEqual(['[gsd 1]', 'gsd-next']);
   });
 });

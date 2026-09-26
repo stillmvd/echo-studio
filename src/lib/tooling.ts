@@ -103,3 +103,70 @@ function normalizePath(p: string): string {
 export function samePath(a: string, b: string): boolean {
   return normalizePath(a) === normalizePath(b);
 }
+
+export type ToolRowModel =
+  | {
+      type: 'group';
+      key: string;
+      title: string;
+      count: number;
+      open: boolean;
+      origin: 'plugin' | 'prefix';
+    }
+  | { type: 'item'; item: ToolItem; grouped: boolean };
+
+function prefixOf(name: string): string {
+  return name.split('-')[0] ?? name;
+}
+
+function groupOf(item: ToolItem, prefixes: Set<string>): string | null {
+  if (item.origin === 'plugin' && item.pluginKey) return `plugin:${item.pluginKey}`;
+  const prefix = prefixOf(item.name).toLowerCase();
+  return prefixes.has(prefix) ? `prefix:${prefix}` : null;
+}
+
+export function groupSkills(
+  all: ToolItem[],
+  shown: ToolItem[],
+  openKeys: ReadonlySet<string>,
+  searching: boolean,
+): ToolRowModel[] {
+  const perPrefix = new Map<string, number>();
+  for (const i of all) {
+    if (i.origin === 'plugin') continue;
+    const p = prefixOf(i.name).toLowerCase();
+    perPrefix.set(p, (perPrefix.get(p) ?? 0) + 1);
+  }
+  const prefixes = new Set([...perPrefix].filter(([, n]) => n >= 3).map(([p]) => p));
+
+  const groups = new Map<string, ToolItem[]>();
+  const top: { sort: string; rows: ToolRowModel[] }[] = [];
+  for (const item of shown) {
+    const key = groupOf(item, prefixes);
+    if (!key) {
+      top.push({ sort: item.name.toLowerCase(), rows: [{ type: 'item', item, grouped: false }] });
+      continue;
+    }
+    const members = groups.get(key);
+    if (members) members.push(item);
+    else groups.set(key, [item]);
+  }
+  for (const [key, members] of groups) {
+    const plugin = key.startsWith('plugin:');
+    const title = plugin ? (key.slice(7).split('@')[0] ?? key) : key.slice(7);
+    const open = searching || openKeys.has(key);
+    const rows: ToolRowModel[] = [
+      {
+        type: 'group',
+        key,
+        title,
+        count: members.length,
+        open,
+        origin: plugin ? 'plugin' : 'prefix',
+      },
+    ];
+    if (open) for (const item of members) rows.push({ type: 'item', item, grouped: true });
+    top.push({ sort: title.toLowerCase(), rows });
+  }
+  return top.sort((a, b) => a.sort.localeCompare(b.sort)).flatMap((t) => t.rows);
+}
