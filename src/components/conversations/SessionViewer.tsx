@@ -355,6 +355,8 @@ function FeedRow({ node, showThinking }: { node: FeedNode; showThinking: boolean
       return <SkillChip name={node.name} text={node.text} />;
     case 'tools':
       return <ToolSteps steps={node.steps} />;
+    case 'notice':
+      return <SkillChip name={node.notice.summary} text={node.notice.result ?? ''} />;
     case 'recap':
       return (
         <p className="px-1 text-[13px] leading-normal text-[var(--color-text-muted)] italic">

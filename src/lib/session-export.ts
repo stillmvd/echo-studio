@@ -1,8 +1,9 @@
+import { parseAgentNotice } from './agent-notice';
 import { askToMarkdown, parseAsk } from './ask-question';
 import type { DisplayItem } from './types';
 
 function labelFor(item: DisplayItem): string {
-  if (item.kind === 'user_text') return 'User';
+  if (item.kind === 'user_text') return parseAgentNotice(item) ? 'Background task' : 'User';
   if (item.kind === 'assistant_text') return 'Assistant';
   if (item.kind === 'thinking') return 'Assistant (thinking)';
   if (item.kind === 'tool_use') return `Tool: ${item.toolName ?? '?'}`;
@@ -57,7 +58,15 @@ export function eventsToMarkdown(sessionId: string, events: DisplayItem[]): stri
 
       let content = '';
       const ask = asks.has(ev) ? parseAsk(ev, asks.get(ev) ?? null) : null;
-      if (ask) {
+      const notice = parseAgentNotice(ev);
+      if (notice) {
+        const head = [notice.summary, notice.status].filter(Boolean).join(' · ');
+        content = notice.result
+          ? `**${head}**
+
+${notice.result}`
+          : `**${head}**`;
+      } else if (ask) {
         content = askToMarkdown(ask);
       } else if (ev.kind === 'tool_use') {
         content = `\`\`\`\n${ev.toolName ?? ''}: ${ev.toolInputSummary ?? ''}\n\`\`\``;

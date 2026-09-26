@@ -10,6 +10,7 @@ import type {
   SessionMeta,
   SessionSearchHit,
   ToggleTarget,
+  ToolCopy,
   ToolFile,
   ToolItem,
 } from './types';
@@ -23,6 +24,10 @@ export async function scanToolScope(scope: {
   path: string | null;
 }): Promise<ScanResult> {
   return invoke<ScanResult>('scan_tool_scope', { scope });
+}
+
+export async function listToolCopies(): Promise<ToolCopy[]> {
+  return invoke<ToolCopy[]>('list_tool_copies');
 }
 
 export async function readToolFile(path: string): Promise<ToolFile> {

@@ -75,6 +75,7 @@ pub fn run() {
             commands::conversations::set_session_user_title,
             commands::tooling::list_tool_scopes,
             commands::tooling::scan_tool_scope,
+            commands::tooling::list_tool_copies,
             commands::tooling::read_tool_file,
             commands::tooling::set_tool_enabled,
             commands::tooling::list_config_backups,

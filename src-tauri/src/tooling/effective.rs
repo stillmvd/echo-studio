@@ -206,52 +206,72 @@ fn apply_states(items: &mut [ToolItem], t: &Toggles, project: Option<&str>) {
     }
 }
 
+fn origin_label(o: Origin) -> &'static str {
+    match o {
+        Origin::User => "global",
+        o => o.as_str(),
+    }
+}
+
 fn mark_conflicts(items: &mut [ToolItem]) {
-    let rank = |o: Origin| match o {
-        Origin::Local => 3,
-        Origin::Project => 2,
-        Origin::User => 1,
-        Origin::Plugin => 0,
+    let rank = |item: &ToolItem| match (item.kind, item.origin) {
+        (Kind::Skill, Origin::User) => 4,
+        (Kind::Skill, _) => 3,
+        (Kind::Command, Origin::User) => 2,
+        (Kind::Command, _) => 1,
+        (_, Origin::Local) => 3,
+        (_, Origin::Project) => 2,
+        _ => 1,
     };
-    let mut groups: HashMap<(Kind, String), Vec<usize>> = HashMap::new();
+    let label = |winner: &ToolItem, other: &ToolItem| {
+        if winner.kind != other.kind {
+            if winner.kind == Kind::Skill {
+                "skill"
+            } else {
+                "command"
+            }
+            .to_string()
+        } else {
+            origin_label(winner.origin).to_string()
+        }
+    };
+    let mut groups: HashMap<(u8, String), Vec<usize>> = HashMap::new();
     for (i, item) in items.iter().enumerate() {
-        if item.kind != Kind::Plugin && (item.origin != Origin::Plugin || item.kind == Kind::Skill)
-        {
+        let family = match item.kind {
+            Kind::Skill | Kind::Command => 0,
+            Kind::Agent => 1,
+            Kind::Mcp => 2,
+            Kind::Plugin => continue,
+        };
+        if item.origin != Origin::Plugin && item.state == State::Enabled {
             groups
-                .entry((item.kind, item.name.to_lowercase()))
+                .entry((family, item.name.to_lowercase()))
                 .or_default()
                 .push(i);
         }
     }
-    for ((kind, _), idx) in groups {
-        let sources: HashSet<(Origin, Option<&str>)> = idx
-            .iter()
-            .map(|&i| (items[i].origin, items[i].plugin_key.as_deref()))
-            .collect();
-        if sources.len() < 2 {
+    for idx in groups.into_values() {
+        if idx.len() < 2 {
             continue;
         }
-        match kind {
-            Kind::Skill | Kind::Command => {
-                for &i in &idx {
-                    items[i].conflict = Conflict::SameName;
-                }
+        let Some(&win) = idx.iter().max_by_key(|&&i| rank(&items[i])) else {
+            continue;
+        };
+        let mut beaten = Vec::new();
+        for &i in &idx {
+            if i == win {
+                continue;
             }
-            _ => {
-                let top = idx
-                    .iter()
-                    .map(|&i| rank(items[i].origin))
-                    .max()
-                    .unwrap_or(0);
-                for &i in &idx {
-                    items[i].conflict = if rank(items[i].origin) == top {
-                        Conflict::Overrides
-                    } else {
-                        Conflict::Overridden
-                    };
-                }
+            let by = label(&items[win], &items[i]);
+            let lost = label(&items[i], &items[win]);
+            items[i].conflict = Conflict::Overridden;
+            items[i].overridden_by = Some(by);
+            if !beaten.contains(&lost) {
+                beaten.push(lost);
             }
         }
+        items[win].conflict = Conflict::Overrides;
+        items[win].overrides = beaten;
     }
 }
 
@@ -526,27 +546,52 @@ mod tests {
         item
     }
 
+    fn command(origin: Origin, name: &str) -> ToolItem {
+        ToolItem::new(Kind::Command, origin, name.into(), name.into())
+    }
+
+    fn marks(items: &[ToolItem]) -> Vec<(Conflict, Option<&str>, Vec<&str>)> {
+        items
+            .iter()
+            .map(|i| {
+                (
+                    i.conflict,
+                    i.overridden_by.as_deref(),
+                    i.overrides.iter().map(String::as_str).collect(),
+                )
+            })
+            .collect()
+    }
+
     #[test]
-    fn plugin_skills_join_same_name_groups() {
+    fn global_skill_beats_project_and_skill_beats_command() {
+        let mut items = vec![
+            skill(Origin::Project, "Deploy", None),
+            skill(Origin::User, "deploy", None),
+            command(Origin::Project, "deploy"),
+        ];
+        mark_conflicts(&mut items);
+        assert_eq!(
+            marks(&items),
+            vec![
+                (Conflict::Overridden, Some("global"), vec![]),
+                (Conflict::Overrides, None, vec!["project", "command"]),
+                (Conflict::Overridden, Some("skill"), vec![]),
+            ]
+        );
+    }
+
+    #[test]
+    fn plugins_and_disabled_items_do_not_conflict() {
         let mut items = vec![
             skill(Origin::User, "chisle", None),
             skill(Origin::Plugin, "chisle", Some("chisle")),
-            skill(Origin::Plugin, "lint", Some("a")),
-            skill(Origin::Plugin, "lint", Some("b")),
-            skill(Origin::Plugin, "solo", Some("a")),
+            skill(Origin::User, "lint", None),
+            skill(Origin::Project, "lint", None),
         ];
+        items[2].state = State::Disabled;
         mark_conflicts(&mut items);
-        let conflicts: Vec<Conflict> = items.iter().map(|i| i.conflict).collect();
-        assert_eq!(
-            conflicts,
-            vec![
-                Conflict::SameName,
-                Conflict::SameName,
-                Conflict::SameName,
-                Conflict::SameName,
-                Conflict::None
-            ]
-        );
+        assert!(items.iter().all(|i| i.conflict == Conflict::None));
     }
 
     #[test]
@@ -558,11 +603,10 @@ mod tests {
         assert_eq!(find(&r, "plugin:plugin:pony@mkt").state, State::Enabled);
         assert_eq!(find(&r, "skill:plugin:pony:lazy").state, State::Enabled);
 
-        assert_eq!(find(&r, "skill:user:shared").conflict, Conflict::SameName);
-        assert_eq!(
-            find(&r, "skill:project:shared").conflict,
-            Conflict::SameName
-        );
+        assert_eq!(find(&r, "skill:user:shared").conflict, Conflict::Overrides);
+        let shared = find(&r, "skill:project:shared");
+        assert_eq!(shared.conflict, Conflict::Overridden);
+        assert_eq!(shared.overridden_by.as_deref(), Some("global"));
         assert_eq!(
             find(&r, "agent:project:reviewer").conflict,
             Conflict::Overrides
@@ -572,7 +616,9 @@ mod tests {
             Conflict::Overridden
         );
         assert_eq!(find(&r, "mcp:local:dup").conflict, Conflict::Overrides);
-        assert_eq!(find(&r, "mcp:user:dup").conflict, Conflict::Overridden);
+        let dup = find(&r, "mcp:user:dup");
+        assert_eq!(dup.conflict, Conflict::Overridden);
+        assert_eq!(dup.overridden_by.as_deref(), Some("local"));
 
         assert_eq!(find(&r, "mcp:user:fs").state, State::Disabled);
         let web = find(&r, "mcp:project:web");

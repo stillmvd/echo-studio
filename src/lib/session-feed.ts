@@ -1,3 +1,4 @@
+import { type AgentNotice, parseAgentNotice } from './agent-notice';
 import type { DisplayItem } from './types';
 
 export interface ToolStep {
@@ -18,6 +19,7 @@ export type FeedNode =
     }
   | { type: 'command'; key: string; name: string; output: string | null }
   | { type: 'skill'; key: string; name: string; text: string }
+  | { type: 'notice'; key: string; item: DisplayItem; notice: AgentNotice }
   | { type: 'tools'; key: string; steps: ToolStep[] }
   | { type: 'recap'; key: string; text: string }
   | { type: 'image'; key: string; item: DisplayItem }
@@ -93,6 +95,11 @@ export function buildFeed(items: DisplayItem[]): FeedNode[] {
       case 'user_text': {
         const trimmed = text.trim();
         if (trimmed.startsWith('<local-command-caveat>')) break;
+        const notice = parseAgentNotice(item);
+        if (notice) {
+          nodes.push({ type: 'notice', key: item.uuid, item, notice });
+          break;
+        }
         const command = tagContent(trimmed, 'command-name');
         if (command !== null) {
           const next = items[i];
@@ -163,6 +170,8 @@ export function nodeText(node: FeedNode): string {
         return [node.name, node.output];
       case 'skill':
         return [node.name, node.text];
+      case 'notice':
+        return [node.notice.summary, node.notice.status, node.notice.result];
       case 'tools':
         return node.steps.flatMap((s) => [
           s.use?.toolName,

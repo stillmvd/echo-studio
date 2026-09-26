@@ -39,7 +39,7 @@ function tags(item: ToolItem): { text: string; tone?: Tone }[] {
   const out: { text: string; tone?: Tone }[] = [];
   if (item.origin === 'project' || item.origin === 'local')
     out.push({ text: item.origin, tone: 'mine' });
-  if (item.conflict === 'sameName') out.push({ text: 'same name', tone: 'warn' });
+  if (item.overriddenBy) out.push({ text: `overridden by ${item.overriddenBy}`, tone: 'warn' });
   if (item.kind === 'plugin' && item.plugin?.version) {
     out.push({ text: item.plugin.version, tone: 'mono' });
   }

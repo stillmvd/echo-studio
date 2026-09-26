@@ -1,4 +1,4 @@
-import type { ToggleTarget, ToolItem, ToolKind } from './types';
+import type { ToggleTarget, ToolCopy, ToolItem, ToolKind } from './types';
 
 export type KindFilter = ToolKind | 'all';
 
@@ -83,7 +83,7 @@ export function applyToggle(items: ToolItem[], target: ToggleTarget, enabled: bo
 }
 
 export function nestOverrides(items: ToolItem[]): ToolItem[] {
-  const key = (i: ToolItem) => `${i.kind}:${i.name.toLowerCase()}`;
+  const key = (i: ToolItem) => `${i.kind === 'command' ? 'skill' : i.kind}:${i.name.toLowerCase()}`;
   const winners = new Set(items.filter((i) => i.conflict === 'overrides').map(key));
   const out: ToolItem[] = [];
   for (const i of items) {
@@ -169,4 +169,62 @@ export function groupSkills(
     top.push({ sort: title.toLowerCase(), rows });
   }
   return top.sort((a, b) => a.sort.localeCompare(b.sort)).flatMap((t) => t.rows);
+}
+
+export function splitInherited(items: ToolItem[]): { own: ToolItem[]; inherited: ToolItem[] } {
+  const own: ToolItem[] = [];
+  const inherited: ToolItem[] = [];
+  for (const i of items) (i.origin === 'project' || i.origin === 'local' ? own : inherited).push(i);
+  return { own, inherited };
+}
+
+const SCOPE_ORDER = { global: 0, project: 1, plugin: 2 } as const;
+
+function sameTool(item: ToolItem, c: ToolCopy): boolean {
+  return c.kind === item.kind && c.name.toLowerCase() === item.name.toLowerCase();
+}
+
+export function copyHash(item: ToolItem, copies: ToolCopy[]): string | null {
+  const path = item.filePath;
+  if (path === null) return null;
+  return copies.find((c) => samePath(c.filePath, path))?.hash ?? null;
+}
+
+export function copiesFor(
+  item: ToolItem,
+  copies: ToolCopy[],
+  scopePath: string | null,
+): ToolCopy[] {
+  const path = item.filePath;
+  if (path === null || (item.kind !== 'skill' && item.kind !== 'command' && item.kind !== 'agent'))
+    return [];
+  return copies
+    .filter(
+      (c) =>
+        sameTool(item, c) &&
+        !samePath(c.filePath, path) &&
+        !(c.scope.kind === 'global' && scopePath === null) &&
+        !(
+          c.scope.kind === 'project' &&
+          scopePath !== null &&
+          samePath(c.scope.path ?? '', scopePath)
+        ),
+    )
+    .sort(
+      (a, b) =>
+        SCOPE_ORDER[a.scope.kind] - SCOPE_ORDER[b.scope.kind] ||
+        a.scope.label.localeCompare(b.scope.label),
+    );
+}
+
+export function alsoInProjects(
+  item: ToolItem,
+  copies: ToolCopy[],
+  scopePath: string | null,
+): number {
+  if (item.origin !== 'project' && item.origin !== 'local') return 0;
+  const projects = copiesFor(item, copies, scopePath)
+    .filter((c) => c.scope.kind === 'project')
+    .map((c) => (c.scope.path ?? '').toLowerCase());
+  return new Set(projects).size;
 }

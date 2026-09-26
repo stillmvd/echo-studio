@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
+  alsoInProjects,
   applyToggle,
+  copiesFor,
+  copyHash,
   countByKind,
   filterTools,
   groupSkills,
   highlightSegments,
   nestOverrides,
   samePath,
+  splitInherited,
 } from './tooling';
-import type { ToolItem } from './types';
+import type { ToolCopy, ToolItem } from './types';
 
 function item(p: Partial<ToolItem> & Pick<ToolItem, 'kind' | 'qualifiedName'>): ToolItem {
   return {
@@ -23,6 +27,8 @@ function item(p: Partial<ToolItem> & Pick<ToolItem, 'kind' | 'qualifiedName'>): 
     toggle: null,
     toggleHint: null,
     conflict: 'none',
+    overriddenBy: null,
+    overrides: [],
     error: null,
     frontMatter: null,
     plugin: null,
@@ -174,5 +180,63 @@ describe('groupSkills', () => {
   it('keeps groups from the full list while searching and opens them', () => {
     const shown = all.filter((i) => i.name === 'gsd-next');
     expect(shape(groupSkills(all, shown, new Set(), true))).toEqual(['[gsd 1]', 'gsd-next']);
+  });
+});
+
+function copy(
+  kind: ToolCopy['scope']['kind'],
+  label: string,
+  filePath: string,
+  hash: string,
+  name = 'stand',
+): ToolCopy {
+  return {
+    kind: 'command',
+    name,
+    scope: { kind, path: kind === 'project' ? `C:/p/${label}` : null, label },
+    filePath,
+    hash,
+    modifiedMs: 1,
+  };
+}
+
+describe('copies', () => {
+  const copies = [
+    copy('project', 'b', 'C:/p/b/.claude/commands/stand.md', 'x'),
+    copy('global', 'Global', 'C:/h/.claude/commands/stand.md', 'y'),
+    copy('project', 'a', 'C:/p/a/.claude/commands/stand.md', 'x'),
+    copy('project', 'c', 'C:/p/c/.claude/commands/Stand.md', 'z', 'Stand'),
+    copy('plugin', 'kit', 'C:/k/commands/other.md', 'x', 'other'),
+  ];
+  const mine = item({
+    kind: 'command',
+    qualifiedName: 'stand',
+    origin: 'project',
+    filePath: 'C:\\p\\a\\.claude\\commands\\stand.md',
+  });
+
+  it('lists other places, global first, current file and scope excluded', () => {
+    expect(copiesFor(mine, copies, 'C:/p/a').map((c) => c.scope.label)).toEqual([
+      'Global',
+      'b',
+      'c',
+    ]);
+    expect(copyHash(mine, copies)).toBe('x');
+  });
+
+  it('counts other projects only for own tools', () => {
+    expect(alsoInProjects(mine, copies, 'C:/p/a')).toBe(2);
+    expect(alsoInProjects({ ...mine, origin: 'user' }, copies, 'C:/p/a')).toBe(0);
+  });
+
+  it('splits own from inherited', () => {
+    const { own, inherited } = splitInherited([
+      mine,
+      item({ kind: 'mcp', qualifiedName: 'l', origin: 'local' }),
+      item({ kind: 'skill', qualifiedName: 'g' }),
+      item({ kind: 'skill', qualifiedName: 'p', origin: 'plugin' }),
+    ]);
+    expect(own.map((i) => i.name)).toEqual(['stand', 'l']);
+    expect(inherited.map((i) => i.name)).toEqual(['g', 'p']);
   });
 });

@@ -67,6 +67,21 @@ describe('buildFeed', () => {
     expect(feed[2]).toEqual({ type: 'recap', key: expect.any(String), text: 'Сделано.' });
   });
 
+  it('turns background task notifications into notice steps', () => {
+    const feed = buildFeed([
+      item(
+        'user_text',
+        '<task-notification>\n<status>completed</status>\n<summary>Agent "Scan" finished</summary>\n<result>ok</result>\n</task-notification>',
+        { raw: { origin: { kind: 'task-notification' } } },
+      ),
+    ]);
+    expect(feed).toHaveLength(1);
+    expect(feed[0]).toMatchObject({
+      type: 'notice',
+      notice: { name: 'Scan', status: 'completed' },
+    });
+  });
+
   it('groups consecutive tool calls into one run', () => {
     const feed = buildFeed([
       item('tool_use', null, { toolName: 'Read' }),

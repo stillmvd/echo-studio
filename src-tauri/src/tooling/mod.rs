@@ -1,3 +1,4 @@
+pub mod copies;
 pub mod effective;
 pub mod frontmatter;
 pub mod mcp;
@@ -86,7 +87,6 @@ pub enum Conflict {
     None,
     Overrides,
     Overridden,
-    SameName,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -164,6 +164,8 @@ pub struct ToolItem {
     pub toggle: Option<ToggleTarget>,
     pub toggle_hint: Option<String>,
     pub conflict: Conflict,
+    pub overridden_by: Option<String>,
+    pub overrides: Vec<String>,
     pub error: Option<String>,
     pub front_matter: Option<Map<String, Value>>,
     pub plugin: Option<PluginInfo>,
@@ -186,6 +188,8 @@ impl ToolItem {
             toggle: None,
             toggle_hint: None,
             conflict: Conflict::None,
+            overridden_by: None,
+            overrides: Vec::new(),
             error: None,
             front_matter: None,
             plugin: None,

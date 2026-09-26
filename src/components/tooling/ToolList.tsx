@@ -274,7 +274,7 @@ export function ToolList({
     () => (projectOnly ? filterTools(sorted, { kind: 'all', query: '', projectOnly }) : sorted),
     [sorted, projectOnly],
   );
-  const duplicates = useMemo(() => scoped.filter((i) => i.conflict === 'sameName'), [scoped]);
+  const duplicates = useMemo(() => scoped.filter((i) => i.conflict !== 'none'), [scoped]);
   const base = duplicatesOnly ? duplicates : scoped;
   const matching = useMemo(() => filterTools(base, { kind: 'all', query }), [base, query]);
   const counts = useMemo(() => countByKind(matching), [matching]);

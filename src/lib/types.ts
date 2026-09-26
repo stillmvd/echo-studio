@@ -73,7 +73,7 @@ export type ScopeKind = 'global' | 'project';
 export type ToolKind = 'skill' | 'command' | 'agent' | 'plugin' | 'mcp';
 export type ToolOrigin = 'user' | 'project' | 'local' | 'plugin';
 export type ToolState = 'enabled' | 'disabled' | 'unavailable' | 'error';
-export type ToolConflict = 'none' | 'overrides' | 'overridden' | 'sameName';
+export type ToolConflict = 'none' | 'overrides' | 'overridden';
 
 export interface ScopeRef {
   kind: ScopeKind;
@@ -122,10 +122,21 @@ export interface ToolItem {
   toggle: ToggleTarget | null;
   toggleHint: string | null;
   conflict: ToolConflict;
+  overriddenBy: string | null;
+  overrides: string[];
   error: string | null;
   frontMatter: Record<string, unknown> | null;
   plugin: PluginInfo | null;
   mcp: McpInfo | null;
+}
+
+export interface ToolCopy {
+  kind: 'skill' | 'command' | 'agent';
+  name: string;
+  scope: { kind: 'global' | 'project' | 'plugin'; path: string | null; label: string };
+  filePath: string;
+  hash: string | null;
+  modifiedMs: number | null;
 }
 
 export interface SourceStatus {

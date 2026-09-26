@@ -6,6 +6,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::commands::conversations::blocking;
 use crate::conversations::scanner::list_projects;
+use crate::tooling::copies::{list_copies, ToolCopy};
 use crate::tooling::effective::{list_scopes, scan_global, scan_project};
 use crate::tooling::paths::{
     claude_dir, claude_json, ensure_allowed, installed_plugins, same_project,
@@ -78,6 +79,16 @@ fn read_limited(path: &Path) -> Result<ToolFile, String> {
 pub async fn list_tool_scopes() -> Result<Vec<ScopeRef>, String> {
     let home = home()?;
     blocking(move || known_scopes(&home)).await
+}
+
+#[tauri::command]
+pub async fn list_tool_copies() -> Result<Vec<ToolCopy>, String> {
+    let home = home()?;
+    blocking(move || {
+        let plugins = read_installed(&installed_plugins(&home)).0;
+        list_copies(&claude_dir(&home), &known_scopes(&home), &plugins)
+    })
+    .await
 }
 
 #[tauri::command]

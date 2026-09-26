@@ -3,6 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 import { useEffect } from 'react';
 import {
   listConfigBackups,
+  listToolCopies,
   listToolScopes,
   readToolFile,
   scanToolScope,
@@ -25,6 +26,14 @@ export function useToolScan(scope: { kind: ScopeKind; path: string | null }) {
     queryKey: ['tooling', 'scan', scope.kind, scope.path],
     queryFn: () => scanToolScope(scope),
     staleTime: 30_000,
+  });
+}
+
+export function useToolCopies() {
+  return useQuery({
+    queryKey: ['tooling', 'copies'],
+    queryFn: listToolCopies,
+    staleTime: 60_000,
   });
 }
 
