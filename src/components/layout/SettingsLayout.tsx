@@ -1,17 +1,28 @@
 import { useQuery } from '@tanstack/react-query';
 import { homeDir, join } from '@tauri-apps/api/path';
-import { FileCog, Folder, type LucideIcon, MessageSquare } from 'lucide-react';
+import {
+  ChevronDown,
+  Database,
+  FileCog,
+  Folder,
+  type LucideIcon,
+  MessageSquare,
+} from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useConversationProjects } from '@/hooks/use-conversations';
+import { useConfigBackups } from '@/hooks/use-tooling';
 import { cn } from '@/lib/cn';
 import { revealInExplorer } from '@/lib/ipc';
 import { formatBytes } from '@/lib/projects';
+import { dayLabel, formatTime } from '@/lib/sessions';
+import type { ConfigBackup } from '@/lib/types';
 import { version } from '../../../package.json';
 import { panelCard } from './panels';
 import { EchoMark } from './Titlebar';
 
 const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'claude', label: 'Claude config', icon: FileCog },
+  { id: 'backups', label: 'Config backups', icon: Database },
   { id: 'conversations', label: 'Conversations', icon: MessageSquare },
 ];
 
@@ -19,12 +30,22 @@ const softFill = 'bg-[color-mix(in_srgb,var(--color-text-primary)_7%,transparent
 const focusRing =
   'outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-0';
 
+function stampToIso(stamp: string): string | null {
+  const m = stamp.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z` : null;
+}
+
+function fileName(path: string): string {
+  return path.split(/[\\/]/).pop() ?? path;
+}
+
 function reveal(path: string) {
   revealInExplorer(path).catch(() => {});
 }
 
 export function SettingsLayout() {
   const projects = useConversationProjects();
+  const backups = useConfigBackups();
   const paths = useQuery({
     queryKey: ['settings', 'paths'],
     queryFn: async () => {
@@ -139,6 +160,22 @@ export function SettingsLayout() {
                     {paths.data && <RevealButton path={paths.data.claudeJson} />}
                   </Row>
                 </Rows>
+              </Section>
+
+              <Section
+                id="backups"
+                title="Config backups"
+                subtitle="Copy of a Claude config file before every switch in Tools. Last 20 per file kept."
+              >
+                {backups.isLoading ? (
+                  <Skeleton />
+                ) : backups.isError ? (
+                  <Tag tone="warn" title={String(backups.error)}>
+                    couldn't list copies
+                  </Tag>
+                ) : (
+                  <Backups items={backups.data ?? []} />
+                )}
               </Section>
 
               <Section
@@ -314,5 +351,110 @@ function Skeleton({ short }: { short?: boolean }) {
         />
       ))}
     </span>
+  );
+}
+
+function SoftChip({ value, unit }: { value: string | number; unit: string }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex h-6 items-center rounded-full px-[9px] text-[11px] font-medium text-[var(--color-text-muted)] tabular-nums',
+        softFill,
+      )}
+    >
+      <b className="mr-1 font-bold text-[var(--color-text-primary)]">{value}</b>
+      {unit}
+    </span>
+  );
+}
+
+function Backups({ items }: { items: ConfigBackup[] }) {
+  const [openList, setOpenList] = useState(false);
+  const latest = items[0];
+  if (!latest) {
+    return (
+      <p className="text-[13px] font-medium text-[var(--color-text-muted)]">
+        No copies yet. They appear before the first switch changes a config file.
+      </p>
+    );
+  }
+  const total = items.reduce((s, b) => s + b.sizeBytes, 0);
+  const [totalValue = '', totalUnit = ''] = formatBytes(total).split(' ');
+  const latestIso = stampToIso(latest.createdAt);
+  const latestDay = dayLabel(latestIso);
+  const folder = latest.backupPath.replace(/[\\/][^\\/]+[\\/][^\\/]+$/, '');
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex flex-1 flex-wrap gap-1.5">
+          <SoftChip value={items.length} unit={items.length === 1 ? 'copy' : 'copies'} />
+          <SoftChip value={totalValue} unit={totalUnit} />
+          <SoftChip
+            value={`${latestDay.lead ?? latestDay.date} ${formatTime(latestIso)}`}
+            unit="latest"
+          />
+        </span>
+        <RevealButton path={folder} label="Open folder" inline />
+        <button
+          type="button"
+          onClick={() => setOpenList((v) => !v)}
+          aria-expanded={openList}
+          className={cn(
+            'inline-flex h-8 items-center gap-1.5 rounded-full pr-2.5 pl-3 text-xs font-medium text-[var(--color-text-primary)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] active:scale-[.96]',
+            softFill,
+            focusRing,
+          )}
+        >
+          {openList ? 'Hide list' : 'Show list'}
+          <ChevronDown
+            className={cn(
+              'h-3.5 w-3.5 text-[var(--color-text-muted)] transition-transform duration-200 ease-[var(--ease-trail)]',
+              openList && 'rotate-180',
+            )}
+            strokeWidth={1.75}
+          />
+        </button>
+      </div>
+      {openList && (
+        <ul className="flex flex-col gap-1">
+          {items.map((b) => {
+            const iso = stampToIso(b.createdAt);
+            return (
+              <li
+                key={b.backupPath}
+                className="grid h-11 grid-cols-[120px_64px_minmax(0,1fr)_32px] items-center gap-x-3 rounded-full pr-1.5 pl-4 text-[13px] font-medium tabular-nums hover:bg-[color-mix(in_srgb,var(--color-text-primary)_6%,transparent)] @max-[640px]:grid-cols-[110px_60px_minmax(0,1fr)_32px]"
+              >
+                <span className="text-[var(--color-text-primary)]">
+                  {iso ? `${dayLabel(iso).date} · ${formatTime(iso)}` : b.createdAt}
+                </span>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  {formatBytes(b.sizeBytes)}
+                </span>
+                <span
+                  className="min-w-0 truncate font-mono text-[11px] font-normal text-[var(--color-text-muted)]"
+                  title={b.file}
+                >
+                  {b.file || fileName(b.backupPath)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => reveal(b.backupPath)}
+                  title="Show in Explorer"
+                  aria-label={`Show copy of ${fileName(b.file)} in Explorer`}
+                  className={cn(
+                    'grid h-8 w-8 place-items-center rounded-full text-[var(--color-text-muted)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]',
+                    softFill,
+                    focusRing,
+                  )}
+                >
+                  <Folder className="h-4 w-4" strokeWidth={1.75} />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }

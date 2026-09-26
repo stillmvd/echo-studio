@@ -240,3 +240,45 @@
   background-color: var(--color-accent-soft);
   color: var(--color-text-primary);
 }
+
+.tool-md {
+  font-size: 14px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--color-text-primary) 82%, var(--color-text-muted));
+}
+.tool-md > :first-child {
+  margin-top: 0;
+}
+.tool-md h1 {
+  font-size: 22px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.tool-md h2 {
+  font-size: 17px;
+  font-weight: 700;
+}
+.tool-md h3,
+.tool-md h4 {
+  font-size: 15px;
+  font-weight: 700;
+}
+.tool-md code:not(pre code) {
+  border-radius: 6px;
+  background-color: var(--color-bg-tertiary);
+}
+.tool-md pre {
+  border: 0;
+  border-radius: 16px;
+  background-color: var(--color-bg-primary);
+  padding: 12px 14px;
+}
+.tool-md th,
+.tool-md td {
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.tool-md th {
+  background: transparent;
+}

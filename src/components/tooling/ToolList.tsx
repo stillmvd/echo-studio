@@ -11,7 +11,7 @@ import { TypeFilter } from './TypeFilter';
 
 const ROW = 60;
 const GAP = 2;
-const KIND_ORDER = { skill: 0, plugin: 1, mcp: 2, command: 3, agent: 4 } as const;
+const SORT_RANK = { skill: 0, plugin: 1, mcp: 2, command: 3, agent: 4 } as const;
 
 function CenterNote({ children }: { children: React.ReactNode }) {
   return (
@@ -83,12 +83,14 @@ export function ToolList({
   scan,
   isLoading,
   error,
+  compact,
   onRetry,
 }: {
   scope: ScopeRef;
   scan: ScanResult | undefined;
   isLoading: boolean;
   error: unknown;
+  compact: boolean;
   onRetry: () => void;
 }) {
   const type = useUiStore((s) => s.toolsType);
@@ -102,7 +104,7 @@ export function ToolList({
     () =>
       [...(scan?.items ?? [])].sort(
         (a, b) =>
-          KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.qualifiedName.localeCompare(b.qualifiedName),
+          SORT_RANK[a.kind] - SORT_RANK[b.kind] || a.qualifiedName.localeCompare(b.qualifiedName),
       ),
     [scan],
   );
@@ -212,12 +214,15 @@ export function ToolList({
           {lightName}
           <b className="font-bold">{boldName}</b>
         </h2>
-        {scan && !isLoading && <Tiles counts={scan.counts} />}
+        {scan && !isLoading && !compact && <Tiles counts={scan.counts} />}
       </div>
       {scope.available && (
         <div className="flex flex-wrap items-center gap-2.5 px-1">
           <TypeFilter value={type} counts={counts} onChange={setType} />
-          <SearchField total={sorted.length} shown={matching.length} />
+          <SearchField
+            total={type === 'all' ? sorted.length : sorted.filter((i) => i.kind === type).length}
+            shown={visible.length}
+          />
         </div>
       )}
       {failed.map((s) => (

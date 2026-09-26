@@ -80,9 +80,9 @@ guard путей, фильтры фронтенда) — они включены
 - [X] T028 [US1] Записать выбор стенда 1 в `.planning/TOOLING-STANDS.md` с расшифровкой чисел
 - [X] T029 [US1] `src/components/layout/ToolsLayout.tsx` + `src/components/tooling/ScopePanel.tsx`, `ToolList.tsx` (виртуализация TanStack Virtual), `TypeFilter.tsx`, `ToolRow.tsx` по выбору стенда 1; `src/state/ui-store.ts` — `toolsScope`, `toolsType`, `toolsQuery`, `selectedToolId`; mouse4/5 через `src/lib/nav-history.ts`
 - [X] T030 [US1] Стенд 2 «Детали элемента»: `.planning/sketches/102-tool-detail/`: части — шапка элемента, метаданные (путь, источник, плагин), содержимое markdown, MCP (подключение, аргументы, маска секретов), плагин (версия, состав), ошибка чтения; состояния — skill, MCP, plugin, ошибка. **СТОП до выбора пользователя**
-- [ ] T031 [US1] Записать выбор стенда 2 в `.planning/TOOLING-STANDS.md`
-- [ ] T032 [US1] `src/components/tooling/ToolDetail.tsx` (+ `McpDetail.tsx`, `PluginDetail.tsx` по выбору): текст через `readToolFile` и существующий `src/components/markdown/Markdown.tsx`; «Show in Explorer»; маска `env`/`headers` с раскрытием по клику на значение до смены элемента (R9)
-- [ ] T033 [US1] Замер SC-001 (Global ≈250 элементов < 1 с до показа) и SC-003 (поиск ≤ 100 мс на ввод на ≈250 элементах) в dev; проверки, адверсариальный ревью (`Agent adversary`, `model: sonnet`) на соответствие выбору стендов 1–2 и FR-001…FR-010, исправить подтверждённое; dev — пользователь смотрит сам
+- [X] T031 [US1] Записать выбор стенда 2 в `.planning/TOOLING-STANDS.md`
+- [X] T032 [US1] `src/components/tooling/ToolDetail.tsx` (+ `McpDetail.tsx`, `PluginDetail.tsx` по выбору): текст через `readToolFile` и существующий `src/components/markdown/Markdown.tsx`; «Show in Explorer»; маска `env`/`headers` с раскрытием по клику на значение до смены элемента (R9)
+- [X] T033 [US1] Замер SC-001 (Global ≈250 элементов < 1 с до показа) и SC-003 (поиск ≤ 100 мс на ввод на ≈250 элементах) в dev; проверки, адверсариальный ревью (`Agent adversary`, `model: sonnet`) на соответствие выбору стендов 1–2 и FR-001…FR-010, исправить подтверждённое; dev — пользователь смотрит сам
 
 **Checkpoint**: MVP — обзор Global работает. Коммит `feat(tooling): global tools view`.
 
@@ -113,7 +113,7 @@ guard путей, фильтры фронтенда) — они включены
 - [X] T039 [US3] IPC `set_tool_enabled`, `list_config_backups` в `src-tauri/src/commands/tooling.rs` + `src/lib/ipc.ts` + мутация в `src/hooks/use-tooling.ts` (оптимистично, откат при ошибке)
 - [ ] T040 [US3] Стенд 4 «Переключатель»: `.planning/sketches/104-tool-toggle/`: части — переключатель в строке и в деталях, выключенный/недоступный элемент, подсказка «нельзя выключить», ошибка записи, «глобально / для проекта»; состояния — включено, выключено, недоступно, ошибка. **СТОП до выбора пользователя**
 - [ ] T041 [US3] Записать выбор стенда 4; реализовать в `src/components/tooling/ToolToggle.tsx`, `ToolRow.tsx`, `ToolDetail.tsx`
-- [ ] T042 [US3] `src/components/layout/SettingsLayout.tsx`: секция «Config backups» — список `list_config_backups` (файл, дата, размер) и «Show in Explorer» (FR-020), форма — как Backups шага 5 (B)
+- [X] T042 [US3] `src/components/layout/SettingsLayout.tsx`: секция «Config backups» — список `list_config_backups` (файл, дата, размер) и «Show in Explorer» (FR-020), форма — как Backups шага 5 (B)
 - [ ] T043 [US3] Проверки, адверсариальный ревью на FR-011…FR-016 и принцип I конституции; quickstart 5–7 вручную пользователем
 
 **Checkpoint**: коммит `feat(tooling): enable and disable tools`.
