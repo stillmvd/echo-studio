@@ -16,6 +16,20 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .setup(|app| {
+            if let Some(home) = dirs::home_dir() {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    let cwds: Vec<String> = conversations::scanner::list_projects()
+                        .into_iter()
+                        .map(|p| p.cwd)
+                        .collect();
+                    let scopes = tooling::effective::list_scopes(&home, &cwds);
+                    tooling::watch::start(handle, home, scopes);
+                });
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::system::open_in_claude_code,
             commands::system::write_text_file,
@@ -30,6 +44,8 @@ pub fn run() {
             commands::tooling::list_tool_scopes,
             commands::tooling::scan_tool_scope,
             commands::tooling::read_tool_file,
+            commands::tooling::set_tool_enabled,
+            commands::tooling::list_config_backups,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

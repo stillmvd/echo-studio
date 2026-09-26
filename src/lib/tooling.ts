@@ -1,4 +1,4 @@
-import type { ToolItem, ToolKind } from './types';
+import type { ToggleTarget, ToolItem, ToolKind } from './types';
 
 export type KindFilter = ToolKind | 'all';
 
@@ -56,4 +56,28 @@ export function highlightSegments(text: string, query: string): Segment[] {
   }
   if (from < text.length) out.push({ text: text.slice(from), hit: false });
   return out;
+}
+
+function sameTarget(a: ToggleTarget | null, b: ToggleTarget): boolean {
+  return (
+    a !== null &&
+    a.file === b.file &&
+    a.key === b.key &&
+    a.name === b.name &&
+    a.projectPath === b.projectPath
+  );
+}
+
+export function applyToggle(items: ToolItem[], target: ToggleTarget, enabled: boolean): ToolItem[] {
+  const pluginKey = target.key === 'enabledPlugins' ? target.name : null;
+  return items.map((i) => {
+    if (sameTarget(i.toggle, target) && (i.state === 'enabled' || i.state === 'disabled')) {
+      return { ...i, state: enabled ? 'enabled' : 'disabled' };
+    }
+    if (pluginKey && i.kind !== 'plugin' && i.pluginKey === pluginKey) {
+      if (!enabled && i.state === 'enabled') return { ...i, state: 'unavailable' };
+      if (enabled && i.state === 'unavailable') return { ...i, state: 'enabled' };
+    }
+    return i;
+  });
 }

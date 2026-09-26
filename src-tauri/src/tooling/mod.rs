@@ -5,6 +5,8 @@ pub mod paths;
 pub mod plugins;
 pub mod scan;
 pub mod settings;
+pub mod watch;
+pub mod write;
 
 use std::collections::BTreeMap;
 

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { KindFilter } from '@/lib/tooling';
 
 export type AppTab = 'tools' | 'conversations' | 'settings';
 export type ProjectSort = 'recent' | 'name' | 'sessions' | 'size';
@@ -17,6 +18,10 @@ interface UiState {
   projectsSort: ProjectSort;
   viewerShowSystem: boolean;
   viewerShowThinking: boolean;
+  toolsScope: string | null;
+  toolsType: KindFilter;
+  toolsQuery: string;
+  selectedToolId: string | null;
 
   setActiveTab: (tab: AppTab) => void;
   setConversationsProjectId: (id: string | null) => void;
@@ -31,6 +36,10 @@ interface UiState {
   setConversationsAgeFilter: (f: 'all' | 'older30' | 'older90' | 'older365') => void;
   toggleViewerShowSystem: () => void;
   toggleViewerShowThinking: () => void;
+  setToolsScope: (path: string | null) => void;
+  setToolsType: (type: KindFilter) => void;
+  setToolsQuery: (q: string) => void;
+  setSelectedToolId: (id: string | null) => void;
 }
 
 export function migrateUiState(persisted: unknown): unknown {
@@ -54,6 +63,10 @@ export const useUiStore = create<UiState>()(
       projectsSort: 'recent',
       viewerShowSystem: false,
       viewerShowThinking: false,
+      toolsScope: null,
+      toolsType: 'all',
+      toolsQuery: '',
+      selectedToolId: null,
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setConversationsProjectId: (conversationsProjectId) =>
@@ -78,6 +91,10 @@ export const useUiStore = create<UiState>()(
         set({ conversationsAgeFilter, conversationsBulkSelection: [] }),
       toggleViewerShowSystem: () => set((s) => ({ viewerShowSystem: !s.viewerShowSystem })),
       toggleViewerShowThinking: () => set((s) => ({ viewerShowThinking: !s.viewerShowThinking })),
+      setToolsScope: (toolsScope) => set({ toolsScope, selectedToolId: null }),
+      setToolsType: (toolsType) => set({ toolsType }),
+      setToolsQuery: (toolsQuery) => set({ toolsQuery }),
+      setSelectedToolId: (selectedToolId) => set({ selectedToolId }),
     }),
     {
       name: 'echo-studio.ui',
@@ -92,6 +109,8 @@ export const useUiStore = create<UiState>()(
         projectsSort: s.projectsSort,
         viewerShowSystem: s.viewerShowSystem,
         viewerShowThinking: s.viewerShowThinking,
+        toolsScope: s.toolsScope,
+        toolsType: s.toolsType,
       }),
     },
   ),

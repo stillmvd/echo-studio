@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countByKind, filterTools, highlightSegments } from './tooling';
+import { applyToggle, countByKind, filterTools, highlightSegments } from './tooling';
 import type { ToolItem } from './types';
 
 function item(p: Partial<ToolItem> & Pick<ToolItem, 'kind' | 'qualifiedName'>): ToolItem {
@@ -63,5 +63,29 @@ describe('tooling filters', () => {
       { text: 'cloud', hit: true },
     ]);
     expect(highlightSegments('abc', ' ')).toEqual([{ text: 'abc', hit: false }]);
+  });
+});
+
+describe('applyToggle', () => {
+  const target = {
+    file: 'userSettings' as const,
+    projectPath: null,
+    key: 'enabledPlugins' as const,
+    name: 'pony@mkt',
+  };
+  const list = [
+    item({ kind: 'plugin', qualifiedName: 'pony@mkt', origin: 'plugin', toggle: target }),
+    item({ kind: 'skill', qualifiedName: 'pony:lazy', origin: 'plugin', pluginKey: 'pony@mkt' }),
+    item({ kind: 'skill', qualifiedName: 'other' }),
+  ];
+
+  it('turns a plugin and its items off and back on', () => {
+    const off = applyToggle(list, target, false);
+    expect(off.map((i) => i.state)).toEqual(['disabled', 'unavailable', 'enabled']);
+    expect(applyToggle(off, target, true).map((i) => i.state)).toEqual([
+      'enabled',
+      'enabled',
+      'enabled',
+    ]);
   });
 });

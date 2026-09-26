@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
+  ConfigBackup,
   ConversationProject,
   DisplayItem,
   ScanResult,
@@ -8,7 +9,9 @@ import type {
   SessionBulkDeleteResult,
   SessionMeta,
   SessionSearchHit,
+  ToggleTarget,
   ToolFile,
+  ToolItem,
 } from './types';
 
 export async function listToolScopes(): Promise<ScopeRef[]> {
@@ -24,6 +27,14 @@ export async function scanToolScope(scope: {
 
 export async function readToolFile(path: string): Promise<ToolFile> {
   return invoke<ToolFile>('read_tool_file', { path });
+}
+
+export async function setToolEnabled(target: ToggleTarget, enabled: boolean): Promise<ToolItem> {
+  return invoke<ToolItem>('set_tool_enabled', { target, enabled });
+}
+
+export async function listConfigBackups(): Promise<ConfigBackup[]> {
+  return invoke<ConfigBackup[]>('list_config_backups');
 }
 
 export async function openInClaudeCode(cwd?: string): Promise<string> {

@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Manager};
 
 use crate::commands::conversations::blocking;
 use crate::conversations::scanner::list_projects;
@@ -10,7 +11,8 @@ use crate::tooling::paths::{
     claude_dir, claude_json, ensure_allowed, installed_plugins, same_project,
 };
 use crate::tooling::plugins::read_installed;
-use crate::tooling::{ScanResult, ScopeKind, ScopeRef};
+use crate::tooling::write::{list_backups, set_enabled, ConfigBackup};
+use crate::tooling::{ScanResult, ScopeKind, ScopeRef, ToggleTarget, ToolItem};
 
 const READ_LIMIT: usize = 512 * 1024;
 
@@ -112,6 +114,46 @@ pub async fn read_tool_file(path: String) -> Result<ToolFile, String> {
         read_limited(&canonical)
     })
     .await?
+}
+
+fn backups_root(app: &AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|d| d.join("config-backups"))
+        .map_err(|e| format!("cannot resolve app data folder: {e}"))
+}
+
+#[tauri::command]
+pub async fn set_tool_enabled(
+    app: AppHandle,
+    target: ToggleTarget,
+    enabled: bool,
+) -> Result<ToolItem, String> {
+    let home = home()?;
+    let backups = backups_root(&app)?;
+    blocking(move || {
+        let known: Vec<String> = known_scopes(&home)
+            .into_iter()
+            .filter(|s| s.available)
+            .filter_map(|s| s.path)
+            .collect();
+        set_enabled(&home, &backups, &known, &target, enabled)?;
+        let scan = match &target.project_path {
+            Some(p) => scan_project(&home, p),
+            None => scan_global(&home),
+        };
+        scan.items
+            .into_iter()
+            .find(|i| i.toggle.as_ref() == Some(&target))
+            .ok_or_else(|| format!("{} not found after the change", target.name))
+    })
+    .await?
+}
+
+#[tauri::command]
+pub async fn list_config_backups(app: AppHandle) -> Result<Vec<ConfigBackup>, String> {
+    let backups = backups_root(&app)?;
+    blocking(move || list_backups(&backups)).await
 }
 
 #[cfg(test)]

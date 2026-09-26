@@ -145,3 +145,10 @@ export interface ToolFile {
   text: string;
   truncatedAt: number | null;
 }
+
+export interface ConfigBackup {
+  file: string;
+  backupPath: string;
+  createdAt: string;
+  sizeBytes: number;
+}
