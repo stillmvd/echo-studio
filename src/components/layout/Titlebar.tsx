@@ -1,6 +1,6 @@
 import { WindowControls } from './WindowControls';
 
-function EchoMark({ className }: { className?: string }) {
+export function EchoMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 16 16" className={className} aria-hidden="true">
       <circle cx="4" cy="8" r="1.9" fill="currentColor" />
