@@ -1,8 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type {
+  KindFilter as MemoryKindFilter,
+  StatusFilter as MemoryStatusFilter,
+} from '@/lib/memory';
 import type { KindFilter } from '@/lib/tooling';
 
-export type AppTab = 'tools' | 'conversations' | 'settings';
+export type AppTab = 'tools' | 'memory' | 'conversations' | 'settings';
+export type MemoryTab = 'records' | 'sessions' | 'archive';
 export type ProjectSort = 'recent' | 'name' | 'sessions' | 'size';
 
 interface UiState {
@@ -25,6 +30,14 @@ interface UiState {
   toolsOpenGroups: string[];
   toolToggleError: { id: string; message: string } | null;
   toolsOverriddenOnly: boolean;
+  memorySlug: string | null;
+  memoryTab: MemoryTab;
+  memoryStatus: MemoryStatusFilter;
+  memoryKind: MemoryKindFilter;
+  memoryQuery: string;
+  selectedMemoryPath: string | null;
+  memoryDirty: boolean;
+  memoryGuard: (() => void) | null;
 
   setActiveTab: (tab: AppTab) => void;
   setConversationsProjectId: (id: string | null) => void;
@@ -46,6 +59,15 @@ interface UiState {
   toggleToolsGroup: (key: string) => void;
   setToolToggleError: (error: { id: string; message: string } | null) => void;
   setToolsOverriddenOnly: (on: boolean) => void;
+  setMemorySlug: (slug: string | null) => void;
+  setMemoryTab: (tab: MemoryTab) => void;
+  setMemoryStatus: (status: MemoryStatusFilter) => void;
+  setMemoryKind: (kind: MemoryKindFilter) => void;
+  setMemoryQuery: (q: string) => void;
+  setSelectedMemoryPath: (path: string | null) => void;
+  openMemoryRecord: (slug: string, path: string) => void;
+  setMemoryDirty: (dirty: boolean) => void;
+  setMemoryGuard: (action: (() => void) | null) => void;
 }
 
 export function migrateUiState(persisted: unknown): unknown {
@@ -76,6 +98,14 @@ export const useUiStore = create<UiState>()(
       toolsOpenGroups: [],
       toolToggleError: null,
       toolsOverriddenOnly: false,
+      memorySlug: null,
+      memoryTab: 'records',
+      memoryStatus: 'all',
+      memoryKind: 'all',
+      memoryQuery: '',
+      selectedMemoryPath: null,
+      memoryDirty: false,
+      memoryGuard: null,
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setConversationsProjectId: (conversationsProjectId) =>
@@ -122,6 +152,30 @@ export const useUiStore = create<UiState>()(
         })),
       setToolToggleError: (toolToggleError) => set({ toolToggleError }),
       setToolsOverriddenOnly: (toolsOverriddenOnly) => set({ toolsOverriddenOnly }),
+      setMemorySlug: (memorySlug) =>
+        set({
+          memorySlug,
+          memoryStatus: 'all',
+          memoryKind: 'all',
+          memoryQuery: '',
+          selectedMemoryPath: null,
+        }),
+      setMemoryTab: (memoryTab) => set({ memoryTab, selectedMemoryPath: null }),
+      setMemoryStatus: (memoryStatus) => set({ memoryStatus }),
+      setMemoryKind: (memoryKind) => set({ memoryKind }),
+      setMemoryQuery: (memoryQuery) => set({ memoryQuery }),
+      setSelectedMemoryPath: (selectedMemoryPath) => set({ selectedMemoryPath }),
+      setMemoryDirty: (memoryDirty) => set({ memoryDirty }),
+      setMemoryGuard: (memoryGuard) => set({ memoryGuard }),
+      openMemoryRecord: (memorySlug, selectedMemoryPath) =>
+        set({
+          memorySlug,
+          memoryTab: 'records',
+          memoryStatus: 'all',
+          memoryKind: 'all',
+          memoryQuery: '',
+          selectedMemoryPath,
+        }),
     }),
     {
       name: 'echo-studio.ui',
@@ -139,7 +193,22 @@ export const useUiStore = create<UiState>()(
         toolsScope: s.toolsScope,
         toolsType: s.toolsType,
         toolsOpenGroups: s.toolsOpenGroups,
+        memorySlug: s.memorySlug,
+        memoryTab: s.memoryTab,
       }),
     },
   ),
 );
+
+export function guardMemory(action: () => void): void {
+  const s = useUiStore.getState();
+  if (s.memoryDirty) s.setMemoryGuard(action);
+  else action();
+}
+
+export function goToTab(tab: AppTab): void {
+  const s = useUiStore.getState();
+  if (s.activeTab === tab) return;
+  if (s.activeTab === 'memory') guardMemory(() => useUiStore.getState().setActiveTab(tab));
+  else s.setActiveTab(tab);
+}

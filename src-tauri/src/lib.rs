@@ -1,5 +1,6 @@
 mod commands;
 mod conversations;
+mod memory;
 mod splash;
 mod tooling;
 
@@ -50,6 +51,7 @@ pub fn run() {
                 });
             }
             if let Some(home) = dirs::home_dir() {
+                memory::watch::start(app.handle().clone(), memory::projects_root(&home));
                 let handle = app.handle().clone();
                 std::thread::spawn(move || {
                     let cwds: Vec<String> = conversations::scanner::list_projects()
@@ -79,6 +81,17 @@ pub fn run() {
             commands::tooling::read_tool_file,
             commands::tooling::set_tool_enabled,
             commands::tooling::list_config_backups,
+            commands::memory::list_memory_projects,
+            commands::memory::list_memory,
+            commands::memory::read_memory_file,
+            commands::memory::search_memory,
+            commands::memory::save_memory_file,
+            commands::memory::archive_memory_record,
+            commands::memory::restore_memory_record,
+            commands::memory::move_memory_record,
+            commands::memory::find_memory_duplicates,
+            commands::memory::patch_memory_record,
+            commands::memory::merge_memory_records,
             app_ready,
         ])
         .run(context)

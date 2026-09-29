@@ -1,15 +1,15 @@
-import { Blocks, type LucideIcon, MessageSquare, Settings } from 'lucide-react';
+import { Blocks, Brain, type LucideIcon, MessageSquare, Settings } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { type AppTab, useUiStore } from '@/state/ui-store';
+import { type AppTab, goToTab, useUiStore } from '@/state/ui-store';
 
 const sections: { id: AppTab; label: string; Icon: LucideIcon }[] = [
   { id: 'tools', label: 'Tools', Icon: Blocks },
+  { id: 'memory', label: 'Memory', Icon: Brain },
   { id: 'conversations', label: 'Conversations', Icon: MessageSquare },
 ];
 
 function RailButton({ id, label, Icon }: { id: AppTab; label: string; Icon: LucideIcon }) {
   const activeTab = useUiStore((s) => s.activeTab);
-  const setActiveTab = useUiStore((s) => s.setActiveTab);
   const active = activeTab === id;
 
   return (
@@ -18,7 +18,7 @@ function RailButton({ id, label, Icon }: { id: AppTab; label: string; Icon: Luci
       title={label}
       aria-label={label}
       aria-current={active ? 'page' : undefined}
-      onClick={() => setActiveTab(id)}
+      onClick={() => goToTab(id)}
       className={cn(
         'grid h-11 w-11 place-items-center rounded-full transition-[background-color,color,transform] duration-200 ease-[var(--ease-trail)] active:scale-96 motion-reduce:transition-none motion-reduce:active:scale-100',
         active

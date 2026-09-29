@@ -163,3 +163,77 @@ export interface ConfigBackup {
   createdAt: string;
   sizeBytes: number;
 }
+
+export interface MemoryProject {
+  slug: string;
+  name: string;
+  cwd: string | null;
+  memoryDir: string;
+  records: number;
+  facts: number;
+  sessions: number;
+  archived: number;
+  indexLines: number;
+  updatedAt: number;
+}
+
+export type MemoryKind = 'decision' | 'gotcha' | 'bugfix' | 'feature' | 'discovery';
+
+export interface MemoryRecord {
+  path: string;
+  file: string;
+  name: string;
+  description: string;
+  type: string | null;
+  kind: string | null;
+  status: 'observation' | 'fact';
+  seen: number;
+  importance: 1 | 2 | 3;
+  tags: string[];
+  files: string[];
+  supersedes: string | null;
+  validTo: string | null;
+  consolidatedInto: string | null;
+  stale: boolean;
+  updated: string;
+  archived: boolean;
+  error: string | null;
+}
+
+export interface SessionNote {
+  path: string;
+  sessionId: string | null;
+  title: string;
+  capture: 'claude' | 'extractive';
+  updated: string;
+  next: string | null;
+  error: string | null;
+}
+
+export interface MemoryListing {
+  records: MemoryRecord[];
+  sessions: SessionNote[];
+  archived: MemoryRecord[];
+  indexLines: number;
+}
+
+export interface MemoryHit {
+  slug: string;
+  path: string;
+  line: number;
+  snippet: string;
+}
+
+export interface DuplicatePair {
+  slug: string;
+  a: MemoryRecord;
+  b: MemoryRecord;
+  score: number;
+}
+
+export interface RecordPatch {
+  status?: 'observation' | 'fact';
+  importance?: 1 | 2 | 3;
+  validTo?: string | null;
+  supersedes?: string | null;
+}

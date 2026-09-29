@@ -40,7 +40,10 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
     };
     const attach = window.setTimeout(() => {
       window.addEventListener('mousedown', onDown);
@@ -48,12 +51,12 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
       window.addEventListener('blur', onClose);
       window.addEventListener('resize', onClose);
     });
-    window.addEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
     return () => {
       window.clearTimeout(attach);
       window.removeEventListener('mousedown', onDown);
       window.removeEventListener('contextmenu', onDown);
-      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('blur', onClose);
       window.removeEventListener('resize', onClose);
     };

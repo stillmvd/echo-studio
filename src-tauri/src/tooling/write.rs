@@ -150,10 +150,15 @@ pub fn backup(file: &Path, backups_root: &Path, now: SystemTime) -> Result<PathB
     fs::write(dir.join(SOURCE_FILE), file.to_string_lossy().as_bytes())
         .map_err(|e| format!("write backup source: {e}"))?;
     let base = stamp(now);
-    let mut target = dir.join(format!("{base}.json"));
+    let ext = file
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("bak")
+        .to_string();
+    let mut target = dir.join(format!("{base}.{ext}"));
     let mut n = 2;
     while target.exists() {
-        target = dir.join(format!("{base}-{n}.json"));
+        target = dir.join(format!("{base}-{n}.{ext}"));
         n += 1;
     }
     fs::copy(file, &target).map_err(|e| format!("backup {}: {e}", file.display()))?;
@@ -171,7 +176,7 @@ fn list_copies(dir: &Path) -> Vec<PathBuf> {
         .flatten()
         .flatten()
         .map(|e| e.path())
-        .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("json"))
+        .filter(|p| p.file_name().and_then(|n| n.to_str()) != Some(SOURCE_FILE))
         .collect();
     files.sort_by_key(|p| {
         let stem = p
@@ -212,7 +217,11 @@ pub fn list_backups(backups_root: &Path) -> Vec<ConfigBackup> {
 fn write_atomic(file: &Path, root: &Value) -> Result<(), String> {
     let mut text = serde_json::to_string_pretty(root).map_err(|e| format!("serialize: {e}"))?;
     text.push('\n');
-    let parent = file.parent().ok_or("config file has no folder")?;
+    write_text_atomic(file, &text)
+}
+
+pub fn write_text_atomic(file: &Path, text: &str) -> Result<(), String> {
+    let parent = file.parent().ok_or("file has no folder")?;
     fs::create_dir_all(parent).map_err(|e| format!("create {}: {e}", parent.display()))?;
     let name = file
         .file_name()
@@ -416,6 +425,21 @@ mod tests {
         assert_eq!(copies.len(), 20);
         assert!(!first.exists() && !second.exists());
         assert_eq!(copies[0].created_at, stamp(t0 + Duration::from_secs(20)));
+    }
+
+    #[test]
+    fn keeps_the_source_extension() {
+        let dir = tempfile::tempdir().unwrap();
+        let backups = tempfile::tempdir().unwrap();
+        let file = dir.path().join("note.md");
+        fs::write(&file, "# x").unwrap();
+        let t0 = SystemTime::UNIX_EPOCH + Duration::from_secs(1_790_000_000);
+        let copy = backup(&file, backups.path(), t0).unwrap();
+        assert!(copy
+            .to_string_lossy()
+            .ends_with(&format!("{}.md", stamp(t0))));
+        assert_eq!(fs::read_to_string(copy).unwrap(), "# x");
+        assert_eq!(list_backups(backups.path()).len(), 1);
     }
 
     #[test]
