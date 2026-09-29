@@ -12,6 +12,7 @@ import {
 import { loadState, memoryDir, saveState } from '../lib/paths.mjs';
 import { fitPinned, readPinned } from '../lib/pinned.mjs';
 import { run, workDir, writeAtomic } from '../lib/run.mjs';
+import { recordFiles, startStatus } from '../lib/status.mjs';
 
 const prompts = join(dirname(fileURLToPath(import.meta.url)), '..', 'prompts');
 const OUTPUT_LIMIT = 8000;
@@ -29,8 +30,11 @@ function cleanOldStates(now) {
 run('session-start', (input) => {
   const dir = memoryDir(input.cwd);
   const warnings = [];
+  const problems = [];
+  let last = null;
   if (existsSync(dir)) {
     const notes = readSessions(dir, 10);
+    last = notes[0] ?? null;
     const index = join(dir, 'MEMORY.md');
     const before = existsSync(index) ? readFileSync(index, 'utf8') : null;
     if (before !== null || notes.length) {
@@ -41,11 +45,14 @@ run('session-start', (input) => {
         warnings.push(
           `MEMORY.md — ${lines} строк, Claude Code грузит только первые ${INDEX_LIMIT}: сократи индекс.`,
         );
+        problems.push(`индекс ${lines} строк, грузятся ${INDEX_LIMIT}`);
       }
     }
-    for (const note of notes.filter((n) => n.capture === 'extractive')) {
+    const drafts = notes.filter((n) => n.capture === 'extractive');
+    for (const note of drafts) {
       warnings.push(`Черновик без итога: ${note.file} — допиши его, если продолжаешь ту работу.`);
     }
+    if (drafts.length) problems.push('черновик сессии без итога');
   }
   const state = loadState(input.session_id);
   saveState(input.session_id, { ...state, memory_dir: dir, file_map: buildFileMap(dir) });
@@ -63,10 +70,17 @@ run('session-start', (input) => {
   const { block, dropped } = fitPinned(pinned, room - reserve);
   if (dropped.length) {
     warnings.push(`Не влезли закреплённые записи (прочитай сам): ${dropped.join(', ')}.`);
+    problems.push(`закреплённые не влезли в старт: ${dropped.length}`);
   }
   room -= block.length + 1;
   const body = [protocol, ...fitLines(warnings, room), block].filter(Boolean).join('\n');
   return {
+    systemMessage: startStatus({
+      records: recordFiles(dir).length,
+      pinned: pinned.length,
+      last,
+      problems,
+    }),
     hookSpecificOutput: {
       hookEventName: 'SessionStart',
       additionalContext: `${open}\n${body}\n${close}`,
