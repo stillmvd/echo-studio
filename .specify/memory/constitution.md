@@ -1,11 +1,12 @@
 <!--
 Sync Impact Report
-- Version: template → 1.0.0 (first ratification)
-- Principles added: I. Claude config belongs to the user; II. Guarded file access; III. Resilient reading;
-  IV. Responsive desktop; V. Local and private; VI. Simplicity and the Trail language
-- Sections added: Technology Constraints, Development Workflow, Governance
-- Templates: plan/spec/tasks templates read this file at runtime — no edits required
+- Version: 1.0.0 → 1.1.0 (2026-09-29, feature 004-memory)
+- Modified: I. Claude config belongs to the user — new rule for the echo-memory plugin's writes
+- Templates: no edits required
 - Deferred: none
+
+Previous: template → 1.0.0 (first ratification, 2026-09-26) — principles I–VI, Technology Constraints,
+Development Workflow, Governance
 -->
 
 # Echo Studio Constitution
@@ -23,6 +24,10 @@ Echo Studio reads Claude Code configuration (`~/.claude`, `~/.claude.json`, proj
   next to the target, then rename. A failed write leaves the original untouched.
 - A write changes only the keys the action owns. Unknown keys, their order and values are preserved.
 - The app never creates, rewrites or "normalizes" config files it was not asked to change.
+- The rules above govern the app. The `echo-memory` plugin (`plugin/`) runs inside Claude Code and may write
+  without a UI action, but only inside the project's auto memory folder (`~/.claude/projects/<slug>/memory/`)
+  and its own state in `%TEMP%/claude-memory/`; in `MEMORY.md` it changes only its marked block; every write is
+  temp → rename. Installing the plugin is the consent; disabling it stops all writes.
 
 ### II. Guarded file access
 
@@ -75,4 +80,4 @@ This constitution overrides conflicting habits in specs and plans. Amendments ar
 ones, PATCH for wording) and record the change in the Sync Impact Report. Plans must include a
 Constitution Check against these principles; any violation needs a written justification.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-26 | **Last Amended**: 2026-09-26
+**Version**: 1.1.0 | **Ratified**: 2026-09-26 | **Last Amended**: 2026-09-29
