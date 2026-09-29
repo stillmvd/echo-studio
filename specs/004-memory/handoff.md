@@ -30,3 +30,14 @@
 - Dev Echo делит порты с Booked (1420/9222). Если занято — 1425/9226 через `--config` (паспорт в CLAUDE.md).
 - Heredoc в Git Bash здесь съедает `\\` — файлы с обратными слэшами писать через Write/Edit.
 - `pnpm biome check .` падает на `public/favicon.svg` из main (`c64bfd5`) — не наше.
+
+## Промпт для новой сессии
+
+```text
+Продолжаем фичу 004-memory в Echo Studio, ветка 004-memory. Прочитай specs/004-memory/handoff.md, затем
+CLAUDE.md проекта и specs/004-memory/spec.md (раздел Clarifications — решение про закрепление и факт).
+Работаем по spec-kit (/speckit-implement по specs/004-memory/tasks.md). Начни с T056–T057: закрепление
+сильнее факта — в Rust в «## Факты» переносит только факт, поле bodyChars, плашка о бюджете закреплённых
+в Echo Studio, живая проверка SessionStart с закреплённой записью. Потом T036, стенд дублей T037
+(глобальная /redesign-stand) и T054. Коммиты — по моему «коммить».
+```
