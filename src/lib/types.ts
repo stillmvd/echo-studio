@@ -197,6 +197,7 @@ export interface MemoryRecord {
   stale: boolean;
   updated: string;
   archived: boolean;
+  bodyChars: number;
   error: string | null;
 }
 

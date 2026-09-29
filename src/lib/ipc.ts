@@ -109,12 +109,20 @@ export async function saveMemoryFile(path: string, text: string): Promise<void> 
   return invoke<void>('save_memory_file', { path, text });
 }
 
-export async function archiveMemoryRecord(path: string): Promise<{ archivedPath: string }> {
-  return invoke<{ archivedPath: string }>('archive_memory_record', { path });
+export interface ArchivedRecord {
+  archivedPath: string;
+  indexLine: string | null;
 }
 
-export async function restoreMemoryRecord(archivedPath: string): Promise<MemoryRecord> {
-  return invoke<MemoryRecord>('restore_memory_record', { archivedPath });
+export async function archiveMemoryRecord(path: string): Promise<ArchivedRecord> {
+  return invoke<ArchivedRecord>('archive_memory_record', { path });
+}
+
+export async function restoreMemoryRecord(
+  archivedPath: string,
+  indexLine: string | null = null,
+): Promise<MemoryRecord> {
+  return invoke<MemoryRecord>('restore_memory_record', { archivedPath, indexLine });
 }
 
 export async function moveMemoryRecord(path: string, targetSlug: string): Promise<MemoryRecord> {
@@ -123,6 +131,15 @@ export async function moveMemoryRecord(path: string, targetSlug: string): Promis
 
 export async function findMemoryDuplicates(slug: string | null): Promise<DuplicatePair[]> {
   return invoke<DuplicatePair[]>('find_memory_duplicates', { slug });
+}
+
+export async function setMemoryDuplicateIgnored(
+  slug: string,
+  a: string,
+  b: string,
+  ignored: boolean,
+): Promise<void> {
+  return invoke<void>('set_memory_duplicate_ignored', { slug, a, b, ignored });
 }
 
 export async function patchMemoryRecord(path: string, patch: RecordPatch): Promise<MemoryRecord> {

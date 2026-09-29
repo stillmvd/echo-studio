@@ -133,7 +133,11 @@ pub fn save_text(path: &Path, text: &str, root: &Path, backups: &Path) -> Result
     Ok(at.path)
 }
 
-pub fn archive(path: &Path, root: &Path, backups: &Path) -> Result<PathBuf, String> {
+pub fn archive(
+    path: &Path,
+    root: &Path,
+    backups: &Path,
+) -> Result<(PathBuf, Option<String>), String> {
     let at = locate(path, root)?;
     if at.rest.len() != 1 || at.rest[0] == INDEX_FILE {
         return Err("only records can be archived".into());
@@ -141,12 +145,23 @@ pub fn archive(path: &Path, root: &Path, backups: &Path) -> Result<PathBuf, Stri
     let archive = at.dir.join(ARCHIVE_DIR);
     fs::create_dir_all(&archive).map_err(|e| format!("create {}: {e}", archive.display()))?;
     let target = unique(&archive, &at.rest[0]);
+    let line = index_line_of(&at.dir, &at.rest[0]);
     fs::rename(&at.path, &target).map_err(|e| format!("archive {}: {e}", at.path.display()))?;
     update_index(&at.dir, backups, |md| remove_links(md, &at.rest[0]))?;
-    Ok(target)
+    Ok((target, line))
 }
 
-pub fn restore(archived: &Path, root: &Path, backups: &Path) -> Result<MemoryRecord, String> {
+fn relink(line: Option<&str>, from: &str, to: &str) -> Option<String> {
+    line.filter(|l| l.contains(&format!("]({from})")))
+        .map(|l| l.replace(&format!("]({from})"), &format!("]({to})")))
+}
+
+pub fn restore(
+    archived: &Path,
+    line: Option<&str>,
+    root: &Path,
+    backups: &Path,
+) -> Result<MemoryRecord, String> {
     let at = locate(archived, root)?;
     if at.rest.len() != 2 || at.rest[0] != ARCHIVE_DIR {
         return Err("not an archived record".into());
@@ -154,7 +169,7 @@ pub fn restore(archived: &Path, root: &Path, backups: &Path) -> Result<MemoryRec
     let target = unique(&at.dir, &at.rest[1]);
     fs::rename(&at.path, &target).map_err(|e| format!("restore {}: {e}", at.path.display()))?;
     let record = read_record(&target, false);
-    let line = record_line(&record);
+    let line = relink(line, &at.rest[1], &record.file).unwrap_or_else(|| record_line(&record));
     update_index(&at.dir, backups, |md| append_line(md, &line))?;
     Ok(record)
 }
@@ -182,9 +197,8 @@ pub fn move_to(
     update_index(&at.dir, backups, |md| remove_links(md, &at.rest[0]))?;
     let record = read_record(&target, false);
     let new_file = file_name(&target);
-    let line = old_line
-        .map(|l| l.replace(&format!("]({})", at.rest[0]), &format!("]({new_file})")))
-        .unwrap_or_else(|| record_line(&record));
+    let line =
+        relink(old_line.as_deref(), &at.rest[0], &new_file).unwrap_or_else(|| record_line(&record));
     update_index(&target_dir, backups, |md| append_line(md, &line))?;
     Ok(record)
 }
@@ -235,7 +249,21 @@ fn edit_meta(text: &str, change: impl FnOnce(&mut Mapping)) -> Result<String, St
     if !matches!(map.get(&key), Some(YamlValue::Mapping(_))) {
         map.insert(key.clone(), YamlValue::Mapping(Mapping::new()));
     }
+    let loose: Vec<YamlValue> = map
+        .keys()
+        .filter(|k| !matches!(k.as_str(), Some("name" | "description" | "metadata")))
+        .cloned()
+        .collect();
+    let moved: Vec<(YamlValue, YamlValue)> = loose
+        .into_iter()
+        .filter_map(|k| map.remove(&k).map(|v| (k, v)))
+        .collect();
     if let Some(YamlValue::Mapping(meta)) = map.get_mut(&key) {
+        for (k, v) in moved {
+            if !meta.contains_key(&k) {
+                meta.insert(k, v);
+            }
+        }
         change(meta);
     }
     let yaml = serde_yaml::to_string(&map).map_err(|e| format!("serialize frontmatter: {e}"))?;
@@ -265,8 +293,8 @@ fn strings(items: Vec<String>) -> YamlValue {
     YamlValue::Sequence(items.into_iter().map(YamlValue::String).collect())
 }
 
-fn is_pinned(r: &MemoryRecord) -> bool {
-    r.status == "fact" || r.importance == 3
+fn is_fact(r: &MemoryRecord) -> bool {
+    r.status == "fact"
 }
 
 fn live_record(path: &Path, root: &Path) -> Result<Located, String> {
@@ -303,10 +331,10 @@ pub fn patch(
     safe_write(&at.path, &next, backups)?;
     let after = read_record(&at.path, false);
     let file = at.rest[0].clone();
-    if is_pinned(&after) {
+    if is_fact(&after) {
         let line = record_line(&after);
         update_index(&at.dir, backups, |md| move_to_facts(md, &file, &line))?;
-    } else if is_pinned(&before) {
+    } else if is_fact(&before) {
         update_index(&at.dir, backups, |md| move_out_of_facts(md, &file))?;
     }
     Ok(after)
@@ -378,7 +406,7 @@ pub fn merge(
             set(
                 meta,
                 "consolidated_into",
-                YamlValue::String(canon.name.clone()),
+                YamlValue::String(canon.file.clone()),
             );
         })?;
         safe_write(&other.path, &marked, backups)?;
@@ -428,14 +456,18 @@ mod tests {
     fn archive_and_restore_round_trip() {
         let e = env();
         let dir = e.root.join("C--a").join(MEMORY_DIR);
-        let archived = archive(&dir.join("g.md"), &e.root, &e.backups).unwrap();
+        let (archived, line) = archive(&dir.join("g.md"), &e.root, &e.backups).unwrap();
         assert!(!dir.join("g.md").exists() && archived.exists());
+        assert_eq!(line.as_deref(), Some("- [Грабли](g.md) — про грабли"));
         assert_eq!(read(dir.join(INDEX_FILE)), "- [Другое](o.md) — x\n");
-        let record = restore(&archived, &e.root, &e.backups).unwrap();
+        let record = restore(&archived, line.as_deref(), &e.root, &e.backups).unwrap();
         assert_eq!(record.file, "g.md");
         assert!(dir.join("g.md").exists() && !archived.exists());
-        assert!(read(dir.join(INDEX_FILE)).contains("- [g](g.md) — про грабли"));
+        assert!(read(dir.join(INDEX_FILE)).contains("- [Грабли](g.md) — про грабли"));
         assert!(e.backups.exists());
+        let (archived, _) = archive(&dir.join("g.md"), &e.root, &e.backups).unwrap();
+        restore(&archived, None, &e.root, &e.backups).unwrap();
+        assert!(read(dir.join(INDEX_FILE)).contains("- [g](g.md) — про грабли"));
     }
 
     #[test]
@@ -471,6 +503,24 @@ mod tests {
     }
 
     #[test]
+    fn patch_clears_a_top_level_key() {
+        let e = env();
+        let dir = e.root.join("C--a").join(MEMORY_DIR);
+        fs::write(
+            dir.join("g.md"),
+            "---\nname: g\ndescription: про грабли\nvalid_to: 2020-01-01\nmetadata:\n  seen: 2\n---\nтело\n",
+        )
+        .unwrap();
+        let clear = RecordPatch {
+            valid_to: Some(None),
+            ..Default::default()
+        };
+        let r = patch(&dir.join("g.md"), &clear, &e.root, &e.backups).unwrap();
+        assert_eq!((r.valid_to, r.seen), (None, 2));
+        assert!(!read(dir.join("g.md")).contains("valid_to"));
+    }
+
+    #[test]
     fn patch_keeps_order_and_moves_the_index_line() {
         let e = env();
         let dir = e.root.join("C--a").join(MEMORY_DIR);
@@ -480,14 +530,21 @@ mod tests {
         )
         .unwrap();
         let pin = RecordPatch {
+            importance: Some(3),
+            ..Default::default()
+        };
+        let r = patch(&dir.join("g.md"), &pin, &e.root, &e.backups).unwrap();
+        assert_eq!((r.importance, r.body_chars), (3, 4));
+        assert!(!read(dir.join(INDEX_FILE)).contains("## Факты"));
+        let fact = RecordPatch {
             status: Some("fact".into()),
             valid_to: Some(None),
             ..Default::default()
         };
-        let r = patch(&dir.join("g.md"), &pin, &e.root, &e.backups).unwrap();
+        let r = patch(&dir.join("g.md"), &fact, &e.root, &e.backups).unwrap();
         assert_eq!((r.status.as_str(), r.valid_to.as_deref()), ("fact", None));
         let text = read(dir.join("g.md"));
-        assert!(text.starts_with("---\r\nname: g\r\ndescription: про грабли\r\nmetadata:\r\n  node_type: memory\r\n  custom: 1\r\n  status: fact\r\n---\r\nтело\r\n"));
+        assert!(text.starts_with("---\r\nname: g\r\ndescription: про грабли\r\nmetadata:\r\n  node_type: memory\r\n  custom: 1\r\n  status: fact\r\n  importance: 3\r\n---\r\nтело\r\n"));
         assert!(read(dir.join(INDEX_FILE)).starts_with("## Факты\n- [Грабли](g.md)"));
         let back = RecordPatch {
             status: Some("observation".into()),
@@ -524,7 +581,7 @@ mod tests {
         let archived = dir.join(ARCHIVE_DIR).join("o.md");
         assert_eq!(
             read_record(&archived, true).consolidated_into.as_deref(),
-            Some("g")
+            Some("g.md")
         );
         assert!(!read(dir.join(INDEX_FILE)).contains("o.md"));
         assert!(merge(&dir.join("g.md"), &[dir.join("g.md")], &e.root, &e.backups).is_err());

@@ -38,6 +38,7 @@ interface UiState {
   selectedMemoryPath: string | null;
   memoryDirty: boolean;
   memoryGuard: (() => void) | null;
+  memoryDupes: boolean;
 
   setActiveTab: (tab: AppTab) => void;
   setConversationsProjectId: (id: string | null) => void;
@@ -68,6 +69,7 @@ interface UiState {
   openMemoryRecord: (slug: string, path: string) => void;
   setMemoryDirty: (dirty: boolean) => void;
   setMemoryGuard: (action: (() => void) | null) => void;
+  setMemoryDupes: (on: boolean) => void;
 }
 
 export function migrateUiState(persisted: unknown): unknown {
@@ -106,6 +108,7 @@ export const useUiStore = create<UiState>()(
       selectedMemoryPath: null,
       memoryDirty: false,
       memoryGuard: null,
+      memoryDupes: false,
 
       setActiveTab: (activeTab) => set({ activeTab }),
       setConversationsProjectId: (conversationsProjectId) =>
@@ -155,6 +158,7 @@ export const useUiStore = create<UiState>()(
       setMemorySlug: (memorySlug) =>
         set({
           memorySlug,
+          memoryDupes: false,
           memoryStatus: 'all',
           memoryKind: 'all',
           memoryQuery: '',
@@ -167,9 +171,11 @@ export const useUiStore = create<UiState>()(
       setSelectedMemoryPath: (selectedMemoryPath) => set({ selectedMemoryPath }),
       setMemoryDirty: (memoryDirty) => set({ memoryDirty }),
       setMemoryGuard: (memoryGuard) => set({ memoryGuard }),
+      setMemoryDupes: (memoryDupes) => set({ memoryDupes, selectedMemoryPath: null }),
       openMemoryRecord: (memorySlug, selectedMemoryPath) =>
         set({
           memorySlug,
+          memoryDupes: false,
           memoryTab: 'records',
           memoryStatus: 'all',
           memoryKind: 'all',

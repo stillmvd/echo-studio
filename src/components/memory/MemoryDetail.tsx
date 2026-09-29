@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  ChevronDown,
   CircleAlert,
   CircleCheck,
   Clock,
@@ -7,12 +8,14 @@ import {
   Pin,
   PinOff,
   RotateCcw,
+  TimerOff,
   Trash2,
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Markdown } from '@/components/markdown/Markdown';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { ContextMenu, type ContextMenuItem } from '@/components/ui/ContextMenu';
 import {
   useArchiveMemoryRecord,
   useMemoryFile,
@@ -22,12 +25,15 @@ import {
   useSaveMemoryFile,
 } from '@/hooks/use-memory';
 import { cn } from '@/lib/cn';
+import type { ArchivedRecord } from '@/lib/ipc';
 import {
   baseName,
   formatMemoryDate,
+  formatMemoryDay,
   formatMemoryTime,
   kindKey,
   splitFrontmatter,
+  todayIso,
 } from '@/lib/memory';
 import type { MemoryProject, MemoryRecord, RecordPatch, SessionNote } from '@/lib/types';
 import { guardMemory, useUiStore } from '@/state/ui-store';
@@ -92,23 +98,28 @@ function Field({ name, value }: { name: string; value: string }) {
 function ActionButton({
   icon: Icon,
   label,
+  hint,
   danger,
   primary,
+  pressed,
   disabled,
   onClick,
 }: {
   icon: typeof Pin;
   label: string;
+  hint?: string;
   danger?: boolean;
   primary?: boolean;
+  pressed?: boolean;
   disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
+      aria-pressed={pressed}
       aria-label={label}
-      title={label}
+      title={hint ?? label}
       disabled={disabled}
       onClick={onClick}
       className={cn(
@@ -116,21 +127,88 @@ function ActionButton({
         focusRing,
         primary
           ? 'bg-[var(--color-text-primary)] font-bold text-[var(--color-bg-primary)] hover:bg-[color-mix(in_srgb,var(--color-text-primary)_88%,var(--color-bg-primary))]'
-          : cn(
-              'bg-[var(--color-bg-tertiary)] font-medium hover:bg-[var(--color-hover)]',
-              danger ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-primary)]',
-            ),
+          : pressed
+            ? 'bg-[color-mix(in_srgb,var(--color-warning)_16%,transparent)] font-medium text-[var(--color-warning)] hover:bg-[color-mix(in_srgb,var(--color-warning)_24%,transparent)]'
+            : cn(
+                'bg-[var(--color-bg-tertiary)] font-medium hover:bg-[var(--color-hover)]',
+                danger ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-primary)]',
+              ),
       )}
     >
       <Icon
         className={cn(
           'h-[15px] w-[15px] shrink-0',
-          primary ? '' : danger ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-muted)]',
+          primary || pressed
+            ? ''
+            : danger
+              ? 'text-[var(--color-danger)]'
+              : 'text-[var(--color-text-muted)]',
         )}
         strokeWidth={1.75}
       />
       <span className="@max-[520px]:sr-only">{label}</span>
     </button>
+  );
+}
+
+function StalePlate({
+  record,
+  replacedBy,
+  candidates,
+  busy,
+  onReplace,
+  onRevert,
+}: {
+  record: MemoryRecord;
+  replacedBy: MemoryRecord | null;
+  candidates: MemoryRecord[];
+  busy: boolean;
+  onReplace: (by: MemoryRecord) => void;
+  onRevert: () => void;
+}) {
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const items: ContextMenuItem[] = candidates.map((r) => ({
+    label: r.name,
+    icon:
+      r.path === replacedBy?.path ? (
+        <CircleCheck className="h-3.5 w-3.5 text-[var(--color-accent)]" />
+      ) : undefined,
+    onSelect: () => onReplace(r),
+  }));
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[20px] bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] py-1.5 pr-2 pl-3.5 text-[12.5px] leading-normal font-medium text-[var(--color-warning)]">
+      <TimerOff className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+      <span className="min-w-0 flex-1">
+        <b className="font-bold">
+          {record.validTo ? `Устарела с ${formatMemoryDay(record.validTo)}` : 'Устарела'}
+        </b>{' '}
+        · {replacedBy ? 'заменена записью' : 'чем заменена?'}
+      </span>
+      <span className="flex shrink-0 items-center gap-1.5">
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={menu !== null}
+          disabled={busy || candidates.length === 0}
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setMenu({ x: r.left, y: r.bottom + 6 });
+          }}
+          className={cn(
+            'inline-flex h-[34px] max-w-[260px] items-center gap-1.5 rounded-full bg-[var(--color-bg-tertiary)] pr-2.5 pl-3.5 text-[13px] font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-hover)] active:scale-[.97] disabled:opacity-50',
+            focusRing,
+          )}
+        >
+          <span className="truncate">{replacedBy?.name ?? 'Выбрать запись'}</span>
+          <ChevronDown
+            className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]"
+            strokeWidth={1.75}
+          />
+        </button>
+        <PlateButton onClick={onRevert}>Вернуть</PlateButton>
+      </span>
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={() => setMenu(null)} />}
+    </div>
   );
 }
 
@@ -157,6 +235,7 @@ function MoveDialog({
       title="Перенести запись"
       description="Запись переедет в папку памяти выбранного проекта."
       confirmLabel="Перенести"
+      cancelLabel="Отмена"
       subject={{ title: record.name, chips: [record.kind ?? 'запись'] }}
       busy={move.isPending}
       onCancel={onCancel}
@@ -217,6 +296,7 @@ export function MemoryDetail({
   note,
   removed,
   projects,
+  records,
   currentSlug,
   onClose,
   onArchived,
@@ -226,9 +306,10 @@ export function MemoryDetail({
   note: SessionNote | null;
   removed: boolean;
   projects: MemoryProject[];
+  records: MemoryRecord[];
   currentSlug: string;
   onClose: () => void;
-  onArchived: (name: string, archivedPath: string) => void;
+  onArchived: (name: string, archived: ArchivedRecord) => void;
 }) {
   const file = useMemoryFile(path);
   const save = useSaveMemoryFile();
@@ -282,6 +363,34 @@ export function MemoryDetail({
   const applyPatch = (p: RecordPatch) => {
     if (record) void run(() => patch.mutateAsync({ path: record.path, patch: p }));
   };
+  const replacers = record
+    ? records.filter((r) => r.path !== record.path && r.supersedes === record.name)
+    : [];
+  const replacedBy = replacers[0] ?? null;
+  const candidates = record
+    ? records.filter(
+        (r) => r.path !== record.path && (r.supersedes === null || r.supersedes === record.name),
+      )
+    : [];
+  const clearReplacers = async (keep?: string) => {
+    for (const r of replacers) {
+      if (r.path !== keep) await patch.mutateAsync({ path: r.path, patch: { supersedes: null } });
+    }
+  };
+  const markStale = () => applyPatch({ validTo: todayIso() });
+  const revertStale = () =>
+    void run(async () => {
+      if (!record) return;
+      await clearReplacers();
+      if (record.validTo) await patch.mutateAsync({ path: record.path, patch: { validTo: null } });
+    });
+  const replaceWith = (by: MemoryRecord) =>
+    void run(async () => {
+      if (!record) return;
+      if (by.path !== replacedBy?.path)
+        await patch.mutateAsync({ path: by.path, patch: { supersedes: record.name } });
+      await clearReplacers(by.path);
+    });
 
   const title = record?.name ?? note?.title ?? baseName(path);
   const [light, bold] = splitName(title);
@@ -438,7 +547,7 @@ export function MemoryDetail({
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    await restore.mutateAsync(record.path);
+                    await restore.mutateAsync({ archivedPath: record.path });
                     onClose();
                   })
                 }
@@ -448,6 +557,7 @@ export function MemoryDetail({
                 <ActionButton
                   icon={record.importance === 3 ? PinOff : Pin}
                   label={record.importance === 3 ? 'Открепить' : 'Закрепить'}
+                  hint="Полный текст записи — в каждой сессии проекта"
                   disabled={busy}
                   onClick={() => applyPatch({ importance: record.importance === 3 ? 2 : 3 })}
                 />
@@ -458,6 +568,18 @@ export function MemoryDetail({
                   onClick={() =>
                     applyPatch({ status: record.status === 'fact' ? 'observation' : 'fact' })
                   }
+                />
+                <ActionButton
+                  icon={TimerOff}
+                  label="Устарела"
+                  hint={
+                    record.stale
+                      ? 'Снять пометку «устарела»'
+                      : 'Пометить устаревшей с сегодняшнего дня'
+                  }
+                  pressed={record.stale}
+                  disabled={busy}
+                  onClick={record.stale ? revertStale : markStale}
                 />
                 <ActionButton
                   icon={ArrowRight}
@@ -472,8 +594,7 @@ export function MemoryDetail({
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
-                      const { archivedPath } = await archive.mutateAsync(record.path);
-                      onArchived(record.name, archivedPath);
+                      onArchived(record.name, await archive.mutateAsync(record.path));
                       onClose();
                     })
                   }
@@ -481,6 +602,16 @@ export function MemoryDetail({
               </>
             )}
           </div>
+        )}
+        {record?.stale && !archivedRecord && !editing && (
+          <StalePlate
+            record={record}
+            replacedBy={replacedBy}
+            candidates={candidates}
+            busy={busy}
+            onReplace={replaceWith}
+            onRevert={revertStale}
+          />
         )}
         {removed && (
           <WarnPlate text="Файл удалён снаружи">

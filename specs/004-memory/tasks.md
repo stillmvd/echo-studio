@@ -83,7 +83,7 @@
 **Goal**: раздел Memory — проекты, записи, сессии, поиск, правка, архив с отменой, перенос.
 **Independent Test**: quickstart.md §4, строки 1–6.
 
-- [ ] T024 [US3] Стенд раздела памяти: `.planning/MEMORY-STANDS.md` (журнал, правило «стиль после редизайна, без вариантов ошибок») и `.planning/sketches/201-memory-section/` — 2–3 варианта раскладки (проекты · список записей/сессий · детали с редактором), на реальных данных из `~/.claude/projects/*/memory`; **стоп до выбора пользователя**
+- [X] T024 [US3] Стенд раздела памяти: `.planning/MEMORY-STANDS.md` (журнал, правило «стиль после редизайна, без вариантов ошибок») и `.planning/sketches/201-memory-section/` — 2–3 варианта раскладки (проекты · список записей/сессий · детали с редактором), на реальных данных из `~/.claude/projects/*/memory`; **стоп до выбора пользователя**
 - [X] T025 [US3] `src-tauri/src/tooling/write.rs`: `backup()` сохраняет расширение исходника (не всегда `.json`), `list_copies` берёт все файлы кроме `source.txt`; тест на `.md`-копию; `config-backups` без изменений поведения
 - [X] T026 [P] [US3] `src-tauri/src/memory/mod.rs`: модели `MemoryProject`, `MemoryRecord`, `SessionNote`, `MemoryHit`, `RecordPatch` по data-model.md (serde `camelCase`), `stale = valid_to < today || есть запись с supersedes = name`, `pinned = importance == 3`, дефолты `status: observation`, `seen: 1`, `importance: 2`; подключить модуль в `src-tauri/src/lib.rs`
 - [X] T027 [US3] `src-tauri/src/memory/scan.rs`: `list_projects(home)` — `~/.claude/projects/*/memory`, имя из cwd сессий (`conversations::scanner`), иначе slug; `list(dir)` — записи из корня (кроме `MEMORY.md`), `sessions/`, `.archive/`, разбор через `tooling::frontmatter::parse`, битый → `error`; `search(root, query, slug?)` — подстрока без учёта регистра, без `.archive/`, до 200 совпадений; тесты на временной папке (битый frontmatter, кириллица, пустая папка)
@@ -95,7 +95,7 @@
 - [X] T033 [US3] `src/hooks/use-memory.ts`: запросы `['memory','projects']`, `['memory', slug]`, поиск с `use-debounced-value`, мутации с инвалидацией, подписка на `memory://changed`
 - [X] T034 [US3] Навигация: `AppTab` `'memory'` в `src/state/ui-store.ts` (+ выбранный проект/запись), пункт Memory в `src/components/layout/NavRail.tsx`, маршрут в `src/components/layout/AppShell.tsx`
 - [X] T035 [US3] `src/components/layout/MemoryLayout.tsx` и `src/components/memory/*` по выбору на стенде T024: проекты со счётчиками, записи и сессии отдельно, фильтры, поиск, детали через `Markdown`, редактор текста, «Удалить» → тост «Отменить» (`restore_memory_record`), «Перенести в проект…», предупреждение `MEMORY.md` > 200 строк; модальные — через `ConfirmDialog`; список виртуализирован
-- [ ] T036 [US3] Прогон quickstart.md §4 (строки 1–6) в `pnpm tauri dev`
+- [X] T036 [US3] Прогон quickstart.md §4 (строки 1–6) в `pnpm tauri dev`
 
 **Checkpoint**: память видна и правится из приложения.
 
@@ -106,12 +106,12 @@
 **Goal**: дубли, слияние ≤ 3 клика, закрепление, устаревание, «## Факты».
 **Independent Test**: quickstart.md §4, строки 7–8.
 
-- [ ] T037 [US4] Стенд `.planning/sketches/202-memory-dupes/`: вкладка «Дубли» по всем проектам и диалог слияния (выбор каноничной, предпросмотр итога); **стоп до выбора пользователя**
+- [X] T037 [US4] Стенд `.planning/sketches/202-memory-dupes/`: вкладка «Дубли» по всем проектам и диалог слияния (выбор каноничной, предпросмотр итога); **стоп до выбора пользователя**
 - [X] T038 [P] [US4] `src-tauri/src/memory/dupes.rs`: нормализация (нижний регистр, без пунктуации, `-` → пробел), Dice по биграммам, `score = max(name, description)`, пары внутри проекта `score ≥ 0.72`, без архива и записей с `error`, по убыванию; тесты (одинаковые, перестановка слов, кириллица, пустые)
 - [X] T039 [US4] `src-tauri/src/memory/write.rs`: `patch(path, RecordPatch)` — ключи в `serde_yaml::Mapping` с сохранением порядка, тело не трогается; `status: fact` или `importance: 3` → строка в `## Факты` (секция после первого заголовка или в начале), обратно — в общий список; `merge(canonical, absorbed)` по R10 (`Merged from <name> (<дата>)`, объединение `tags`/`files`, `seen` — сумма, `importance` — максимум, поглощённые с `consolidated_into` в `.archive/`, их строки убраны); тесты
 - [X] T040 [US4] Команды `find_memory_duplicates`, `patch_memory_record`, `merge_memory_records` в `src-tauri/src/commands/memory.rs` + регистрация; обёртки в `src/lib/ipc.ts`, мутации в `src/hooks/use-memory.ts`
-- [ ] T041 [US4] UI по стенду T037 в `src/components/memory/`: вкладка «Дубли», диалог слияния (каноничная по умолчанию: выше `importance`, затем `seen`, затем старше), действия «Закрепить», «Факт», «Устарела» (`valid_to` = сегодня, опционально `supersedes`), пометка устаревших в списке
-- [ ] T042 [US4] Прогон quickstart.md §4 (строки 7–8), слияние ≤ 3 клика (SC-006)
+- [X] T041 [US4] UI по стенду T037 в `src/components/memory/`: вкладка «Дубли», диалог слияния (каноничная по умолчанию: выше `importance`, затем `seen`, затем старше), действия «Закрепить», «Факт», «Устарела» (`valid_to` = сегодня, опционально `supersedes`), пометка устаревших в списке
+- [X] T042 [US4] Прогон quickstart.md §4 (строки 7–8), слияние ≤ 3 клика (SC-006)
 
 **Checkpoint**: P2 закрыт.
 
@@ -143,8 +143,9 @@
 ## Phase 10b: Закрепление сильнее факта (решение 2026-09-29, spec Clarifications)
 
 - [X] T055 [US4] Плагин: `plugin/lib/pinned.mjs` (`readPinned`, `fitPinned`) + `session-start.mjs` — полный текст записей `importance: 3` в `additionalContext` после протокола и предупреждений, лишние целыми записями отрезаются, в предупреждение — «Не влезли закреплённые записи: …»; тест `pinned.test.mjs`
-- [ ] T056 [US4] Rust `src-tauri/src/memory/write.rs`: `is_pinned` → только `status == "fact"` (в `## Факты` переносит только факт, закрепление строку индекса не двигает); поправить тест `patch_keeps_order_and_moves_the_index_line`; добавить в `MemoryRecord` поле `bodyChars` (длина тела без frontmatter) в `scan.rs`/`mod.rs` и `src/lib/types.ts`
-- [ ] T057 [US4] Echo Studio: плашка в шапке проекта, если сумма `bodyChars` закреплённых записей > ~6 500 символов («Закреплённые не влезут в старт сессии: N из 6 500») и подсказка у кнопки «Закрепить» — «полный текст в каждой сессии проекта»; проверить вживую SessionStart с закреплённой записью (`claude -p --plugin-dir plugin` в пробном репо, `MSYS_NO_PATHCONV=1`)
+- [X] T056 [US4] Rust `src-tauri/src/memory/write.rs`: `is_pinned` → только `status == "fact"` (в `## Факты` переносит только факт, закрепление строку индекса не двигает); поправить тест `patch_keeps_order_and_moves_the_index_line`; добавить в `MemoryRecord` поле `bodyChars` (длина тела без frontmatter) в `scan.rs`/`mod.rs` и `src/lib/types.ts`
+- [X] T057 [US4] Echo Studio: плашка в шапке проекта, если сумма `bodyChars` закреплённых записей > ~6 500 символов («Закреплённые не влезут в старт сессии: N из 6 500») и подсказка у кнопки «Закрепить» — «полный текст в каждой сессии проекта»; проверить вживую SessionStart с закреплённой записью (`claude -p --plugin-dir plugin` в пробном репо, `MSYS_NO_PATHCONV=1`)
+- [X] T058 [US4] Плагин: `plugin/commands/tidy.md` — `/echo-memory:tidy`, ревизия памяти проекта (таблица с доказательствами → «да» → архив/правка/слияние по R10, строки `MEMORY.md` согласованы; субагенты haiku для проверки по коду при > 30 записях); README; живой прогон на копии памяти одного проекта
 
 ## Phase 11: Polish
 

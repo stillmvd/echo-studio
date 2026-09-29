@@ -1,4 +1,4 @@
-import { Folder } from 'lucide-react';
+import { Copy, Folder } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import type { MemoryProject } from '@/lib/types';
 import { focusRing } from './kinds';
@@ -7,6 +7,9 @@ interface Props {
   projects: MemoryProject[];
   selectedSlug: string | null;
   onSelect: (slug: string) => void;
+  dupes: number;
+  dupesOn: boolean;
+  onDupes: () => void;
 }
 
 function ProjectRow({
@@ -64,12 +67,40 @@ function ProjectRow({
   );
 }
 
-export function MemoryProjectPanel({ projects, selectedSlug, onSelect }: Props) {
+export function MemoryProjectPanel({
+  projects,
+  selectedSlug,
+  onSelect,
+  dupes,
+  dupesOn,
+  onDupes,
+}: Props) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 px-3 pt-5 pb-3">
-      <h2 className="px-2 text-[22px] leading-[1.06] font-light tracking-[-0.02em] text-[var(--color-text-primary)]">
-        All <b className="font-bold">memory</b>
-      </h2>
+      <div className="flex items-center justify-between gap-2 px-2">
+        <h2 className="text-[22px] leading-[1.06] font-light tracking-[-0.02em] text-[var(--color-text-primary)]">
+          All <b className="font-bold">memory</b>
+        </h2>
+        {(dupes > 0 || dupesOn) && (
+          <button
+            type="button"
+            aria-pressed={dupesOn}
+            title="Похожие записи во всех проектах"
+            onClick={onDupes}
+            className={cn(
+              'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full pr-3 pl-2.5 text-[13px] font-bold transition-colors duration-200 ease-[var(--ease-trail)] active:scale-[.96]',
+              focusRing,
+              dupesOn
+                ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-primary)]'
+                : 'bg-[color-mix(in_srgb,var(--color-warning)_16%,transparent)] text-[var(--color-warning)] hover:bg-[color-mix(in_srgb,var(--color-warning)_24%,transparent)]',
+            )}
+          >
+            <Copy className="h-[15px] w-[15px] shrink-0" strokeWidth={1.75} />
+            Дубли
+            <span className="font-medium tabular-nums">{dupes}</span>
+          </button>
+        )}
+      </div>
       <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
         {projects.map((p) => (
           <ProjectRow

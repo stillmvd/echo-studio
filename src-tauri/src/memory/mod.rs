@@ -54,6 +54,7 @@ pub struct MemoryRecord {
     pub stale: bool,
     pub updated: String,
     pub archived: bool,
+    pub body_chars: usize,
     pub error: Option<String>,
 }
 

@@ -24,12 +24,20 @@ pub struct MemoryFile {
 #[serde(rename_all = "camelCase")]
 pub struct Archived {
     pub archived_path: String,
+    pub index_line: Option<String>,
 }
 
 fn root() -> Result<PathBuf, String> {
     dirs::home_dir()
         .map(|h| projects_root(&h))
         .ok_or_else(|| "cannot resolve home folder".to_string())
+}
+
+fn ignored_file(app: &AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|d| d.join("memory-dupes-ignored.json"))
+        .map_err(|e| format!("cannot resolve app data folder: {e}"))
 }
 
 fn backups_root(app: &AppHandle) -> Result<PathBuf, String> {
@@ -87,8 +95,9 @@ pub async fn archive_memory_record(app: AppHandle, path: String) -> Result<Archi
     let root = root()?;
     let backups = backups_root(&app)?;
     blocking(move || {
-        write::archive(&PathBuf::from(&path), &root, &backups).map(|p| Archived {
+        write::archive(&PathBuf::from(&path), &root, &backups).map(|(p, index_line)| Archived {
             archived_path: p.to_string_lossy().into_owned(),
+            index_line,
         })
     })
     .await?
@@ -98,10 +107,19 @@ pub async fn archive_memory_record(app: AppHandle, path: String) -> Result<Archi
 pub async fn restore_memory_record(
     app: AppHandle,
     archived_path: String,
+    index_line: Option<String>,
 ) -> Result<MemoryRecord, String> {
     let root = root()?;
     let backups = backups_root(&app)?;
-    blocking(move || write::restore(&PathBuf::from(&archived_path), &root, &backups)).await?
+    blocking(move || {
+        write::restore(
+            &PathBuf::from(&archived_path),
+            index_line.as_deref(),
+            &root,
+            &backups,
+        )
+    })
+    .await?
 }
 
 #[tauri::command]
@@ -116,18 +134,35 @@ pub async fn move_memory_record(
 }
 
 #[tauri::command]
-pub async fn find_memory_duplicates(slug: Option<String>) -> Result<Vec<DuplicatePair>, String> {
+pub async fn find_memory_duplicates(
+    app: AppHandle,
+    slug: Option<String>,
+) -> Result<Vec<DuplicatePair>, String> {
     let root = root()?;
+    let ignored = dupes::load_ignored(&ignored_file(&app)?);
     blocking(move || {
         let mut pairs: Vec<DuplicatePair> = scan::memory_dirs(&root)
             .into_iter()
             .filter(|(s, _)| slug.as_ref().is_none_or(|want| want == s))
             .flat_map(|(s, dir)| dupes::find(&s, &scan::list(&dir).records))
+            .filter(|p| !ignored.contains(&dupes::pair_key(&p.slug, &p.a.file, &p.b.file)))
             .collect();
         pairs.sort_by(|x, y| y.score.total_cmp(&x.score));
         pairs
     })
     .await
+}
+
+#[tauri::command]
+pub async fn set_memory_duplicate_ignored(
+    app: AppHandle,
+    slug: String,
+    a: String,
+    b: String,
+    ignored: bool,
+) -> Result<(), String> {
+    let file = ignored_file(&app)?;
+    blocking(move || dupes::set_ignored(&file, &dupes::pair_key(&slug, &a, &b), ignored)).await?
 }
 
 #[tauri::command]

@@ -13,6 +13,8 @@ import {
   kindKey,
   MEMORY_KINDS,
   matchesRecord,
+  PINNED_LIMIT,
+  pinnedChars,
   plural,
   type StatusFilter,
   sortRecords,
@@ -274,6 +276,21 @@ function IndexWarning({ lines }: { lines: number }) {
   );
 }
 
+function PinnedWarning({ chars }: { chars: number }) {
+  return (
+    <div className="mx-1 flex min-h-10 items-center gap-2.5 rounded-2xl bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] px-3.5 py-2 text-[12.5px] leading-[1.4] font-medium text-[var(--color-warning)]">
+      <CircleAlert className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+      <span>
+        <b className="font-bold">
+          Закреплённые не влезут в старт сессии: {chars.toLocaleString('ru-RU')} из{' '}
+          {PINNED_LIMIT.toLocaleString('ru-RU')}
+        </b>{' '}
+        символов. Лишние записи Claude не получит целиком.
+      </span>
+    </div>
+  );
+}
+
 function countLine(project: MemoryProject, archived: number) {
   const parts: React.ReactNode[] = [];
   const add = (n: number, text: string) => {
@@ -405,6 +422,7 @@ export function MemoryList({
   const hitProjects = new Set(hits.map((h) => h.slug)).size;
   const [lead, last] = splitTitle(project.name);
   const archivedCount = listing ? archived.length : project.archived;
+  const pinned = pinnedChars(records);
   const noMemory =
     !isLoading && !error && project.records === 0 && project.sessions === 0 && archivedCount === 0;
 
@@ -591,6 +609,7 @@ export function MemoryList({
         <SearchField hits={searching ? hits.length : null} />
       </div>
       {!typed && indexTooLong(project.indexLines) && <IndexWarning lines={project.indexLines} />}
+      {!typed && pinned > PINNED_LIMIT && <PinnedWarning chars={pinned} />}
       {showTabs && (
         <div className="px-1">
           <Tabs

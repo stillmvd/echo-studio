@@ -92,7 +92,7 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
       onKeyDown={onKeyDown}
       onContextMenu={(e) => e.preventDefault()}
       style={{ left: pos.x, top: pos.y }}
-      className="fixed z-50 flex min-w-[200px] flex-col gap-0.5 rounded-[20px] bg-[var(--color-bg-tertiary)] p-1.5 shadow-[0_0_0_1px_var(--color-border),0_14px_34px_rgb(0_0_0/34%)] outline-none"
+      className="fixed z-50 flex max-h-[min(420px,calc(100vh-16px))] min-w-[200px] flex-col overflow-y-auto gap-0.5 rounded-[20px] bg-[var(--color-bg-tertiary)] p-1.5 shadow-[0_0_0_1px_var(--color-border),0_14px_34px_rgb(0_0_0/34%)] outline-none"
     >
       {items.map((item, i) =>
         item === 'separator' ? (

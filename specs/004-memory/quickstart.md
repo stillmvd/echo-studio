@@ -61,7 +61,8 @@ pnpm tauri dev
 | Перенести в другой проект | файл и строка индекса у цели, у источника нет |
 | Правка файла снаружи | список обновился ≤ 2 с |
 | Две похожие записи → «Дубли» → слить | ≤ 3 клика; одна запись с «Merged from», вторая в `.archive/` с `consolidated_into` |
-| Закрепить / «Факт» | строка в `## Факты` |
+| «Факт» | строка в `## Факты` |
+| Закрепить | строка индекса на месте; полный текст — в SessionStart; сумма > 6 500 символов — плашка в шапке |
 
 Гейты: `pnpm biome check .` → `pnpm typecheck` → `pnpm test` → `pnpm build`; `cargo clippy … -D warnings`,
 `cargo test --manifest-path src-tauri/Cargo.toml`.

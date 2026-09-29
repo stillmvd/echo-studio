@@ -90,6 +90,7 @@ pub fn run() {
             commands::memory::restore_memory_record,
             commands::memory::move_memory_record,
             commands::memory::find_memory_duplicates,
+            commands::memory::set_memory_duplicate_ignored,
             commands::memory::patch_memory_record,
             commands::memory::merge_memory_records,
             app_ready,

@@ -75,6 +75,7 @@ pub fn read_record(path: &Path, archived: bool) -> MemoryRecord {
         stale: false,
         updated: iso(mtime(path)),
         archived,
+        body_chars: 0,
         error: None,
     };
     let text = match fs::read_to_string(path) {
@@ -91,6 +92,7 @@ pub fn read_record(path: &Path, archived: bool) -> MemoryRecord {
             return record;
         }
     };
+    record.body_chars = parsed.body.trim().chars().count();
     let f = &parsed.fields;
     if let Some(name) = field_str(f, "name") {
         record.name = name;
@@ -189,7 +191,7 @@ pub fn list(dir: &Path) -> MemoryListing {
     let today = today();
     for r in &mut records {
         r.stale = superseded.contains(&r.name)
-            || r.valid_to.as_deref().is_some_and(|v| v < today.as_str());
+            || r.valid_to.as_deref().is_some_and(|v| v <= today.as_str());
     }
     let mut sessions: Vec<SessionNote> = md_files(&dir.join(SESSIONS_DIR))
         .iter()

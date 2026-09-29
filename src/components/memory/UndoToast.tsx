@@ -1,4 +1,4 @@
-import { Archive } from 'lucide-react';
+import { Archive, type LucideIcon } from 'lucide-react';
 import { useEffect } from 'react';
 import { cn } from '@/lib/cn';
 import { focusRing } from './kinds';
@@ -9,12 +9,14 @@ export function UndoToast({
   busy,
   onUndo,
   onDismiss,
+  icon: Icon = Archive,
 }: {
   message: string;
   error: string | null;
   busy: boolean;
-  onUndo: () => void;
+  onUndo?: () => void;
   onDismiss: () => void;
+  icon?: LucideIcon;
 }) {
   useEffect(() => {
     const t = setTimeout(onDismiss, 6000);
@@ -26,9 +28,9 @@ export function UndoToast({
       role="status"
       className="absolute bottom-7 left-1/2 z-30 flex h-12 max-w-[calc(100%-48px)] -translate-x-1/2 items-center gap-3.5 rounded-full bg-[var(--color-text-primary)] pr-2 pl-[18px] text-[13px] font-medium whitespace-nowrap text-[var(--color-bg-primary)] shadow-[0_12px_32px_rgb(0_0_0/35%)]"
     >
-      <Archive className="h-[15px] w-[15px] shrink-0" strokeWidth={1.75} />
+      <Icon className="h-[15px] w-[15px] shrink-0" strokeWidth={1.75} />
       <span className="min-w-0 truncate">{error ?? message}</span>
-      {!error && (
+      {!error && onUndo && (
         <button
           type="button"
           disabled={busy}

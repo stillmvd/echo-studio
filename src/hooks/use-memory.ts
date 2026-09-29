@@ -13,6 +13,7 @@ import {
   restoreMemoryRecord,
   saveMemoryFile,
   searchMemory,
+  setMemoryDuplicateIgnored,
 } from '@/lib/ipc';
 import type { RecordPatch } from '@/lib/types';
 
@@ -71,7 +72,10 @@ export function useArchiveMemoryRecord() {
 }
 
 export function useRestoreMemoryRecord() {
-  return useMemoryMutation((archivedPath: string) => restoreMemoryRecord(archivedPath));
+  return useMemoryMutation(
+    ({ archivedPath, indexLine }: { archivedPath: string; indexLine?: string | null }) =>
+      restoreMemoryRecord(archivedPath, indexLine ?? null),
+  );
 }
 
 export function useMoveMemoryRecord() {
@@ -86,6 +90,13 @@ export function useMemoryDuplicates(slug: string | null) {
     queryFn: () => findMemoryDuplicates(slug),
     staleTime: 30_000,
   });
+}
+
+export function useIgnoreMemoryDuplicate() {
+  return useMemoryMutation(
+    ({ slug, a, b, ignored }: { slug: string; a: string; b: string; ignored: boolean }) =>
+      setMemoryDuplicateIgnored(slug, a, b, ignored),
+  );
 }
 
 export function usePatchMemoryRecord() {

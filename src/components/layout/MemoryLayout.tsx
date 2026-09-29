@@ -1,16 +1,22 @@
+import { EyeOff, Merge } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Group, Panel, useDefaultLayout } from 'react-resizable-panels';
 import { MemoryDetail } from '@/components/memory/MemoryDetail';
+import { MemoryDupes } from '@/components/memory/MemoryDupes';
 import { MemoryList } from '@/components/memory/MemoryList';
 import { MemoryProjectPanel } from '@/components/memory/MemoryProjectPanel';
 import { UndoToast } from '@/components/memory/UndoToast';
 import {
+  useIgnoreMemoryDuplicate,
+  useMemoryDuplicates,
   useMemoryListing,
   useMemoryProjects,
   useMemoryWatch,
   useRestoreMemoryRecord,
 } from '@/hooks/use-memory';
 import { cn } from '@/lib/cn';
+import type { ArchivedRecord } from '@/lib/ipc';
+import type { DuplicatePair } from '@/lib/types';
 import { guardMemory, useUiStore } from '@/state/ui-store';
 import { PanelSeparator, panelCard } from './panels';
 
@@ -18,6 +24,7 @@ interface Archived {
   id: number;
   name: string;
   archivedPath: string;
+  indexLine: string | null;
 }
 
 interface ToastState {
@@ -43,9 +50,24 @@ export function MemoryLayout() {
   const selectedPath = useUiStore((s) => s.selectedMemoryPath);
   const setSelectedPathRaw = useUiStore((s) => s.setSelectedMemoryPath);
   const dirty = useUiStore((s) => s.memoryDirty);
+  const dupesOn = useUiStore((s) => s.memoryDupes);
+  const setDupesRaw = useUiStore((s) => s.setMemoryDupes);
+  const toggleDupes = useCallback(
+    () => guardMemory(() => setDupesRaw(!useUiStore.getState().memoryDupes)),
+    [setDupesRaw],
+  );
+  const dupes = useMemoryDuplicates(null);
+  const [merged, setMerged] = useState<{
+    stamp: number;
+    text: string;
+    hidden?: DuplicatePair;
+  } | null>(null);
+  const unignore = useIgnoreMemoryDuplicate();
+  const dismissMerged = useCallback(() => setMerged(null), []);
   const setSlug = useCallback(
     (next: string) => {
-      if (next !== useUiStore.getState().memorySlug) guardMemory(() => setSlugRaw(next));
+      const s = useUiStore.getState();
+      if (next !== s.memorySlug || s.memoryDupes) guardMemory(() => setSlugRaw(next));
     },
     [setSlugRaw],
   );
@@ -101,18 +123,19 @@ export function MemoryLayout() {
   const restore = useRestoreMemoryRecord();
   const [toast, setToast] = useState<ToastState | null>(null);
   const dismissToast = useCallback(() => setToast(null), []);
-  const onArchived = useCallback((name: string, archivedPath: string) => {
+  const onArchived = useCallback((name: string, archived: ArchivedRecord) => {
     const stamp = Date.now();
+    setMerged(null);
     setToast((t) => ({
       stamp,
       error: null,
-      items: [...(t?.items ?? []), { id: stamp, name, archivedPath }].slice(-MAX_UNDO),
+      items: [...(t?.items ?? []), { id: stamp, name, ...archived }].slice(-MAX_UNDO),
     }));
   }, []);
   const undo = () => {
     const last = toast?.items[toast.items.length - 1];
     if (!last) return;
-    restore.mutate(last.archivedPath, {
+    restore.mutate(last, {
       onSuccess: () =>
         setToast((t) => {
           const items = (t?.items ?? []).filter((i) => i.id !== last.id);
@@ -153,6 +176,31 @@ export function MemoryLayout() {
         <span>Память Claude Code пока не найдена ни в одном проекте.</span>
       </CenterNote>
     );
+  } else if (dupesOn) {
+    main = (
+      <MemoryDupes
+        pairs={dupes.data ?? []}
+        projects={projects}
+        isLoading={dupes.isLoading}
+        error={dupes.error}
+        onRetry={() => void dupes.refetch()}
+        onMerged={(canonical, absorbed) => {
+          setToast(null);
+          setMerged({
+            stamp: Date.now(),
+            text: `Слито в «${canonical.name}», «${absorbed.name}» — в архиве`,
+          });
+        }}
+        onIgnored={(pair) => {
+          setToast(null);
+          setMerged({
+            stamp: Date.now(),
+            text: `Пара ${pair.a.name} и ${pair.b.name} убрана из дублей`,
+            hidden: pair,
+          });
+        }}
+      />
+    );
   } else {
     main = (
       <MemoryList
@@ -168,7 +216,7 @@ export function MemoryLayout() {
     );
   }
 
-  const showDetail = project !== null && selectedPath !== null;
+  const showDetail = project !== null && selectedPath !== null && !dupesOn;
 
   return (
     <>
@@ -176,8 +224,11 @@ export function MemoryLayout() {
         <Panel defaultSize="24" minSize="18" className={panelCard}>
           <MemoryProjectPanel
             projects={projects}
-            selectedSlug={project?.slug ?? null}
+            selectedSlug={dupesOn ? null : (project?.slug ?? null)}
             onSelect={setSlug}
+            dupes={dupes.data?.length ?? 0}
+            dupesOn={dupesOn}
+            onDupes={toggleDupes}
           />
         </Panel>
 
@@ -207,6 +258,7 @@ export function MemoryLayout() {
                     note={note}
                     removed={stale}
                     projects={projects}
+                    records={listing.data?.records ?? []}
                     currentSlug={project.slug}
                     onClose={close}
                     onArchived={onArchived}
@@ -229,6 +281,28 @@ export function MemoryLayout() {
           busy={restore.isPending}
           onUndo={undo}
           onDismiss={dismissToast}
+        />
+      )}
+      {merged && (
+        <UndoToast
+          key={merged.stamp}
+          message={merged.text}
+          error={null}
+          icon={merged.hidden ? EyeOff : Merge}
+          busy={unignore.isPending}
+          onUndo={
+            merged.hidden
+              ? () => {
+                  const p = merged.hidden;
+                  if (!p) return;
+                  unignore.mutate(
+                    { slug: p.slug, a: p.a.file, b: p.b.file, ignored: false },
+                    { onSuccess: () => setMerged(null) },
+                  );
+                }
+              : undefined
+          }
+          onDismiss={dismissMerged}
         />
       )}
     </>

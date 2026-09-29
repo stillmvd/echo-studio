@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   indexTooLong,
   matchesRecord,
+  mergedFields,
+  pickCanonical,
+  pinnedChars,
   plural,
   type RecordFilter,
   sortRecords,
@@ -27,6 +30,7 @@ const rec = (over: Partial<MemoryRecord>): MemoryRecord => ({
   stale: false,
   updated: '2026-09-29',
   archived: false,
+  bodyChars: 0,
   error: null,
   ...over,
 });
@@ -63,6 +67,15 @@ describe('index', () => {
   it('flags a long index', () => {
     expect([indexTooLong(200), indexTooLong(201)]).toEqual([false, true]);
   });
+
+  it('sums the body of pinned records only', () => {
+    const records = [
+      rec({ importance: 3, bodyChars: 4000 }),
+      rec({ importance: 2, bodyChars: 9000 }),
+      rec({ importance: 3, bodyChars: 3000 }),
+    ];
+    expect(pinnedChars(records)).toBe(7000);
+  });
 });
 
 describe('memory helpers', () => {
@@ -79,5 +92,24 @@ describe('memory helpers', () => {
       'записей',
       'запись',
     ]);
+  });
+});
+
+describe('merge helpers', () => {
+  it('keeps the more important, then more seen, then newer record', () => {
+    const a = rec({ name: 'a', importance: 2, seen: 1, updated: '2026-09-01' });
+    const b = rec({ name: 'b', importance: 2, seen: 3, updated: '2026-09-20' });
+    expect(pickCanonical(a, b).map((r) => r.name)).toEqual(['b', 'a']);
+    expect(pickCanonical(rec({ name: 'c', importance: 3 }), b)[0].name).toBe('c');
+    const old = rec({ name: 'old', updated: '2026-08-01' });
+    expect(pickCanonical(old, rec({ name: 'new', updated: '2026-09-01' }))[0].name).toBe('new');
+  });
+
+  it('sums seen, takes max importance, unions tags and files', () => {
+    const m = mergedFields(
+      rec({ seen: 2, importance: 2, tags: ['a'], files: ['x.ts'] }),
+      rec({ seen: 1, importance: 3, tags: ['a', 'b'], files: [] }),
+    );
+    expect(m).toEqual({ seen: 3, importance: 3, tags: ['a', 'b'], files: ['x.ts'] });
   });
 });
