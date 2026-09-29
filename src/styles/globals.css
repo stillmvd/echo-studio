@@ -70,6 +70,12 @@
     outline-offset: 2px;
   }
 
+  :root:not([data-keys]) *:focus-visible {
+    outline: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+  }
+
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;
