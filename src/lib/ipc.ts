@@ -152,3 +152,21 @@ export async function mergeMemoryRecords(
 ): Promise<MemoryRecord> {
   return invoke<MemoryRecord>('merge_memory_records', { canonical, absorbed });
 }
+
+export interface UpdateInfo {
+  version: string;
+  body: string | null;
+  date: string | null;
+}
+
+export async function updateCheck(): Promise<UpdateInfo | null> {
+  return invoke<UpdateInfo | null>('update_check');
+}
+
+export async function updateDownload(): Promise<number> {
+  return invoke<number>('update_download');
+}
+
+export async function updateInstall(): Promise<void> {
+  return invoke<void>('update_install');
+}

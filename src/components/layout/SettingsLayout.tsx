@@ -1,18 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
+import { listen } from '@tauri-apps/api/event';
 import { homeDir, join } from '@tauri-apps/api/path';
 import {
   ChevronDown,
   Database,
+  Download,
   FileCog,
   Folder,
   type LucideIcon,
   MessageSquare,
+  RefreshCw,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useConversationProjects } from '@/hooks/use-conversations';
 import { useConfigBackups } from '@/hooks/use-tooling';
 import { cn } from '@/lib/cn';
-import { revealInExplorer } from '@/lib/ipc';
+import { revealInExplorer, updateCheck, updateDownload, updateInstall } from '@/lib/ipc';
 import { formatBytes } from '@/lib/projects';
 import { dayLabel, formatTime } from '@/lib/sessions';
 import type { ConfigBackup } from '@/lib/types';
@@ -24,6 +27,7 @@ const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'claude', label: 'Claude config', icon: FileCog },
   { id: 'backups', label: 'Config backups', icon: Database },
   { id: 'conversations', label: 'Conversations', icon: MessageSquare },
+  { id: 'updates', label: 'Updates', icon: Download },
 ];
 
 const softFill = 'bg-[color-mix(in_srgb,var(--color-text-primary)_7%,transparent)]';
@@ -201,11 +205,146 @@ export function SettingsLayout() {
                   </Row>
                 </Rows>
               </Section>
+
+              <Section
+                id="updates"
+                title="Updates"
+                subtitle="New versions come from GitHub releases. Windows asks for admin rights, then the app restarts on its own."
+              >
+                <Updates />
+              </Section>
             </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+type UpdatePhase = 'idle' | 'downloading' | 'installing';
+
+function Updates() {
+  const check = useQuery({
+    queryKey: ['update'],
+    queryFn: updateCheck,
+    staleTime: 10 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const [phase, setPhase] = useState<UpdatePhase>('idle');
+  const [progress, setProgress] = useState<{ downloaded: number; total: number | null } | null>(
+    null,
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (phase !== 'downloading') return;
+    const off = listen<{ downloaded: number; total: number | null }>('update-progress', (e) =>
+      setProgress(e.payload),
+    );
+    return () => {
+      off.then((fn) => fn());
+    };
+  }, [phase]);
+
+  async function install() {
+    setError(null);
+    setProgress(null);
+    setPhase('downloading');
+    try {
+      await updateDownload();
+      setPhase('installing');
+      await updateInstall();
+    } catch (err) {
+      setError(String(err));
+      setPhase('idle');
+    }
+  }
+
+  const update = check.data;
+  const busy = phase !== 'idle';
+  const percent = progress?.total ? Math.round((progress.downloaded / progress.total) * 100) : null;
+
+  return (
+    <Rows>
+      <Row label="Installed">
+        <span>v{version}</span>
+        {check.isFetching ? (
+          <Tag>checking…</Tag>
+        ) : check.isError ? (
+          <Tag tone="warn" title={String(check.error)}>
+            couldn't check
+          </Tag>
+        ) : update === null ? (
+          <Tag tone="ok">latest version</Tag>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => check.refetch()}
+          disabled={check.isFetching || busy}
+          className={cn(
+            'ml-auto inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full pr-3 pl-2.5 text-xs font-medium whitespace-nowrap text-[var(--color-text-primary)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] active:scale-[.96] disabled:pointer-events-none disabled:opacity-50',
+            softFill,
+            focusRing,
+          )}
+        >
+          <RefreshCw
+            className={cn(
+              'h-3.5 w-3.5 text-[var(--color-text-muted)]',
+              check.isFetching && 'animate-spin motion-reduce:animate-none',
+            )}
+            strokeWidth={1.75}
+          />
+          Check now
+        </button>
+      </Row>
+      {update && (
+        <Row label="Available">
+          <span>v{update.version}</span>
+          {phase === 'downloading' ? (
+            <Tag>
+              {progress
+                ? `downloading ${formatBytes(progress.downloaded)}${progress.total ? ` of ${formatBytes(progress.total)}` : ''}`
+                : 'downloading…'}
+            </Tag>
+          ) : phase === 'installing' ? (
+            <Tag>installing, the app will close</Tag>
+          ) : error ? (
+            <Tag tone="warn" title={error}>
+              update failed
+            </Tag>
+          ) : null}
+          <button
+            type="button"
+            onClick={install}
+            disabled={busy}
+            aria-busy={busy}
+            className={cn(
+              'ml-auto inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold whitespace-nowrap bg-[var(--color-accent)] text-[var(--color-accent-fg)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-accent-hover)] active:scale-[.96] disabled:pointer-events-none disabled:opacity-50',
+              focusRing,
+            )}
+          >
+            <Download className="h-3.5 w-3.5" strokeWidth={2} />
+            Update
+          </button>
+          {phase === 'downloading' && (
+            <span
+              role="progressbar"
+              aria-label="Downloading update"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percent ?? undefined}
+              className="block h-1 w-full overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--color-text-primary)_8%,transparent)]"
+            >
+              <i
+                className="block h-full origin-left rounded-full bg-[var(--color-accent)] transition-transform duration-200 ease-[var(--ease-trail)]"
+                style={{ transform: `scaleX(${(percent ?? 0) / 100})` }}
+              />
+            </span>
+          )}
+        </Row>
+      )}
+    </Rows>
   );
 }
 

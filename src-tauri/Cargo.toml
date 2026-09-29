@@ -1,6 +1,6 @@
 [package]
 name = "echo-studio"
-version = "0.4.0"
+version = "0.5.0"
 description = "Tooling overview and session log viewer for an AI coding agent CLI"
 authors = ["stillmvd"]
 edition = "2021"
@@ -27,6 +27,7 @@ serde_yaml = "0.9"
 notify = "8"
 notify-debouncer-mini = "0.7"
 humantime = "2"
+tauri-plugin-updater = "2.11.0"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = [
