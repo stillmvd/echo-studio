@@ -1,0 +1,6 @@
+{
+  "name": "echo-memory",
+  "version": "0.1.0",
+  "description": "Память сессий поверх auto memory Claude Code: итог сессии, индекс на старте, чистка секретов",
+  "author": { "name": "stillmvd" }
+}

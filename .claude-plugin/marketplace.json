@@ -1,0 +1,11 @@
+{
+  "name": "echo-studio",
+  "owner": { "name": "stillmvd" },
+  "plugins": [
+    {
+      "name": "echo-memory",
+      "source": "./plugin",
+      "description": "Память сессий поверх auto memory Claude Code"
+    }
+  ]
+}
