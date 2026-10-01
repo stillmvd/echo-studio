@@ -54,6 +54,7 @@ const defaults = {
   edited: false,
   noted_at: null,
   note_path: null,
+  asked: null,
   memory_dir: null,
   file_map: {},
   injected: [],

@@ -20,7 +20,8 @@
 |---------|---------|--------|-----------|
 | `Stop` | — | `stop.mjs` | 10 |
 | `SessionStart` | `startup\|resume\|clear\|compact` | `session-start.mjs` | 10 |
-| `PostToolUse` | `Write\|Edit\|MultiEdit` | `post-write.mjs` | 10 |
+| `UserPromptSubmit` | — | `prompt.mjs` | 5 |
+| `PostToolUse` | `Write\|Edit\|MultiEdit\|NotebookEdit` | `post-write.mjs` | 10 |
 | `PreToolUse` | `Read` | `pre-read.mjs` | 5 |
 | `SessionEnd` | — | `session-end.mjs` | 10 |
 
@@ -28,15 +29,23 @@
 
 ## Stop — `stop.mjs`
 
-**Вход**: + `stop_hook_active: boolean`.
-**Логика**: `stop_hook_active` → выход. Дочитать JSONL со смещения, обновить счётчики (R2). Блок по R3.
-**Выход при блоке**:
+**Логика**: дочитать JSONL со смещения, обновить счётчики (R2). Ход не блокирует (`decision: block` Claude Code
+подписывает в чате «Stop hook error»). Если в ходе просили итог (`state.asked`) и заметка изменена после этого —
+`{ "systemMessage": "Память: итог сессии записан…" }` и `noted_at = user_count`; иначе пустой stdout. `asked`
+сбрасывается в обоих случаях.
+
+## Подсказка итога — `prompt.mjs`, `post-write.mjs`
+
+`isDue` (R3, не больше раза за ход) → `lib/ask.mjs`: `prompts/summary.md` с подстановками `{{note_path}}`,
+`{{session_id}}`, `{{date}}`, `{{memory_dir}}` пишется в `<memory_dir>/.echo-summary.txt`, хук отвечает
 
 ```json
-{ "decision": "block", "reason": "<prompts/summary.md с подставленными {{note_path}}, {{session_id}}, {{date}}, {{memory_dir}}>" }
+{ "hookSpecificOutput": { "hookEventName": "UserPromptSubmit|PostToolUse",
+  "additionalContext": "Память (служебно, echo-memory): в конце этого ответа … сохрани итог сессии по инструкции `<файл>` …" } }
 ```
 
-Без блока — пустой stdout. Состояние сохраняется в обоих случаях.
+UserPromptSubmit считает текущее сообщение и ловит `/echo-memory:remember` в `prompt`; PostToolUse — правку вне
+папки памяти (`state.edited = true`).
 
 ## SessionStart — `session-start.mjs`
 
@@ -59,13 +68,13 @@
 2. Про прошлые сессии и решения сначала ищи в памяти (Grep/Read), не угадывай.
 3. Перед новой записью найди похожую; есть — `seen++`, при `seen ≥ 2` → `status: fact` и строка в `## Факты`.
 4. Черновики `capture: extractive` — допиши, если пользователь продолжает ту работу.
-5. Итог сессии просит хук Stop — не пиши его заранее.
+5. Итог сессии плагин попросит служебной подсказкой — не пиши его заранее.
 
 ## PostToolUse — `post-write.mjs`
 
 **Вход**: + `tool_name`, `tool_input.file_path`.
-**Логика**: путь `.md` внутри папки памяти → scrub (R6) на месте, temp → rename, только при изменении.
-**Выход**: пустой stdout.
+**Логика**: путь `.md` внутри папки памяти → scrub (R6) на месте, temp → rename, только при изменении, пустой
+stdout. Правка вне памяти → подсказка итога (выше).
 
 ## PreToolUse(Read) — `pre-read.mjs`
 

@@ -1,34 +1,43 @@
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { notePath, shouldBlock } from './decide.mjs';
+import { isDue, notePath } from './decide.mjs';
 
-const state = (over = {}) => ({ user_count: 0, edited: false, noted_at: null, ...over });
-const quiet = { stopHookActive: false, remember: false };
+const state = (over = {}) => ({
+  user_count: 0,
+  edited: false,
+  noted_at: null,
+  asked: null,
+  ...over,
+});
 
-describe('shouldBlock', () => {
-  it('blocks after the first edit', () => {
-    expect(shouldBlock(state({ user_count: 1, edited: true }), quiet)).toBe(true);
+describe('isDue', () => {
+  it('asks on the first edit', () => {
+    expect(isDue(state({ user_count: 1 }), { editing: true })).toBe(true);
+    expect(isDue(state({ user_count: 1, edited: true }), { prompting: true })).toBe(true);
   });
 
-  it('needs 8 user messages without edits', () => {
-    expect(shouldBlock(state({ user_count: 7 }), quiet)).toBe(false);
-    expect(shouldBlock(state({ user_count: 8 }), quiet)).toBe(true);
+  it('needs 8 user messages without edits, counting the current prompt', () => {
+    expect(isDue(state({ user_count: 6 }), { prompting: true })).toBe(false);
+    expect(isDue(state({ user_count: 7 }), { prompting: true })).toBe(true);
+    expect(isDue(state({ user_count: 7 }))).toBe(false);
   });
 
   it('repeats no more often than every 15 messages', () => {
-    expect(shouldBlock(state({ user_count: 16, edited: true, noted_at: 2 }), quiet)).toBe(false);
-    expect(shouldBlock(state({ user_count: 17, edited: true, noted_at: 2 }), quiet)).toBe(true);
-  });
-
-  it('never blocks while the stop hook is active', () => {
-    const s = state({ user_count: 30, edited: true });
-    expect(shouldBlock(s, { stopHookActive: true, remember: true })).toBe(false);
-  });
-
-  it('blocks on /remember in a short session', () => {
-    expect(shouldBlock(state({ user_count: 1 }), { stopHookActive: false, remember: true })).toBe(
+    expect(isDue(state({ user_count: 16, edited: true, noted_at: 3 }), { prompting: true })).toBe(
+      false,
+    );
+    expect(isDue(state({ user_count: 16, edited: true, noted_at: 2 }), { prompting: true })).toBe(
       true,
     );
+  });
+
+  it('asks once per turn', () => {
+    const s = state({ user_count: 30, edited: true, asked: 1 });
+    expect(isDue(s, { editing: true, remember: true })).toBe(false);
+  });
+
+  it('asks on /remember in a short session', () => {
+    expect(isDue(state({ user_count: 1 }), { prompting: true, remember: true })).toBe(true);
   });
 });
 

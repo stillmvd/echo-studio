@@ -3,12 +3,13 @@ import { join } from 'node:path';
 export const MIN_MESSAGES = 8;
 export const REPEAT_EVERY = 15;
 
-export function shouldBlock(state, { stopHookActive, remember }) {
-  if (stopHookActive) return false;
+export function isDue(state, { editing = false, prompting = false, remember = false } = {}) {
+  if (state.asked) return false;
   if (remember) return true;
-  const significant = state.edited || state.user_count >= MIN_MESSAGES;
+  const count = state.user_count + (prompting ? 1 : 0);
+  const significant = editing || state.edited || count >= MIN_MESSAGES;
   if (!significant) return false;
-  return state.noted_at === null || state.user_count - state.noted_at >= REPEAT_EVERY;
+  return state.noted_at === null || count - state.noted_at >= REPEAT_EVERY;
 }
 
 export function localDate(now) {
