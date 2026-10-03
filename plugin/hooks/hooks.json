@@ -36,11 +36,11 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-write.mjs\"",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/post-tool.mjs\"",
             "timeout": 10
           }
         ]

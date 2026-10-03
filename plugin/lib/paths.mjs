@@ -44,8 +44,12 @@ export function memoryDir(cwd, home = homedir()) {
   return join(home, '.claude', 'projects', slug(projectRoot(cwd)), 'memory');
 }
 
+export function safeId(sessionId) {
+  return String(sessionId).replace(/[^A-Za-z0-9_-]/g, '');
+}
+
 export function statePath(sessionId) {
-  return join(workDir, `${String(sessionId).replace(/[^A-Za-z0-9_-]/g, '')}.json`);
+  return join(workDir, `${safeId(sessionId)}.json`);
 }
 
 const defaults = {
@@ -61,6 +65,8 @@ const defaults = {
   first_prompt: null,
   touched: [],
   recent: [],
+  handoff_next: 50,
+  handoff_asked: null,
 };
 
 export function loadState(sessionId) {

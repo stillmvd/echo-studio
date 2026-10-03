@@ -21,7 +21,7 @@
 | `Stop` | — | `stop.mjs` | 10 |
 | `SessionStart` | `startup\|resume\|clear\|compact` | `session-start.mjs` | 10 |
 | `UserPromptSubmit` | — | `prompt.mjs` | 5 |
-| `PostToolUse` | `Write\|Edit\|MultiEdit\|NotebookEdit` | `post-write.mjs` | 10 |
+| `PostToolUse` | `*` | `post-tool.mjs` | 10 |
 | `PreToolUse` | `Read` | `pre-read.mjs` | 5 |
 | `SessionEnd` | — | `session-end.mjs` | 10 |
 
@@ -34,7 +34,7 @@
 `{ "systemMessage": "Память: итог сессии записан…" }` и `noted_at = user_count`; иначе пустой stdout. `asked`
 сбрасывается в обоих случаях.
 
-## Подсказка итога — `prompt.mjs`, `post-write.mjs`
+## Подсказка итога — `prompt.mjs`, `post-tool.mjs`
 
 `isDue` (R3, не больше раза за ход) → `lib/ask.mjs`: `prompts/summary.md` с подстановками `{{note_path}}`,
 `{{session_id}}`, `{{date}}`, `{{memory_dir}}` пишется в `<memory_dir>/.echo-summary.txt`, хук отвечает
@@ -70,7 +70,7 @@ UserPromptSubmit считает текущее сообщение и ловит 
 4. Черновики `capture: extractive` — допиши, если пользователь продолжает ту работу.
 5. Итог сессии плагин попросит служебной подсказкой — не пиши его заранее.
 
-## PostToolUse — `post-write.mjs`
+## PostToolUse — `post-tool.mjs`
 
 **Вход**: + `tool_name`, `tool_input.file_path`.
 **Логика**: путь `.md` внутри папки памяти → scrub (R6) на месте, temp → rename, только при изменении, пустой

@@ -79,7 +79,7 @@ plugin/                      # плагин echo-memory
 │   ├── hooks.json           # Stop, SessionStart, PostToolUse, PreToolUse(Read), SessionEnd
 │   ├── stop.mjs
 │   ├── session-start.mjs
-│   ├── post-write.mjs       # scrub файлов памяти
+│   ├── post-tool.mjs        # scrub файлов памяти, handoff
 │   ├── pre-read.mjs         # контекст по files:
 │   └── session-end.mjs      # extractive-черновик
 ├── lib/                     # чистые функции + тесты рядом (*.test.mjs)
