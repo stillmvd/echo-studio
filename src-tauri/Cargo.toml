@@ -28,7 +28,7 @@ notify = "8"
 notify-debouncer-mini = "0.7"
 humantime = "2"
 tauri-plugin-updater = "2.13"
-tauri-plugin-ship = { git = "https://github.com/stillmvd/tauri-ship", tag = "v0.1.0" }
+tauri-plugin-ship = { git = "https://github.com/stillmvd/tauri-ship", tag = "v0.1.1" }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = [

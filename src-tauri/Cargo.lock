@@ -3867,8 +3867,8 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-ship"
-version = "0.1.0"
-source = "git+https://github.com/stillmvd/tauri-ship?tag=v0.1.0#6e819960f8fb971cfefdeeddbbe47fc54ca1aee6"
+version = "0.1.1"
+source = "git+https://github.com/stillmvd/tauri-ship?tag=v0.1.1#3c6b49eabd205b269355e927a6b1940936fd700d"
 dependencies = [
  "serde",
  "tauri",

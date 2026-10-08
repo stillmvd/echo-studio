@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@fontsource/geist-mono": "^5.3.0",
-    "@stillmvd/tauri-ship": "github:stillmvd/tauri-ship#v0.1.0",
+    "@stillmvd/tauri-ship": "github:stillmvd/tauri-ship#v0.1.1",
     "@radix-ui/react-scroll-area": "^1.2.18",
     "@radix-ui/react-tabs": "^1.1.21",
     "@radix-ui/react-tooltip": "^1.2.16",
