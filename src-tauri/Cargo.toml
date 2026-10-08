@@ -1,6 +1,6 @@
 [package]
 name = "echo-studio"
-version = "0.5.1"
+version = "0.6.0"
 description = "Tooling overview and session log viewer for an AI coding agent CLI"
 authors = ["stillmvd"]
 edition = "2021"
