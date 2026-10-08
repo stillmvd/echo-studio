@@ -16,6 +16,7 @@
     "dialog:default",
     "fs:default",
     "shell:allow-open",
+    "ship:default",
     {
       "identifier": "shell:allow-spawn",
       "allow": [

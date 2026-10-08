@@ -8,6 +8,7 @@ import { installNativeMenuGuard } from '@/lib/context-menu';
 import { installKeyboardMode } from '@/lib/keyboard-mode';
 import { installMouseNavigation } from '@/lib/nav-history';
 import { queryClient } from '@/lib/query-client';
+import '@stillmvd/tauri-ship/ship.css';
 import '@/styles/globals.css';
 
 installNativeMenuGuard(import.meta.env.DEV);

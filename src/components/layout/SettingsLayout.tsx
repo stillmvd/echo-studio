@@ -1,5 +1,5 @@
+import { checkNow, installNow, useShip } from '@stillmvd/tauri-ship';
 import { useQuery } from '@tanstack/react-query';
-import { listen } from '@tauri-apps/api/event';
 import { homeDir, join } from '@tauri-apps/api/path';
 import {
   ChevronDown,
@@ -11,11 +11,11 @@ import {
   MessageSquare,
   RefreshCw,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useConversationProjects } from '@/hooks/use-conversations';
 import { useConfigBackups } from '@/hooks/use-tooling';
 import { cn } from '@/lib/cn';
-import { revealInExplorer, updateCheck, updateDownload, updateInstall } from '@/lib/ipc';
+import { revealInExplorer } from '@/lib/ipc';
 import { formatBytes } from '@/lib/projects';
 import { dayLabel, formatTime } from '@/lib/sessions';
 import type { ConfigBackup } from '@/lib/types';
@@ -209,7 +209,7 @@ export function SettingsLayout() {
               <Section
                 id="updates"
                 title="Updates"
-                subtitle="New versions come from GitHub releases. Windows asks for admin rights, then the app restarts on its own."
+                subtitle="New versions download in the background from GitHub releases. Restart installs them: Windows asks for admin rights once, then the app reopens."
               >
                 <Updates />
               </Section>
@@ -221,67 +221,47 @@ export function SettingsLayout() {
   );
 }
 
-type UpdatePhase = 'idle' | 'downloading' | 'installing';
+function checkedAgo(ms: number): string {
+  const minutes = Math.floor((Date.now() - ms) / 60_000);
+  if (minutes < 1) return 'checked just now';
+  if (minutes < 60) return `checked ${minutes} min ago`;
+  return `checked at ${formatTime(new Date(ms).toISOString())}`;
+}
 
 function Updates() {
-  const check = useQuery({
-    queryKey: ['update'],
-    queryFn: updateCheck,
-    staleTime: 10 * 60_000,
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
-  const [phase, setPhase] = useState<UpdatePhase>('idle');
-  const [progress, setProgress] = useState<{ downloaded: number; total: number | null } | null>(
-    null,
-  );
-  const [error, setError] = useState<string | null>(null);
+  const { status } = useShip();
+  const [checking, setChecking] = useState(false);
+  const phase = status?.phase ?? 'idle';
+  const available = status?.available ?? null;
+  const busy =
+    checking || phase === 'checking' || phase === 'downloading' || phase === 'installing';
+  const percent = status?.total ? Math.round((status.downloaded / status.total) * 100) : null;
 
-  useEffect(() => {
-    if (phase !== 'downloading') return;
-    const off = listen<{ downloaded: number; total: number | null }>('update-progress', (e) =>
-      setProgress(e.payload),
-    );
-    return () => {
-      off.then((fn) => fn());
-    };
-  }, [phase]);
-
-  async function install() {
-    setError(null);
-    setProgress(null);
-    setPhase('downloading');
+  async function check() {
+    setChecking(true);
     try {
-      await updateDownload();
-      setPhase('installing');
-      await updateInstall();
-    } catch (err) {
-      setError(String(err));
-      setPhase('idle');
+      await checkNow();
+    } finally {
+      setChecking(false);
     }
   }
-
-  const update = check.data;
-  const busy = phase !== 'idle';
-  const percent = progress?.total ? Math.round((progress.downloaded / progress.total) * 100) : null;
 
   return (
     <Rows>
       <Row label="Installed">
-        <span>v{version}</span>
-        {check.isFetching ? (
+        <span>v{status?.current ?? version}</span>
+        {checking || phase === 'checking' ? (
           <Tag>checking…</Tag>
-        ) : check.isError ? (
-          <Tag tone="warn" title={String(check.error)}>
-            couldn't check
-          </Tag>
-        ) : update === null ? (
+        ) : status?.lastCheck && !available && !status.error ? (
           <Tag tone="ok">latest version</Tag>
+        ) : null}
+        {status?.lastCheck && !checking && phase !== 'checking' ? (
+          <Tag>{checkedAgo(status.lastCheck)}</Tag>
         ) : null}
         <button
           type="button"
-          onClick={() => check.refetch()}
-          disabled={check.isFetching || busy}
+          onClick={check}
+          disabled={busy}
           className={cn(
             'ml-auto inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full pr-3 pl-2.5 text-xs font-medium whitespace-nowrap text-[var(--color-text-primary)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] active:scale-[.96] disabled:pointer-events-none disabled:opacity-50',
             softFill,
@@ -291,42 +271,44 @@ function Updates() {
           <RefreshCw
             className={cn(
               'h-3.5 w-3.5 text-[var(--color-text-muted)]',
-              check.isFetching && 'animate-spin motion-reduce:animate-none',
+              (checking || phase === 'checking') && 'animate-spin motion-reduce:animate-none',
             )}
             strokeWidth={1.75}
           />
           Check now
         </button>
       </Row>
-      {update && (
+      {available && (
         <Row label="Available">
-          <span>v{update.version}</span>
+          <span>v{available.version}</span>
           {phase === 'downloading' ? (
             <Tag>
-              {progress
-                ? `downloading ${formatBytes(progress.downloaded)}${progress.total ? ` of ${formatBytes(progress.total)}` : ''}`
+              {status?.downloaded
+                ? `downloading ${formatBytes(status.downloaded)}${status.total ? ` of ${formatBytes(status.total)}` : ''}`
                 : 'downloading…'}
             </Tag>
           ) : phase === 'installing' ? (
-            <Tag>installing, the app will close</Tag>
-          ) : error ? (
-            <Tag tone="warn" title={error}>
-              update failed
-            </Tag>
+            <Tag>installing, the app will restart</Tag>
+          ) : phase === 'ready' ? (
+            <Tag tone="ok">downloaded</Tag>
           ) : null}
-          <button
-            type="button"
-            onClick={install}
-            disabled={busy}
-            aria-busy={busy}
-            className={cn(
-              'ml-auto inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold whitespace-nowrap bg-[var(--color-accent)] text-[var(--color-accent-fg)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-accent-hover)] active:scale-[.96] disabled:pointer-events-none disabled:opacity-50',
-              focusRing,
-            )}
-          >
-            <Download className="h-3.5 w-3.5" strokeWidth={2} />
-            Update
-          </button>
+          {(phase === 'ready' || phase === 'installing') && (
+            <button
+              type="button"
+              onClick={() => {
+                installNow().catch(() => {});
+              }}
+              disabled={phase === 'installing'}
+              aria-busy={phase === 'installing'}
+              className={cn(
+                'ml-auto inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold whitespace-nowrap bg-[var(--color-accent)] text-[var(--color-accent-fg)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-accent-hover)] active:scale-[.96] disabled:pointer-events-none disabled:opacity-50',
+                focusRing,
+              )}
+            >
+              <Download className="h-3.5 w-3.5" strokeWidth={2} />
+              Restart to update
+            </button>
+          )}
           {phase === 'downloading' && (
             <span
               role="progressbar"
@@ -342,6 +324,13 @@ function Updates() {
               />
             </span>
           )}
+        </Row>
+      )}
+      {status?.error && (
+        <Row label="Last error">
+          <span className="min-w-0 text-xs font-medium text-[var(--color-warning)] [overflow-wrap:anywhere]">
+            {status.error}
+          </span>
         </Row>
       )}
     </Rows>

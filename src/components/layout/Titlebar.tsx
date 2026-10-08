@@ -1,3 +1,4 @@
+import { UpdateBadge } from '@stillmvd/tauri-ship';
 import { ECHO_MARK_PATH } from './echoMarkPath';
 import { WindowControls } from './WindowControls';
 
@@ -22,6 +23,9 @@ export function Titlebar() {
         </span>
       </div>
       <div data-tauri-drag-region className="min-w-12 flex-1 self-stretch" />
+      <span className="mr-3 flex empty:hidden">
+        <UpdateBadge />
+      </span>
       <WindowControls />
     </header>
   );

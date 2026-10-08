@@ -3,7 +3,6 @@ mod conversations;
 mod memory;
 mod splash;
 mod tooling;
-mod updates;
 
 use tauri::Manager;
 use tauri_plugin_window_state::{AppHandleExt, StateFlags};
@@ -40,9 +39,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .manage(updates::PendingUpdate::default())
+        .plugin(tauri_plugin_ship::init(|app| {
+            let _ = app.save_window_state(window_flags());
+        }))
         .setup(|app| {
-            updates::cleanup_installers(app.handle());
             if let Some(window) = app.get_webview_window("main") {
                 if let Some(s) = app.state::<Option<splash::Splash>>().inner() {
                     s.attach(window.clone());
@@ -97,9 +97,6 @@ pub fn run() {
             commands::memory::set_memory_duplicate_ignored,
             commands::memory::patch_memory_record,
             commands::memory::merge_memory_records,
-            updates::update_check,
-            updates::update_download,
-            updates::update_install,
             app_ready,
         ])
         .run(context)

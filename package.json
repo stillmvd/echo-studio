@@ -11,10 +11,14 @@
     "typecheck": "tsc --noEmit",
     "biome:check": "biome check .",
     "biome:format": "biome format . --write",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check": "biome check . && tsc --noEmit && vitest run && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml",
+    "release": "ship release",
+    "ship": "ship"
   },
   "dependencies": {
     "@fontsource/geist-mono": "^5.3.0",
+    "@stillmvd/tauri-ship": "github:stillmvd/tauri-ship#v0.1.0",
     "@radix-ui/react-scroll-area": "^1.2.18",
     "@radix-ui/react-tabs": "^1.1.21",
     "@radix-ui/react-tooltip": "^1.2.16",

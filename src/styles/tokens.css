@@ -34,3 +34,17 @@
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
 }
+
+:root {
+  --ship-bg: var(--color-bg-tertiary);
+  --ship-fg: var(--color-text-primary);
+  --ship-muted: var(--color-text-muted);
+  --ship-accent: var(--color-accent);
+  --ship-accent-hover: var(--color-accent-hover);
+  --ship-accent-fg: var(--color-accent-fg);
+  --ship-accent-soft: var(--color-accent-soft);
+  --ship-warn: var(--color-warning);
+  --ship-hover: var(--color-hover);
+  --ship-border: var(--color-border);
+  --ship-radius: 20px;
+}

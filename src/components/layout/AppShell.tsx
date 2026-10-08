@@ -1,3 +1,4 @@
+import { UpdateToast } from '@stillmvd/tauri-ship';
 import { LeaveGuard } from '@/components/memory/LeaveGuard';
 import { useUiStore } from '@/state/ui-store';
 import { ConversationsLayout } from './ConversationsLayout';
@@ -25,6 +26,7 @@ export function AppShell() {
         </main>
       </div>
       <LeaveGuard />
+      <UpdateToast />
     </div>
   );
 }
