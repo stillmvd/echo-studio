@@ -82,7 +82,7 @@ function CheckCircle({
   return (
     <label
       title={label}
-      className="grid h-5 w-5 shrink-0 place-items-center rounded-full has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-accent)]"
+      className="relative grid h-5 w-5 shrink-0 place-items-center rounded-full has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-accent)]"
     >
       <input
         type="checkbox"

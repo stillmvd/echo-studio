@@ -257,7 +257,7 @@ function MoveDialog({
               <label
                 key={p.slug}
                 className={cn(
-                  'flex h-11 cursor-pointer items-center gap-2.5 rounded-full px-3.5 text-sm transition-colors duration-200 ease-[var(--ease-trail)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-accent)]',
+                  'relative flex h-11 cursor-pointer items-center gap-2.5 rounded-full px-3.5 text-sm transition-colors duration-200 ease-[var(--ease-trail)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-accent)]',
                   on
                     ? 'bg-[var(--color-text-primary)] font-bold text-[var(--color-bg-primary)]'
                     : 'font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-hover)]',
