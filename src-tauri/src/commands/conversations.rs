@@ -1,15 +1,18 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 use serde::Serialize;
+use tauri::{AppHandle, Manager};
 
 use crate::conversations::{
     paths::projects_root,
     reader::{read_session, search_in_sessions},
     scanner::{list_projects, list_sessions},
-    titles::set_title,
+    titles::{append_custom_title, set_title},
     ConversationProject, DisplayItem, SessionMeta, SessionSearchHit,
 };
+use crate::tooling::write::backup;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -82,11 +85,28 @@ pub async fn search_session_text(
 }
 
 #[tauri::command]
-pub async fn set_session_user_title(
-    session_id: String,
-    title: Option<String>,
+pub async fn rename_session(
+    app: AppHandle,
+    file_path: String,
+    title: String,
 ) -> Result<(), String> {
-    set_title(&session_id, title)
+    let path = PathBuf::from(&file_path);
+    ensure_path_within_projects(&path)?;
+    let backups = app
+        .path()
+        .app_data_dir()
+        .map(|d| d.join("session-backups"))
+        .map_err(|e| format!("cannot resolve app data folder: {e}"))?;
+    blocking(move || {
+        let session_id = path
+            .file_stem()
+            .map(|s| s.to_string_lossy().into_owned())
+            .ok_or("no session id")?;
+        backup(&path, &backups, SystemTime::now())?;
+        append_custom_title(&path, &session_id, &title)?;
+        set_title(&session_id, None)
+    })
+    .await?
 }
 
 #[tauri::command]

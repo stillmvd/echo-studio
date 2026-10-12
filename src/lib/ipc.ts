@@ -48,8 +48,8 @@ export async function listConfigBackups(): Promise<ConfigBackup[]> {
   return invoke<ConfigBackup[]>('list_config_backups');
 }
 
-export async function openInClaudeCode(cwd?: string): Promise<string> {
-  return invoke<string>('open_in_claude_code', { cwd });
+export async function openInClaudeCode(cwd?: string, sessionId?: string): Promise<string> {
+  return invoke<string>('open_in_claude_code', { cwd, sessionId });
 }
 
 export async function listConversationProjects(): Promise<ConversationProject[]> {
@@ -71,8 +71,8 @@ export async function searchSessionText(
   return invoke<SessionSearchHit[]>('search_session_text', { projectId, query });
 }
 
-export async function setSessionUserTitle(sessionId: string, title: string | null): Promise<void> {
-  return invoke<void>('set_session_user_title', { sessionId, title });
+export async function renameSession(filePath: string, title: string): Promise<void> {
+  return invoke<void>('rename_session', { filePath, title });
 }
 
 export async function deleteConversationSession(filePath: string): Promise<void> {

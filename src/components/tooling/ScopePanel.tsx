@@ -1,13 +1,6 @@
-import {
-  ChevronDown,
-  ChevronRight,
-  Copy,
-  Folder,
-  FolderOpen,
-  Globe,
-  SquareTerminal,
-} from 'lucide-react';
+import { ChevronDown, ChevronRight, Copy, Folder, FolderOpen, Globe } from 'lucide-react';
 import { useState } from 'react';
+import { ClaudeIcon } from '@/components/ui/ClaudeIcon';
 import { ContextMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
 import { menuPoint } from '@/lib/context-menu';
@@ -159,7 +152,7 @@ export function ScopePanel({ scopes, selectedPath, globalCount, onSelect }: Prop
             },
             {
               label: 'Open in Claude Code',
-              icon: <SquareTerminal className="h-3.5 w-3.5" />,
+              icon: <ClaudeIcon />,
               onSelect: () => {
                 openInClaudeCode(menu.path).catch(() => {});
               },

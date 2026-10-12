@@ -16,6 +16,7 @@ interface Props {
   cancelLabel?: string;
   danger?: boolean;
   busy?: boolean;
+  confirmDisabled?: boolean;
   wide?: boolean;
   subject?: DialogSubject | null;
   onConfirm: () => void | Promise<void>;
@@ -36,6 +37,7 @@ export function ConfirmDialog({
   cancelLabel = 'Cancel',
   danger,
   busy,
+  confirmDisabled,
   wide,
   subject,
   onConfirm,
@@ -76,6 +78,7 @@ export function ConfirmDialog({
       if (
         e.key === 'Enter' &&
         !busy &&
+        !confirmDisabled &&
         !e.defaultPrevented &&
         !(e.target instanceof HTMLTextAreaElement) &&
         !(e.target instanceof HTMLButtonElement)
@@ -84,7 +87,7 @@ export function ConfirmDialog({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, busy, confirm, onCancel]);
+  }, [open, busy, confirmDisabled, confirm, onCancel]);
 
   if (!mounted) return null;
 
@@ -170,7 +173,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={() => void confirm()}
-            disabled={busy}
+            disabled={busy || confirmDisabled}
             className={cn(
               dialogButton,
               'font-bold',

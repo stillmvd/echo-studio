@@ -1,13 +1,24 @@
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
-import { ArrowLeft, ChevronDown, ChevronRight, Download, Search, Trash2, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  Download,
+  Pencil,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Markdown } from '@/components/markdown/Markdown';
+import { ClaudeIcon } from '@/components/ui/ClaudeIcon';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useSessionEvents } from '@/hooks/use-session';
 import { useDeleteSession } from '@/hooks/use-session-actions';
 import { parseAsk } from '@/lib/ask-question';
 import { cn } from '@/lib/cn';
+import { openInClaudeCode } from '@/lib/ipc';
 import { eventsToMarkdown } from '@/lib/session-export';
 import {
   buildFeed,
@@ -27,6 +38,7 @@ import type { DisplayItem, SessionMeta } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { AskQuestionCard } from './AskQuestionCard';
 import { NoticeStep } from './NoticeStep';
+import { RenameSessionDialog } from './RenameSessionDialog';
 
 interface Props {
   filePath: string;
@@ -84,13 +96,14 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
   const toggleShowThinking = useUiStore((s) => s.toggleViewerShowThinking);
 
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const del = useDeleteSession();
   const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || confirmDelete) return;
+      if (e.key !== 'Escape' || confirmDelete || renameOpen) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         e.target.blur();
         return;
@@ -99,7 +112,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [confirmDelete, onBack]);
+  }, [confirmDelete, renameOpen, onBack]);
 
   const visible = useMemo(
     () =>
@@ -203,6 +216,30 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
                 </button>
               )}
             </label>
+            {session?.cwd && (
+              <button
+                type="button"
+                onClick={() => {
+                  openInClaudeCode(session.cwd ?? undefined, session.sessionId).catch(() => {});
+                }}
+                title="Open in Claude"
+                aria-label="Open in Claude"
+                className={circle}
+              >
+                <ClaudeIcon className="h-4 w-4" />
+              </button>
+            )}
+            {session && (
+              <button
+                type="button"
+                onClick={() => setRenameOpen(true)}
+                title="Rename"
+                aria-label="Rename"
+                className={circle}
+              >
+                <Pencil className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            )}
             <button
               type="button"
               onClick={onExport}
@@ -273,6 +310,11 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
           </div>
         </div>
       )}
+
+      <RenameSessionDialog
+        session={renameOpen ? session : null}
+        onClose={() => setRenameOpen(false)}
+      />
 
       <ConfirmDialog
         open={confirmDelete}

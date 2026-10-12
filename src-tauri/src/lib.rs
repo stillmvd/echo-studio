@@ -78,7 +78,7 @@ pub fn run() {
             commands::conversations::search_session_text,
             commands::conversations::delete_conversation_session,
             commands::conversations::bulk_delete_conversation_sessions,
-            commands::conversations::set_session_user_title,
+            commands::conversations::rename_session,
             commands::tooling::list_tool_scopes,
             commands::tooling::scan_tool_scope,
             commands::tooling::list_tool_copies,

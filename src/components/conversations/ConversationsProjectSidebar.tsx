@@ -1,6 +1,7 @@
-import { ArrowDownWideNarrow, Check, Copy, FolderOpen, SquareTerminal } from 'lucide-react';
+import { ArrowDownWideNarrow, Check, Copy, FolderOpen } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Chip } from '@/components/ui/Chip';
+import { ClaudeIcon } from '@/components/ui/ClaudeIcon';
 import { ContextMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
 import { menuPoint } from '@/lib/context-menu';
@@ -171,7 +172,7 @@ export function ConversationsProjectSidebar({ projects, selectedId, onSelect }: 
             },
             {
               label: 'Open in Claude Code',
-              icon: <SquareTerminal className="h-3.5 w-3.5" />,
+              icon: <ClaudeIcon />,
               onSelect: () => {
                 openInClaudeCode(menu.project.cwd).catch(() => {});
               },

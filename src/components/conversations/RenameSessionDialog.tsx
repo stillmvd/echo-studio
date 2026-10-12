@@ -1,58 +1,57 @@
 import { useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Field, fieldInput } from '@/components/ui/Field';
+import { useRenameSession } from '@/hooks/use-session-actions';
+import type { SessionMeta } from '@/lib/types';
 
 interface Props {
-  open: boolean;
-  initialValue: string;
-  fallbackTitle: string;
-  busy?: boolean;
-  onSubmit: (title: string | null) => void;
-  onCancel: () => void;
+  session: SessionMeta | null;
+  onClose: () => void;
 }
 
-export function RenameSessionDialog({
-  open,
-  initialValue,
-  fallbackTitle,
-  busy,
-  onSubmit,
-  onCancel,
-}: Props) {
+function currentName(s: SessionMeta): string {
+  return s.userTitle?.trim() || s.customTitle?.trim() || s.aiTitle?.trim() || '';
+}
+
+export function RenameSessionDialog({ session, onClose }: Props) {
+  const rename = useRenameSession();
+  const initialValue = session ? currentName(session) : '';
   const [value, setValue] = useState(initialValue);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (open) {
+    if (session) {
       setValue(initialValue);
       const t = setTimeout(() => inputRef.current?.select(), 30);
       return () => clearTimeout(t);
     }
-  }, [open, initialValue]);
+  }, [session, initialValue]);
 
-  const submit = () => {
-    const trimmed = value.trim();
-    onSubmit(trimmed.length > 0 ? trimmed : null);
-  };
+  const trimmed = value.trim();
 
   return (
     <ConfirmDialog
-      open={open}
+      open={!!session}
       title="Rename conversation"
-      description="Имя видно только в Echo Studio — исходный файл сессии не меняется."
+      description="Имя запишется в сессию, как /rename в Claude, — его покажут и Echo Studio, и claude --resume."
       confirmLabel="Save"
-      busy={busy}
-      onConfirm={submit}
-      onCancel={onCancel}
+      busy={rename.isPending}
+      confirmDisabled={trimmed.length === 0 || trimmed === initialValue}
+      onConfirm={async () => {
+        if (!session) return;
+        await rename.mutateAsync({ filePath: session.filePath, title: trimmed });
+        onClose();
+      }}
+      onCancel={onClose}
     >
-      <Field label="Name" hint="Очистите поле и сохраните, чтобы вернуть исходное имя.">
+      <Field label="Name">
         {(id) => (
           <input
             id={id}
             ref={inputRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder={fallbackTitle}
+            placeholder={session ? `${session.sessionId.slice(0, 8)}…` : ''}
             className={fieldInput}
           />
         )}

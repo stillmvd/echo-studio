@@ -1,13 +1,14 @@
 import { ArrowDown, ArrowUp, Check, FolderOpen, Minus, Pencil, Trash2 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import { Chip } from '@/components/ui/Chip';
+import { ClaudeIcon } from '@/components/ui/ClaudeIcon';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ContextMenu } from '@/components/ui/ContextMenu';
-import { useDeleteSession, useRenameSession } from '@/hooks/use-session-actions';
+import { useDeleteSession } from '@/hooks/use-session-actions';
 import { type AgeFilter, applyAgeFilter } from '@/lib/age-filter';
 import { cn } from '@/lib/cn';
 import { menuPoint } from '@/lib/context-menu';
-import { revealInExplorer } from '@/lib/ipc';
+import { openInClaudeCode, revealInExplorer } from '@/lib/ipc';
 import { formatBytes } from '@/lib/projects';
 import {
   dayLabel,
@@ -21,10 +22,6 @@ import { type SessionMeta, sessionDisplayTitle } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { RenameSessionDialog } from './RenameSessionDialog';
 import { SessionBulkBar } from './SessionBulkBar';
-
-function originalTitle(s: SessionMeta): string {
-  return s.customTitle?.trim() || s.aiTitle?.trim() || `${s.sessionId.slice(0, 8)}…`;
-}
 
 interface Props {
   sessions: SessionMeta[];
@@ -161,7 +158,6 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
   const toggleBulkPath = useUiStore((s) => s.toggleConversationsBulkPath);
   const setBulkSelection = useUiStore((s) => s.setConversationsBulkSelection);
 
-  const rename = useRenameSession();
   const del = useDeleteSession();
   const [menu, setMenu] = useState<{ x: number; y: number; session: SessionMeta } | null>(null);
   const [renameTarget, setRenameTarget] = useState<SessionMeta | null>(null);
@@ -419,6 +415,19 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
           y={menu.y}
           onClose={() => setMenu(null)}
           items={[
+            ...(menu.session.cwd
+              ? [
+                  {
+                    label: 'Open in Claude',
+                    icon: <ClaudeIcon />,
+                    onSelect: () => {
+                      openInClaudeCode(menu.session.cwd ?? undefined, menu.session.sessionId).catch(
+                        () => {},
+                      );
+                    },
+                  },
+                ]
+              : []),
             {
               label: 'Rename',
               icon: <Pencil className="h-3.5 w-3.5" />,
@@ -442,20 +451,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
         />
       )}
 
-      <RenameSessionDialog
-        open={!!renameTarget}
-        initialValue={renameTarget?.userTitle ?? ''}
-        fallbackTitle={renameTarget ? originalTitle(renameTarget) : ''}
-        busy={rename.isPending}
-        onCancel={() => setRenameTarget(null)}
-        onSubmit={(title) => {
-          if (!renameTarget) return;
-          rename.mutate(
-            { sessionId: renameTarget.sessionId, title },
-            { onSuccess: () => setRenameTarget(null) },
-          );
-        }}
-      />
+      <RenameSessionDialog session={renameTarget} onClose={() => setRenameTarget(null)} />
 
       <ConfirmDialog
         open={!!deleteTarget}
