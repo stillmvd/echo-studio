@@ -69,7 +69,9 @@ run('session-start', (input) => {
   const reserve = 300;
   const { block, dropped } = fitPinned(pinned, room - reserve);
   if (dropped.length) {
-    warnings.push(`Не влезли закреплённые записи (прочитай сам): ${dropped.join(', ')}.`);
+    warnings.push(
+      `Не влезли закреплённые записи (прочитай сам): ${dropped.join(', ')}. Открепи лишние (importance: 2) — закреплёнными оставь только правила поведения.`,
+    );
     problems.push(`закреплённые не влезли в старт: ${dropped.length}`);
   }
   room -= block.length + 1;

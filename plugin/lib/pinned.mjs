@@ -2,6 +2,15 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { field, parse } from './frontmatter.mjs';
 
+export const PINNED_LIMIT = 6500;
+
+export function pinnedOverflow(dir) {
+  const pinned = readPinned(dir);
+  const chars = pinned.reduce((sum, p) => sum + p.chars, 0);
+  if (chars <= PINNED_LIMIT) return null;
+  return `Закреплённые записи (importance: 3) не влезают в старт сессии: ${chars} из ${PINNED_LIMIT} символов, лишние Claude не получит целиком. Сейчас открепи (importance: 2) записи, которые не нужны в каждой сессии: технические грабли подтянутся по файлу, правила из CLAUDE.md и так загружены. Закреплёнными оставь только правила поведения. Закреплены: ${pinned.map((p) => `${p.file} (${p.chars})`).join(', ')}.`;
+}
+
 export function readPinned(dir) {
   let names;
   try {
@@ -17,7 +26,12 @@ export function readPinned(dir) {
       const { fields, body, error } = parse(readFileSync(join(dir, name), 'utf8'));
       if (error || Number(field(fields, 'importance')) !== 3) continue;
       const title = String(field(fields, 'description') || field(fields, 'name') || name);
-      pinned.push({ file: name, text: `### ${title} — memory/${name}\n${body.trim()}` });
+      const text = body.trim();
+      pinned.push({
+        file: name,
+        text: `### ${title} — memory/${name}\n${text}`,
+        chars: [...text].length,
+      });
     } catch {}
   }
   return pinned;

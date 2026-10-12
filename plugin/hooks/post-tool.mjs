@@ -4,6 +4,7 @@ import { ask } from '../lib/ask.mjs';
 import { isDue } from '../lib/decide.mjs';
 import { handoff } from '../lib/handoff.mjs';
 import { loadState, memoryDir, saveState } from '../lib/paths.mjs';
+import { pinnedOverflow } from '../lib/pinned.mjs';
 import { run, writeAtomic } from '../lib/run.mjs';
 import { scrub } from '../lib/scrub.mjs';
 
@@ -23,7 +24,9 @@ run('post-tool', (input) => {
     const text = readFileSync(file, 'utf8');
     const clean = scrub(text);
     if (clean !== text) writeAtomic(file, clean);
-    return null;
+    const overflow = pinnedOverflow(memoryDir(input.cwd));
+    if (!overflow) return null;
+    return { hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: overflow } };
   }
   const state = loadState(input.session_id);
   let additionalContext = handoff(state, input, 'tool');

@@ -32,6 +32,8 @@ import {
   formatMemoryDay,
   formatMemoryTime,
   kindKey,
+  PINNED_LIMIT,
+  pinnedChars,
   splitFrontmatter,
   todayIso,
 } from '@/lib/memory';
@@ -559,7 +561,16 @@ export function MemoryDetail({
                   label={record.importance === 3 ? 'Открепить' : 'Закрепить'}
                   hint="Полный текст записи — в каждой сессии проекта"
                   disabled={busy}
-                  onClick={() => applyPatch({ importance: record.importance === 3 ? 2 : 3 })}
+                  onClick={() => {
+                    const after = pinnedChars(records) + record.bodyChars;
+                    if (record.importance !== 3 && after > PINNED_LIMIT) {
+                      setActionError(
+                        `Не влезет в старт сессии: ${after.toLocaleString('ru-RU')} из ${PINNED_LIMIT.toLocaleString('ru-RU')} символов. Сначала открепи другие записи.`,
+                      );
+                      return;
+                    }
+                    applyPatch({ importance: record.importance === 3 ? 2 : 3 });
+                  }}
                 />
                 <ActionButton
                   icon={CircleCheck}
