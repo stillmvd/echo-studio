@@ -20,18 +20,21 @@ export interface SessionMeta {
   customTitle: string | null;
   aiTitle: string | null;
   userTitle: string | null;
+  firstPrompt: string | null;
 }
 
 export function sessionDisplayTitle(s: {
   userTitle: string | null;
   customTitle: string | null;
   aiTitle: string | null;
+  firstPrompt?: string | null;
   sessionId: string;
 }): string {
   return (
     s.userTitle?.trim() ||
     s.customTitle?.trim() ||
     s.aiTitle?.trim() ||
+    s.firstPrompt?.trim() ||
     `${s.sessionId.slice(0, 8)}…`
   );
 }

@@ -150,6 +150,7 @@ pub fn parse_session_meta(path: &Path) -> Option<SessionMeta> {
     let mut cwd: Option<String> = None;
     let mut custom_title: Option<String> = None;
     let mut ai_title: Option<String> = None;
+    let mut first_prompt: Option<String> = None;
 
     for line in jsonl_lines(reader) {
         if line.trim().is_empty() {
@@ -162,6 +163,10 @@ pub fn parse_session_meta(path: &Path) -> Option<SessionMeta> {
 
         if matches!(event_type, "user" | "assistant") {
             message_count += 1;
+        }
+
+        if first_prompt.is_none() && event_type == "user" {
+            first_prompt = prompt_text(&parsed);
         }
 
         if event_type == "custom-title" {
@@ -221,5 +226,67 @@ pub fn parse_session_meta(path: &Path) -> Option<SessionMeta> {
         custom_title,
         ai_title,
         user_title: None,
+        first_prompt,
     })
+}
+
+const PROMPT_TITLE_CHARS: usize = 120;
+
+fn prompt_text(event: &Value) -> Option<String> {
+    if event.get("isMeta").and_then(Value::as_bool) == Some(true)
+        || event.get("toolUseResult").is_some()
+    {
+        return None;
+    }
+    let content = event.get("message")?.get("content")?;
+    let raw = match content {
+        Value::String(s) => s.clone(),
+        Value::Array(parts) => parts
+            .iter()
+            .filter(|p| p.get("type").and_then(Value::as_str) == Some("text"))
+            .filter_map(|p| p.get("text").and_then(Value::as_str))
+            .collect::<Vec<_>>()
+            .join(" "),
+        _ => return None,
+    };
+    let text = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+    let mut text = text.as_str();
+    while let Some(rest) = text.strip_prefix("[Image #") {
+        text = rest.split_once(']').map_or("", |(_, r)| r).trim_start();
+    }
+    if text.is_empty() || text.starts_with('<') || text.starts_with("Caveat:") {
+        return None;
+    }
+    Some(text.chars().take(PROMPT_TITLE_CHARS).collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn prompt_text_skips_commands_and_meta() {
+        let user = |content: Value| json!({"type": "user", "message": {"content": content}});
+        assert_eq!(
+            prompt_text(&user(json!("[Image #1]  почини\n vk"))),
+            Some("почини vk".into())
+        );
+        assert_eq!(
+            prompt_text(&user(json!([{"type": "text", "text": "привет"}]))),
+            Some("привет".into())
+        );
+        assert_eq!(
+            prompt_text(&user(json!("<command-name>/clear</command-name>"))),
+            None
+        );
+        assert_eq!(
+            prompt_text(&json!({"type": "user", "isMeta": true, "message": {"content": "x"}})),
+            None
+        );
+        assert_eq!(
+            prompt_text(&user(json!("я".repeat(200)))).map(|s| s.chars().count()),
+            Some(PROMPT_TITLE_CHARS)
+        );
+    }
 }

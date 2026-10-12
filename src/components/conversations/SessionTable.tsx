@@ -357,12 +357,14 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                               'min-w-0 truncate',
                               titled
                                 ? 'text-sm font-normal text-[var(--color-text-primary)]'
-                                : 'font-mono text-xs',
+                                : s.firstPrompt
+                                  ? 'text-sm font-normal'
+                                  : 'font-mono text-xs',
                             )}
                           >
                             {sessionDisplayTitle(s)}
                           </span>
-                          {titled && (
+                          {(titled || s.firstPrompt) && (
                             <span className="shrink-0 font-mono text-[11px]">
                               {s.sessionId.slice(0, 8)}
                             </span>

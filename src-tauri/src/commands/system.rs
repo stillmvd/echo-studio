@@ -45,7 +45,10 @@ pub async fn open_in_claude_code(
     let mut args = vec!["-d".to_string(), target_dir.clone()];
     match git_bash() {
         Some(bash) => {
-            args.splice(0..0, ["-p".to_string(), "Git Bash".to_string()]);
+            args.splice(
+                0..0,
+                ["--size", WINDOW_SIZE, "-p", "Git Bash"].map(String::from),
+            );
             args.extend([
                 bash.to_string_lossy().into_owned(),
                 "-l".into(),
@@ -53,7 +56,10 @@ pub async fn open_in_claude_code(
                 format!("{claude} \\; exec bash -l"),
             ]);
         }
-        None => args.extend(claude.split(' ').map(String::from)),
+        None => {
+            args.splice(0..0, ["--size", WINDOW_SIZE].map(String::from));
+            args.extend(claude.split(' ').map(String::from));
+        }
     }
 
     use tauri_plugin_shell::ShellExt;
@@ -65,6 +71,8 @@ pub async fn open_in_claude_code(
 
     Ok(target_dir)
 }
+
+const WINDOW_SIZE: &str = "120,43";
 
 fn is_session_id(id: &str) -> bool {
     !id.is_empty() && id.chars().all(|c| c.is_ascii_hexdigit() || c == '-')

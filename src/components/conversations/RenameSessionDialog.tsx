@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Field, fieldInput } from '@/components/ui/Field';
 import { useRenameSession } from '@/hooks/use-session-actions';
-import type { SessionMeta } from '@/lib/types';
+import { type SessionMeta, sessionDisplayTitle } from '@/lib/types';
 
 interface Props {
   session: SessionMeta | null;
@@ -51,7 +51,7 @@ export function RenameSessionDialog({ session, onClose }: Props) {
             ref={inputRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder={session ? `${session.sessionId.slice(0, 8)}…` : ''}
+            placeholder={session ? sessionDisplayTitle(session) : ''}
             className={fieldInput}
           />
         )}
