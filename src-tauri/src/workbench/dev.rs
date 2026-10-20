@@ -497,17 +497,35 @@ fn chain<'a>(table: &'a HashMap<u32, Proc>, pid: u32) -> impl Iterator<Item = &'
     })
 }
 
+fn guarded(p: &Proc) -> bool {
+    SWEEP_GUARDED.iter().any(|n| p.name.eq_ignore_ascii_case(n))
+}
+
+pub fn shields(table: &HashMap<u32, Proc>, started_at: u64, members: &[u32]) -> bool {
+    let since = started_at.saturating_sub(SWEEP_SLACK_MS);
+    members.iter().filter_map(|pid| table.get(pid)).any(|p| {
+        guarded(p)
+            || chain(table, p.pid)
+                .take_while(|a| a.start_time >= since)
+                .any(guarded)
+    })
+}
+
 pub fn leftovers(
     table: &HashMap<u32, Proc>,
     started_at: u64,
     seen: &HashSet<(u32, u64)>,
 ) -> Vec<(u32, u64)> {
     let since = started_at.saturating_sub(SWEEP_SLACK_MS);
-    let guarded = |p: &Proc| SWEEP_GUARDED.iter().any(|n| p.name.eq_ignore_ascii_case(n));
     let is_seen = |p: &Proc| seen.contains(&(p.pid, p.start_time));
     table
         .values()
         .filter(|p| p.start_time >= since && !guarded(p))
+        .filter(|p| {
+            !chain(table, p.pid)
+                .take_while(|a| a.start_time >= since)
+                .any(guarded)
+        })
         .filter(|p| {
             is_seen(p)
                 || chain(table, p.pid)
@@ -557,19 +575,28 @@ pub fn stop_in(dir: &Path, project_path: &str) -> Result<(), String> {
     let live = job.as_ref().map(Job::pids).unwrap_or_default();
     if let Some(job) = job.filter(|_| !live.is_empty()) {
         let table = processes::table();
+        let members: Vec<(u32, u64)> = live
+            .iter()
+            .filter_map(|pid| table.get(pid).map(|p| (p.pid, p.start_time)))
+            .collect();
         let mut seen: HashSet<(u32, u64)> = file.seen.iter().copied().collect();
-        seen.extend(
-            live.iter()
-                .filter_map(|pid| table.get(pid).map(|p| (p.pid, p.start_time))),
-        );
-        if !job.terminate() {
+        seen.extend(members.iter().copied());
+        let targets = leftovers(&table, file.started_at, &seen);
+        if !shields(&table, file.started_at, &live) && !job.terminate() {
             runtime().entry(slug.clone()).or_default().stopping = false;
+            let _ = update_file(dir, &slug, |f| {
+                for pair in &members {
+                    if !f.seen.contains(pair) {
+                        f.seen.push(*pair);
+                    }
+                }
+            });
             return Err(format!(
                 "TerminateJobObject: {}",
                 std::io::Error::last_os_error()
             ));
         }
-        kill_exact(&leftovers(&table, file.started_at, &seen));
+        kill_exact(&targets);
     }
     update_file(dir, &slug, |f| {
         f.stopped = true;
@@ -884,6 +911,31 @@ mod tests {
             p(130, 101, "msedge.exe", r"C:\Users\me", 5_500),
         ];
         assert_eq!(swept(procs, &[(100, 5_000)]), vec![100, 101]);
+    }
+
+    #[test]
+    fn a_browser_inside_the_job_shields_it_from_terminate() {
+        let procs = vec![
+            p(5, 1, "claude.exe", r"C:\Users\me", 1),
+            p(6, 5, "echo-studio.exe", r"C:\Users\me", 2),
+            p(100, 6, "cmd.exe", PROJECT, 5_000),
+            p(101, 100, "node.exe", PROJECT, 5_100),
+            p(110, 101, "chrome.exe", r"C:\Users\me", 5_200),
+            p(111, 110, "chrome.exe", r"C:\Users\me", 5_300),
+            p(112, 111, "crashpad.exe", r"C:\Users\me", 5_400),
+        ];
+        let table: HashMap<u32, Proc> = procs.iter().map(|p| (p.pid, p.clone())).collect();
+        assert!(shields(&table, 5_000, &[100, 101, 110, 111, 112]));
+        assert!(shields(&table, 5_000, &[100, 101, 112]));
+        assert!(!shields(&table, 5_000, &[100, 101]));
+        let seen = [
+            (100, 5_000),
+            (101, 5_100),
+            (110, 5_200),
+            (111, 5_300),
+            (112, 5_400),
+        ];
+        assert_eq!(swept(procs, &seen), vec![100, 101]);
     }
 
     #[test]
