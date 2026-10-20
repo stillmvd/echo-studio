@@ -6,6 +6,7 @@ import { useWorkbenchStore } from '@/state/workbench-store';
 import { ProjectIcon } from './ProjectIcon';
 import { openSession, sessionPlace } from './SessionStrip';
 import { StatusIcon } from './StatusIcon';
+import { focus as focusTerminal } from './terminals';
 
 interface Props {
   enabled: boolean;
@@ -23,6 +24,27 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
   const [open, setOpen] = useState<Open | null>(null);
   const state = useRef({ open, sessions, seen });
   state.current = { open, sessions, seen };
+  const list = useRef<HTMLDivElement>(null);
+  const back = useRef<HTMLElement | null>(null);
+  const isOpen = open !== null;
+
+  useEffect(() => {
+    if (isOpen) list.current?.focus();
+  }, [isOpen]);
+
+  const cancel = () => {
+    state.current.open = null;
+    setOpen(null);
+    back.current?.focus();
+  };
+  const jump = (target: ClaudeSession) => {
+    state.current.open = null;
+    setOpen(null);
+    openSession(target);
+    requestAnimationFrame(() => focusTerminal(target.sessionId));
+  };
+  const actions = useRef({ cancel, jump });
+  actions.current = { cancel, jump };
 
   useEffect(() => {
     if (!enabled) {
@@ -30,20 +52,23 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
       return;
     }
     const show = (next: Open | null) => {
+      if (next && !state.current.open && document.activeElement instanceof HTMLElement) {
+        back.current = document.activeElement;
+      }
       state.current.open = next;
       setOpen(next);
     };
     const go = (pick: string | null, order: ClaudeSession[]) => {
-      show(null);
       const target = order.find((s) => s.sessionId === pick);
-      if (target) openSession(target);
+      if (target) actions.current.jump(target);
+      else actions.current.cancel();
     };
     const onDown = (e: KeyboardEvent) => {
       const cur = state.current;
       if (cur.open && e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        show(null);
+        actions.current.cancel();
         return;
       }
       if (!e.ctrlKey || e.code !== 'Tab') return;
@@ -78,22 +103,28 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
 
   return (
     <>
-      <div className="wb-scrim" onClick={() => setOpen(null)} aria-hidden />
-      <div className="wb-sw" role="listbox" aria-label="Сессии">
+      <div className="wb-scrim" onClick={cancel} aria-hidden />
+      <div
+        ref={list}
+        className="wb-sw"
+        role="listbox"
+        aria-label="Сессии"
+        tabIndex={-1}
+        aria-activedescendant={open.pick ? `qs-${open.pick}` : undefined}
+      >
         {open.order.map((s, i) => {
           const status = effectiveStatus(s, seen);
           const project = s.projectPath ? projects.get(s.projectPath) : undefined;
           return (
             <button
               key={s.sessionId}
+              id={`qs-${s.sessionId}`}
               type="button"
               role="option"
+              tabIndex={-1}
               aria-selected={s.sessionId === open.pick}
               className={cn('wb-swr', s.sessionId === open.pick && 'on')}
-              onClick={() => {
-                setOpen(null);
-                openSession(s);
-              }}
+              onClick={() => jump(s)}
             >
               <ProjectIcon svg={project?.icon ?? null} />
               <span className="wb-tn">

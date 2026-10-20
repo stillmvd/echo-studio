@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { emptyCells } from '@/lib/workbench';
-import { devTabKey, isDevTab, useWorkbenchStore } from './workbench-store';
+import { devTabKey, isDevTab, migrateWorkbench, useWorkbenchStore } from './workbench-store';
 
 const P = 'C:\\P\\A';
 
@@ -59,7 +59,29 @@ describe('workbench store', () => {
     expect(s.view).toEqual({ kind: 'project', path: P });
     expect(s.cells[0]?.lastInputAt).toBeGreaterThan(0);
     s.pinCell('c1');
-    s.pinCell('c1');
     expect(useWorkbenchStore.getState().cells[0]).toMatchObject({ pinned: false, manual: false });
+    s.pinCell('c1');
+    expect(useWorkbenchStore.getState().cells[0]).toMatchObject({ pinned: true, manual: false });
+  });
+
+  it('marks the active session of a focused cell as seen', () => {
+    useWorkbenchStore.setState({
+      layout: '2x2',
+      cells: emptyCells().map((c) => (c.id === 'c2' ? { ...c, projectPath: P } : c)),
+      activeTab: { [P]: 'sess' },
+      seen: {},
+    });
+    useWorkbenchStore.getState().touchCell('c2');
+    expect(useWorkbenchStore.getState().seen.sess).toBeGreaterThan(0);
+  });
+
+  it('migrates v1 with a wall layout and a selected project into the first cell', () => {
+    const state = migrateWorkbench({ layout: '2x2', view: { kind: 'project', path: P } });
+    expect(state.cells?.map((c) => c.projectPath)).toEqual([P, null, null, null]);
+    expect(state.cells?.[0]?.manual).toBe(true);
+    expect(state.focusCell).toBe('c1');
+    const broken = migrateWorkbench({ layout: '2x1', cells: 'x', view: { kind: 'overview' } });
+    expect(broken.cells).toHaveLength(4);
+    expect(broken.focusCell).toBeNull();
   });
 });

@@ -70,7 +70,7 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
   };
 
   return (
-    <div className="wb-bar2">
+    <div className="wb-bar2" role="toolbar" aria-label="Сессии">
       {sessions.length === 0 && <span className="wb-bar-lbl">Сессий нет</span>}
       {ins.map((s) => chip(s, false))}
       {outs.length > 0 && <span className="wl-sep">Вне сетки</span>}

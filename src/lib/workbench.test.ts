@@ -8,6 +8,7 @@ import type {
 } from './types';
 import {
   arrangeCells,
+  assignTabs,
   byRecency,
   byUrgency,
   effectiveStatus,
@@ -15,8 +16,10 @@ import {
   HANDS_ON_MS,
   type KeyInput,
   nextInRecency,
+  normalizeCells,
   placeProject,
   projectOf,
+  pruneCells,
   runningItems,
   samePath,
   terminalKey,
@@ -331,6 +334,49 @@ describe('placeProject', () => {
     const r = placeProject(start, '2x1', 'c1', 'P');
     expect(r.focus).toBe('c2');
     expect(r.cells.map((c) => c.projectPath)).toEqual(['A', 'P', 'c3', 'c4']);
+  });
+});
+
+describe('wall cells', () => {
+  const at = (paths: (string | null)[]) =>
+    emptyCells().map((c, i) => ({ ...c, projectPath: paths[i] ?? null }));
+
+  it('moves a project from a hidden cell instead of showing it twice', () => {
+    const start = at(['B', null, 'A', null]).map((c) =>
+      c.id === 'c3' ? { ...c, activeTab: 't1', manual: true } : c,
+    );
+    const r = placeProject(start, '1x1', 'c1', 'A');
+    expect(r.cells.map((c) => c.projectPath)).toEqual(['A', null, null, null]);
+    expect(r.cells[0]?.activeTab).toBe('t1');
+    expect(r.cells[2]).toMatchObject({ manual: false, pinned: false });
+  });
+
+  it('normalizes broken persisted cells to four free ones', () => {
+    expect(normalizeCells(undefined).map((c) => c.id)).toEqual(['c1', 'c2', 'c3', 'c4']);
+    const cells = normalizeCells([{ projectPath: 'A', pinned: true }, 7, null]);
+    expect(cells[0]).toMatchObject({ id: 'c1', projectPath: 'A', pinned: true, manual: false });
+    expect(cells.slice(1).every((c) => c.projectPath === null)).toBe(true);
+  });
+
+  it('frees cells of removed projects and keeps the array when nothing changes', () => {
+    const start = at(['A', 'B', null, null]).map((c) => ({ ...c, pinned: true }));
+    expect(pruneCells(start, () => true)).toBe(start);
+    const r = pruneCells(start, (p) => p === 'A');
+    expect(r[1]).toMatchObject({ projectPath: null, pinned: false });
+    expect(r[0]?.projectPath).toBe('A');
+  });
+
+  it('gives two cells of one project different tabs', () => {
+    const cells = at(['A', 'A', 'B', null]).map((c) =>
+      c.id === 'c2' ? { ...c, activeTab: 'a1' } : c,
+    );
+    const tabs: Record<string, string[]> = { A: ['a1', 'a2'], B: [] };
+    const keys = assignTabs(
+      cells,
+      (p) => tabs[p] ?? [],
+      () => 'a1',
+    );
+    expect(keys).toEqual(['a1', 'a2', null, null]);
   });
 });
 

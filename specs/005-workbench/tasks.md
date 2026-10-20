@@ -83,8 +83,8 @@ contracts/ipc.md, quickstart.md. Форма — `.planning/WORKBENCH.md`, сте
 - [X] T027 [P] [US2] `src/components/workbench/StatusIcon.tsx`: сплошной значок по статусу и `phase` (thinking/tool/agents), набор как в моде Taskbar Claude Sessions (`C:\Users\stillmvd\Projects\Windhawk Mods\Taskbar Claude Sessions`), lucide-эквиваленты, цвета из токенов
 - [X] T028 [US2] «Запущено» `src/components/workbench/RunningList.tsx`: сессии и dev-серверы по срочности; `external` — пометка «вне оболочки», без терминала; клик → открыть сессию (ручное открытие = закрепление в пульте)
 - [X] T029 [US2] Чипы в `src/components/workbench/ProjectTree.tsx` (строка B со стенда): значок самой срочной сессии + число, порт dev; свёрнутая группа — чипы своих проектов
-- [ ] T030 [US2] Полоса сессий `src/components/workbench/SessionStrip.tsx`: все сессии, всегда видна; фокус ячейки отмечает `seen[sessionId] = now`
-- [ ] T031 [US2] Ctrl+Tab `src/components/workbench/QuickSwitch.tsx`: перехват `keydown` на `window` в capture; список всех сессий по `recency` (недавние первыми, обновляется при фокусе вкладки), Tab — дальше, Shift+Tab — назад, `keyup` Ctrl — переход; логика `nextInRecency()` в `src/lib/workbench.ts` с тестами
+- [X] T030 [US2] Полоса сессий `src/components/workbench/SessionStrip.tsx`: все сессии, всегда видна; фокус ячейки отмечает `seen[sessionId] = now`
+- [X] T031 [US2] Ctrl+Tab `src/components/workbench/QuickSwitch.tsx`: перехват `keydown` на `window` в capture; список всех сессий по `recency` (недавние первыми, обновляется при фокусе вкладки), Tab — дальше, Shift+Tab — назад, `keyup` Ctrl — переход; логика `nextInRecency()` в `src/lib/workbench.ts` с тестами
 
 **Checkpoint**: US1 + US2 — MVP, SC-003, SC-006
 
@@ -116,9 +116,9 @@ contracts/ipc.md, quickstart.md. Форма — `.planning/WORKBENCH.md`, сте
 **Independent Test**: quickstart.md §5.
 
 - [x] T040 [P] [US4] `arrangeCells(cells, sessions, now, focus)` в `src/lib/workbench.ts` по правилам пульта `.planning/WORKBENCH.md`: приоритет `waiting → error → working → done → idle`, внутри — дольше ждёт выше; новая ждущая занимает ячейку незакреплённой, не ручной, без ввода/прокрутки за последние 3 с, с самым низким приоритетом; вытесненные → `offGrid`; ячейка под рукой не двигается, `pendingCount` = ждущие вне сетки. Тесты: 2×2 + пять сессий, ячейка под рукой, булавка, ручное открытие
-- [ ] T041 [US4] `src/components/workbench/Wall.tsx`: сетка по `layout` (`302-workbench-wall/parts/g-wall.html`), три значка раскладки в шапке, смена раскладки не пересоздаёт терминалы (ключи по `terminalId`), ждущая ячейка — значок «ждёт тебя» и рамка акцента
-- [ ] T042 [US4] `src/components/workbench/Cell.tsx`: шапка ячейки — проект, капсулы вкладок (Claude-сессии и лог dev), «+», булавка; переключение вкладок не останавливает процессы; `lastInputAt` обновляется на ввод и прокрутку — **Cell готов (fc4397d), ждёт провязки `activeKey`/`onActivate` в Wall**
-- [ ] T043 [US4] «Вне сетки» и «ещё ждут: N» в `src/components/workbench/SessionStrip.tsx`
+- [X] T041 [US4] `src/components/workbench/Wall.tsx`: сетка по `layout` (`302-workbench-wall/parts/g-wall.html`), три значка раскладки в шапке, смена раскладки не пересоздаёт терминалы (ключи по `terminalId`), ждущая ячейка — значок «ждёт тебя» и рамка акцента
+- [ ] T042 [US4] `src/components/workbench/Cell.tsx`: шапка ячейки — проект, капсулы вкладок (Claude-сессии и лог dev), «+», булавка; переключение вкладок не останавливает процессы; `lastInputAt` обновляется на ввод и прокрутку — **провязано с Wall, [X] после живой проверки**
+- [X] T043 [US4] «Вне сетки» и «ещё ждут: N» в `src/components/workbench/SessionStrip.tsx`
 
 **Checkpoint**: US4 по quickstart §5
 

@@ -1,9 +1,12 @@
+import { useQuery } from '@tanstack/react-query';
 import { Columns2, Grid2x2, Pin, Plus, Square } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
+import { listWorkbenchProjects } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import {
   arrangeCells,
+  assignTabs,
   byUrgency,
   CELL_COUNT,
   HANDS_ON_MS,
@@ -28,12 +31,13 @@ export function LayoutPicker() {
   const layout = useWorkbenchStore((s) => s.layout);
   const setLayout = useWorkbenchStore((s) => s.setLayout);
   return (
-    <span className="wl-seg" title="Раскладка">
+    <fieldset className="wl-seg" aria-label="Раскладка">
       {LAYOUTS.map(({ key, label, Icon }) => (
         <button
           key={key}
           type="button"
           aria-pressed={key === layout}
+          aria-label={`Раскладка ${label}`}
           title={label}
           className={cn(key === layout && 'on')}
           onClick={() => setLayout(key)}
@@ -41,7 +45,7 @@ export function LayoutPicker() {
           <Icon strokeWidth={1.75} />
         </button>
       ))}
-    </span>
+    </fieldset>
   );
 }
 
@@ -49,20 +53,51 @@ function showUrgent(moved: WallCell[], sessions: ClaudeSession[], seen: Record<s
   useWorkbenchStore.setState((s) => {
     const tabs = { ...s.tabs };
     const activeTab = { ...s.activeTab };
+    const picked = new Map<string, string>();
     for (const c of moved) {
       if (!c.projectPath) continue;
       const path = c.projectPath;
       const top = byUrgency(
-        sessions.filter((x) => x.kind === 'shell' && x.projectPath === path),
+        sessions.filter(
+          (x) => x.kind === 'shell' && x.projectPath && samePath(x.projectPath, path),
+        ),
         seen,
       )[0];
       if (!top) continue;
       const list = tabs[path] ?? [];
       tabs[path] = list.includes(top.sessionId) ? list : [...list, top.sessionId];
       activeTab[path] = top.sessionId;
+      picked.set(c.id, top.sessionId);
     }
-    return { tabs, activeTab };
+    const cells = s.cells.map((c) =>
+      moved.some((m) => m.id === c.id) ? { ...c, activeTab: picked.get(c.id) } : c,
+    );
+    return { tabs, activeTab, cells };
   });
+}
+
+function usePruneCells(projects: Map<string, WorkbenchProject>) {
+  const pruneCells = useWorkbenchStore((s) => s.pruneCells);
+  const scannedAt = useQuery({
+    queryKey: ['workbench', 'projects'],
+    queryFn: listWorkbenchProjects,
+    enabled: false,
+    staleTime: Number.POSITIVE_INFINITY,
+  }).dataUpdatedAt;
+  const missing = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!scannedAt) return;
+    const exists = (path: string) => [...projects.keys()].some((p) => samePath(p, path));
+    const now = new Set(
+      useWorkbenchStore
+        .getState()
+        .cells.flatMap((c) => (c.projectPath && !exists(c.projectPath) ? [c.projectPath] : [])),
+    );
+    const before = missing.current;
+    missing.current = now;
+    pruneCells((path) => exists(path) || !(now.has(path) && before.has(path)));
+  }, [scannedAt, projects, pruneCells]);
 }
 
 interface Props {
@@ -82,8 +117,12 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
   const setCells = useWorkbenchStore((s) => s.setCells);
   const pinCell = useWorkbenchStore((s) => s.pinCell);
   const touchCell = useWorkbenchStore((s) => s.touchCell);
+  const activateCell = useWorkbenchStore((s) => s.activateCell);
+  const tabs = useWorkbenchStore((s) => s.tabs);
+  const activeTab = useWorkbenchStore((s) => s.activeTab);
   const [tick, setTick] = useState(0);
   const count = CELL_COUNT[layout];
+  usePruneCells(projects);
 
   useEffect(() => {
     void tick;
@@ -96,11 +135,17 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
         seen,
       );
     }
-    if (r.pendingCount === 0) return;
+    if (r.pendingCount === 0 || hidden) return;
     const t = setTimeout(() => setTick((n) => n + 1), HANDS_ON_MS);
     return () => clearTimeout(t);
-  }, [cells, count, sessions, seen, focusCell, setCells, tick]);
+  }, [cells, count, sessions, seen, focusCell, setCells, tick, hidden]);
 
+  const shown = cells.slice(0, count);
+  const keys = assignTabs(
+    shown,
+    (path) => tabs[path] ?? [],
+    (path) => activeTab[path],
+  );
   const focused = cells.find((c) => c.id === focusCell)?.projectPath ?? null;
 
   return (
@@ -124,19 +169,26 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
         </button>
       </div>
       <div className={`wl-grid l-${layout}`}>
-        {cells.slice(0, count).map((c) => {
+        {shown.map((c, i) => {
           const project = c.projectPath ? projects.get(c.projectPath) : undefined;
+          const twin = shown
+            .slice(0, i)
+            .some((o) => o.projectPath && c.projectPath && samePath(o.projectPath, c.projectPath));
           const own = project
             ? sessions.filter((s) => s.projectPath && samePath(s.projectPath, project.path))
             : [];
           const status = topStatus(own, seen);
+          const touch = () => {
+            if (!c.projectPath || project) touchCell(c.id);
+          };
+          const lock = c.pinned ? 'pinned' : c.manual ? 'manual' : 'auto';
           return (
             <div
               key={c.id}
               className={cn('wl-cell', status === 'waiting' && 'wait')}
-              onPointerDownCapture={() => touchCell(c.id)}
-              onKeyDownCapture={() => touchCell(c.id)}
-              onWheelCapture={() => touchCell(c.id)}
+              onPointerDownCapture={touch}
+              onKeyDownCapture={touch}
+              onWheelCapture={touch}
             >
               <div className="wl-ch">
                 {project ? (
@@ -156,16 +208,22 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
                 <span className="wb-gap" />
                 <button
                   type="button"
-                  className={cn('wl-pin', c.pinned && 'on')}
-                  aria-pressed={c.pinned}
-                  title={c.pinned ? 'Открепить ячейку' : 'Закрепить ячейку'}
+                  className={cn('wl-pin', lock === 'pinned' && 'on', lock === 'manual' && 'half')}
+                  aria-pressed={lock !== 'auto'}
+                  title={
+                    lock === 'pinned'
+                      ? 'Открепить ячейку'
+                      : lock === 'manual'
+                        ? 'Открыта вручную — вернуть авто-порядок'
+                        : 'Закрепить ячейку'
+                  }
                   onClick={() => pinCell(c.id)}
                 >
                   <Pin strokeWidth={2} />
                 </button>
               </div>
               <div className="wl-cb">
-                {project && (
+                {project && !twin && (
                   <Cell
                     key={project.path}
                     project={project}
@@ -173,9 +231,25 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
                     server={devServers.find((d) => samePath(d.projectPath, project.path))}
                     visible={!hidden}
                     focused={c.id === focusCell}
+                    activeKey={keys[i] ?? undefined}
+                    onActivate={(key) => activateCell(c.id, key)}
                     busy={busy}
                     onStart={(resume) => onStart(project.path, resume)}
                   />
+                )}
+                {project && twin && (
+                  <div className="wl-twin">
+                    <span className="wb-dim">Проект уже открыт в соседней ячейке</span>
+                    <button
+                      type="button"
+                      className="wb-btn"
+                      disabled={busy}
+                      onClick={() => void onStart(project.path)}
+                    >
+                      <Plus strokeWidth={2} />
+                      Ещё сессия
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

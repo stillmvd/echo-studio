@@ -159,6 +159,7 @@ export interface WallCell {
   pinned: boolean;
   manual: boolean;
   lastInputAt: number;
+  activeTab?: string;
 }
 
 export interface Arrangement<C extends WallCell> {
@@ -260,8 +261,10 @@ export function placeProject(
   focus: string | null,
   path: string,
 ): { cells: WallCell[]; focus: string } {
-  const shown = cells.slice(0, CELL_COUNT[layout]);
-  const already = shown.find((c) => c.projectPath !== null && samePath(c.projectPath, path));
+  const count = CELL_COUNT[layout];
+  const shown = cells.slice(0, count);
+  const holds = (c: WallCell) => c.projectPath !== null && samePath(c.projectPath, path);
+  const already = shown.find(holds);
   if (already) return { cells, focus: already.id };
   const target =
     shown.find((c) => c.id === focus && !c.pinned) ??
@@ -270,10 +273,60 @@ export function placeProject(
     shown.find((c) => !c.pinned) ??
     shown[0];
   if (!target) return { cells, focus: focus ?? '' };
+  const hidden = cells.slice(count).find(holds);
   return {
-    cells: cells.map((c) => (c.id === target.id ? { ...c, projectPath: path, manual: true } : c)),
+    cells: cells.map((c) => {
+      if (c.id === target.id) {
+        return { ...c, projectPath: path, manual: true, activeTab: hidden?.activeTab };
+      }
+      if (c.id === hidden?.id) return { ...c, ...freeCell() };
+      return c;
+    }),
     focus: target.id,
   };
+}
+
+function freeCell(): Omit<WallCell, 'id'> {
+  return { projectPath: null, pinned: false, manual: false, lastInputAt: 0, activeTab: undefined };
+}
+
+export function normalizeCells(cells: unknown): WallCell[] {
+  const list = Array.isArray(cells) ? cells : [];
+  return emptyCells().map((empty, i) => {
+    const c = list[i] as Partial<WallCell> | undefined;
+    if (!c || typeof c !== 'object') return empty;
+    return {
+      id: empty.id,
+      projectPath: typeof c.projectPath === 'string' ? c.projectPath : null,
+      pinned: c.pinned === true,
+      manual: c.manual === true,
+      lastInputAt: 0,
+      activeTab: typeof c.activeTab === 'string' ? c.activeTab : undefined,
+    };
+  });
+}
+
+export function pruneCells(cells: WallCell[], exists: (path: string) => boolean): WallCell[] {
+  if (cells.every((c) => c.projectPath === null || exists(c.projectPath))) return cells;
+  return cells.map((c) =>
+    c.projectPath === null || exists(c.projectPath) ? c : { ...c, ...freeCell() },
+  );
+}
+
+export function assignTabs(
+  cells: WallCell[],
+  tabsOf: (path: string) => string[],
+  activeOf: (path: string) => string | undefined,
+): (string | null)[] {
+  const used = new Set<string>();
+  return cells.map((c) => {
+    if (!c.projectPath) return null;
+    const list = tabsOf(c.projectPath);
+    const free = (k: string | undefined): k is string => !!k && list.includes(k) && !used.has(k);
+    const key = [c.activeTab, activeOf(c.projectPath), ...list].find(free) ?? null;
+    if (key) used.add(key);
+    return key;
+  });
 }
 
 export function byRecency<S extends ClaudeSession>(
