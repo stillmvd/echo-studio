@@ -313,19 +313,52 @@ export function pruneCells(cells: WallCell[], exists: (path: string) => boolean)
   );
 }
 
+export function urgentTab(
+  sessions: ClaudeSession[],
+  path: string,
+  seen: Record<string, number>,
+): string | null {
+  const own = sessions.filter(
+    (s) => s.kind === 'shell' && s.projectPath !== null && samePath(s.projectPath, path),
+  );
+  const top = byUrgency(own, seen)[0];
+  if (!top) return null;
+  const status = effectiveStatus(top, seen);
+  return status === 'waiting' || status === 'error' ? top.sessionId : null;
+}
+
+export function cellShowing(
+  cells: WallCell[],
+  layout: WallLayout,
+  focus: string | null,
+  path: string,
+): string | null {
+  const holders = cells
+    .slice(0, CELL_COUNT[layout])
+    .filter((c) => c.projectPath !== null && samePath(c.projectPath, path));
+  return (holders.find((c) => c.id === focus) ?? holders[0])?.id ?? null;
+}
+
 export function assignTabs(
   cells: WallCell[],
   tabsOf: (path: string) => string[],
   activeOf: (path: string) => string | undefined,
 ): (string | null)[] {
   const used = new Set<string>();
-  return cells.map((c) => {
-    if (!c.projectPath) return null;
-    const list = tabsOf(c.projectPath);
-    const free = (k: string | undefined): k is string => !!k && list.includes(k) && !used.has(k);
-    const key = [c.activeTab, activeOf(c.projectPath), ...list].find(free) ?? null;
-    if (key) used.add(key);
+  const own = cells.map((c) => {
+    const key = c.projectPath && c.activeTab;
+    if (!key || used.has(key) || !tabsOf(c.projectPath ?? '').includes(key)) return null;
+    used.add(key);
     return key;
+  });
+  return cells.map((c, i) => {
+    if (own[i] || !c.projectPath) return own[i] ?? null;
+    const list = tabsOf(c.projectPath);
+    const key = [activeOf(c.projectPath), ...list].find(
+      (k) => !!k && list.includes(k) && !used.has(k),
+    );
+    if (key) used.add(key);
+    return key ?? null;
   });
 }
 

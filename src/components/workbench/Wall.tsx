@@ -1,18 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { Columns2, Grid2x2, Pin, Plus, Square } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { listWorkbenchProjects } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import {
   arrangeCells,
   assignTabs,
-  byUrgency,
   CELL_COUNT,
   HANDS_ON_MS,
   STATUS_LABEL,
   samePath,
   topStatus,
+  urgentTab,
   type WallCell,
   type WallLayout,
 } from '@/lib/workbench';
@@ -57,17 +57,12 @@ function showUrgent(moved: WallCell[], sessions: ClaudeSession[], seen: Record<s
     for (const c of moved) {
       if (!c.projectPath) continue;
       const path = c.projectPath;
-      const top = byUrgency(
-        sessions.filter(
-          (x) => x.kind === 'shell' && x.projectPath && samePath(x.projectPath, path),
-        ),
-        seen,
-      )[0];
-      if (!top) continue;
+      const key = urgentTab(sessions, path, seen);
+      if (!key) continue;
       const list = tabs[path] ?? [];
-      tabs[path] = list.includes(top.sessionId) ? list : [...list, top.sessionId];
-      activeTab[path] = top.sessionId;
-      picked.set(c.id, top.sessionId);
+      tabs[path] = list.includes(key) ? list : [...list, key];
+      activeTab[path] = key;
+      picked.set(c.id, key);
     }
     const cells = s.cells.map((c) =>
       moved.some((m) => m.id === c.id) ? { ...c, activeTab: picked.get(c.id) } : c,
@@ -84,21 +79,23 @@ function usePruneCells(projects: Map<string, WorkbenchProject>) {
     enabled: false,
     staleTime: Number.POSITIVE_INFINITY,
   }).dataUpdatedAt;
-  const missing = useRef(new Set<string>());
-
   useEffect(() => {
-    if (!scannedAt) return;
+    if (!scannedAt || scannedAt === lastScan) return;
+    lastScan = scannedAt;
     const exists = (path: string) => [...projects.keys()].some((p) => samePath(p, path));
     const now = new Set(
       useWorkbenchStore
         .getState()
         .cells.flatMap((c) => (c.projectPath && !exists(c.projectPath) ? [c.projectPath] : [])),
     );
-    const before = missing.current;
-    missing.current = now;
+    const before = missing;
+    missing = now;
     pruneCells((path) => exists(path) || !(now.has(path) && before.has(path)));
   }, [scannedAt, projects, pruneCells]);
 }
+
+let lastScan = 0;
+let missing = new Set<string>();
 
 interface Props {
   hidden: boolean;
@@ -147,6 +144,10 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
     (path) => activeTab[path],
   );
   const focused = cells.find((c) => c.id === focusCell)?.projectPath ?? null;
+  const startIn = (id: string, path: string) =>
+    void onStart(path).then((key) => {
+      if (key) activateCell(id, key);
+    });
 
   return (
     <>
@@ -162,7 +163,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
           type="button"
           className="wb-btn p"
           disabled={busy || !focused}
-          onClick={() => focused && void onStart(focused)}
+          onClick={() => focused && focusCell && startIn(focusCell, focused)}
         >
           <Plus strokeWidth={2} />
           Claude
@@ -171,9 +172,13 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
       <div className={`wl-grid l-${layout}`}>
         {shown.map((c, i) => {
           const project = c.projectPath ? projects.get(c.projectPath) : undefined;
-          const twin = shown
-            .slice(0, i)
-            .some((o) => o.projectPath && c.projectPath && samePath(o.projectPath, c.projectPath));
+          const twin =
+            !keys[i] &&
+            shown
+              .slice(0, i)
+              .some(
+                (o) => o.projectPath && c.projectPath && samePath(o.projectPath, c.projectPath),
+              );
           const own = project
             ? sessions.filter((s) => s.projectPath && samePath(s.projectPath, project.path))
             : [];
@@ -239,12 +244,12 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
                 )}
                 {project && twin && (
                   <div className="wl-twin">
-                    <span className="wb-dim">Проект уже открыт в соседней ячейке</span>
+                    <span className="wb-dim">Все вкладки проекта уже на экране</span>
                     <button
                       type="button"
                       className="wb-btn"
                       disabled={busy}
-                      onClick={() => void onStart(project.path)}
+                      onClick={() => startIn(c.id, project.path)}
                     >
                       <Plus strokeWidth={2} />
                       Ещё сессия

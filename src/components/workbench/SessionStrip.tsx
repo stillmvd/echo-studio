@@ -71,11 +71,17 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
 
   return (
     <div className="wb-bar2" role="toolbar" aria-label="Сессии">
-      {sessions.length === 0 && <span className="wb-bar-lbl">Сессий нет</span>}
-      {ins.map((s) => chip(s, false))}
-      {outs.length > 0 && <span className="wl-sep">Вне сетки</span>}
-      {outs.map((s) => chip(s, true))}
-      <span className="wb-gap" />
+      <div
+        className="wb-bar-list"
+        onWheel={(e) => {
+          if (e.deltaY) e.currentTarget.scrollLeft += e.deltaY;
+        }}
+      >
+        {sessions.length === 0 && <span className="wb-bar-lbl">Сессий нет</span>}
+        {ins.map((s) => chip(s, false))}
+        {outs.length > 0 && <span className="wl-sep">Вне сетки</span>}
+        {outs.map((s) => chip(s, true))}
+      </div>
       {pending > 0 && <span className="wb-bar-note">ещё ждут: {pending}</span>}
       <span className="wb-kbd">Ctrl</span>
       <span className="wb-kbd">Tab</span>

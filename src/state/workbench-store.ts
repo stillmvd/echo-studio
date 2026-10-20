@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
+  assignTabs,
+  CELL_COUNT,
+  cellShowing,
   emptyCells,
   HANDS_ON_MS,
   normalizeCells,
@@ -42,16 +45,39 @@ interface WorkbenchState {
   pruneCells: (exists: (path: string) => boolean) => void;
 }
 
+function showInCell(s: WorkbenchState, path: string, key: string): WallCell[] {
+  const id = cellShowing(s.cells, s.layout, s.focusCell, path);
+  if (!id) return s.cells;
+  return s.cells.map((c) =>
+    c.id === id
+      ? { ...c, activeTab: key }
+      : c.activeTab === key
+        ? { ...c, activeTab: undefined }
+        : c,
+  );
+}
+
 export function migrateWorkbench(persisted: unknown): Partial<WorkbenchState> {
-  const state = (persisted ?? {}) as Partial<WorkbenchState>;
+  const state = (persisted && typeof persisted === 'object' ? persisted : {}) as Partial<
+    Omit<WorkbenchState, 'view'>
+  > & { view?: unknown };
   const cells = normalizeCells(state.cells);
-  const layout = state.layout ?? '1x1';
-  const view = state.view;
-  if (view?.kind === 'project' && !cells.some((c) => c.projectPath)) {
+  const layout = state.layout && state.layout in CELL_COUNT ? state.layout : '1x1';
+  const raw = state.view as { kind?: unknown; path?: unknown } | undefined;
+  const view: WorkbenchView =
+    raw?.kind === 'project' && typeof raw.path === 'string'
+      ? { kind: 'project', path: raw.path }
+      : { kind: 'overview' };
+  const focusCell =
+    typeof state.focusCell === 'string' && cells.some((c) => c.id === state.focusCell)
+      ? state.focusCell
+      : null;
+  const base = { ...state, layout, view, cells, focusCell };
+  if (view.kind === 'project' && !cells.some((c) => c.projectPath)) {
     const placed = placeProject(cells, layout, null, view.path);
-    return { ...state, cells: placed.cells, focusCell: placed.focus };
+    return { ...base, cells: placed.cells, focusCell: placed.focus };
   }
-  return { ...state, cells, focusCell: state.focusCell ?? null };
+  return base;
 }
 
 const bump = (list: string[], key: string) => [key, ...list.filter((k) => k !== key)].slice(0, 50);
@@ -88,6 +114,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
             tabs: { ...s.tabs, [path]: list.includes(key) ? list : [...list, key] },
             activeTab: { ...s.activeTab, [path]: key },
             recency: bump(s.recency, key),
+            cells: showInCell(s, path, key),
           };
         }),
       closeTab: (path, key) =>
@@ -103,12 +130,16 @@ export const useWorkbenchStore = create<WorkbenchState>()(
             tabs: { ...s.tabs, [path]: list },
             activeTab,
             recency: s.recency.filter((k) => k !== key),
+            cells: s.cells.some((c) => c.activeTab === key)
+              ? s.cells.map((c) => (c.activeTab === key ? { ...c, activeTab: undefined } : c))
+              : s.cells,
           };
         }),
       activate: (path, key) =>
         set((s) => ({
           activeTab: { ...s.activeTab, [path]: key },
           recency: bump(s.recency, key),
+          cells: showInCell(s, path, key),
         })),
       markSeen: (sessionId) => set((s) => ({ seen: { ...s.seen, [sessionId]: Date.now() } })),
       setLayout: (layout) =>
@@ -130,7 +161,13 @@ export const useWorkbenchStore = create<WorkbenchState>()(
         set((s) => {
           const path = s.cells.find((c) => c.id === id)?.projectPath;
           return {
-            cells: s.cells.map((c) => (c.id === id ? { ...c, activeTab: key } : c)),
+            cells: s.cells.map((c) =>
+              c.id === id
+                ? { ...c, activeTab: key }
+                : c.activeTab === key
+                  ? { ...c, activeTab: undefined }
+                  : c,
+            ),
             activeTab: path ? { ...s.activeTab, [path]: key } : s.activeTab,
             recency: bump(s.recency, key),
           };
@@ -142,9 +179,13 @@ export const useWorkbenchStore = create<WorkbenchState>()(
           const now = Date.now();
           const fresh = now - cell.lastInputAt < HANDS_ON_MS / 3;
           if (fresh && s.focusCell === id) return {};
-          const key = cell.projectPath
-            ? (cell.activeTab ?? s.activeTab[cell.projectPath])
-            : undefined;
+          const shown = s.cells.slice(0, CELL_COUNT[s.layout]);
+          const keys = assignTabs(
+            shown,
+            (path) => s.tabs[path] ?? [],
+            (path) => s.activeTab[path],
+          );
+          const key = keys[shown.findIndex((c) => c.id === id)] ?? undefined;
           return {
             focusCell: id,
             view: cell.projectPath ? { kind: 'project', path: cell.projectPath } : s.view,
@@ -164,6 +205,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       name: 'echo-workbench',
       version: 2,
       migrate: (persisted) => migrateWorkbench(persisted) as WorkbenchState,
+      merge: (persisted, current) => ({ ...current, ...migrateWorkbench(persisted) }),
       partialize: (s) => ({
         view: s.view,
         openGroups: s.openGroups,

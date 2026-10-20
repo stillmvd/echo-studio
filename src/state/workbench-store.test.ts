@@ -68,11 +68,42 @@ describe('workbench store', () => {
     useWorkbenchStore.setState({
       layout: '2x2',
       cells: emptyCells().map((c) => (c.id === 'c2' ? { ...c, projectPath: P } : c)),
+      tabs: { [P]: ['sess'] },
       activeTab: { [P]: 'sess' },
       seen: {},
     });
     useWorkbenchStore.getState().touchCell('c2');
     expect(useWorkbenchStore.getState().seen.sess).toBeGreaterThan(0);
+  });
+
+  it('shows a session opened from outside in the cell that holds the project', () => {
+    useWorkbenchStore.setState({
+      layout: '2x2',
+      cells: emptyCells().map((c) => (c.id === 'c3' ? { ...c, projectPath: P } : c)),
+      focusCell: 'c1',
+      tabs: { [P]: ['a', 'b'] },
+      activeTab: { [P]: 'a' },
+    });
+    const st = useWorkbenchStore.getState();
+    st.activateCell('c3', 'a');
+    st.openTab(P, 'b');
+    expect(useWorkbenchStore.getState().cells[2]?.activeTab).toBe('b');
+    st.activate(P, 'a');
+    expect(useWorkbenchStore.getState().cells[2]?.activeTab).toBe('a');
+    st.closeTab(P, 'a');
+    expect(useWorkbenchStore.getState().cells[2]?.activeTab).toBeUndefined();
+  });
+
+  it('normalizes garbage layout and view', () => {
+    const state = migrateWorkbench({
+      layout: '9x9',
+      view: { kind: 'project', path: 7 },
+      focusCell: 'zz',
+    });
+    expect(state.layout).toBe('1x1');
+    expect(state.view).toEqual({ kind: 'overview' });
+    expect(state.focusCell).toBeNull();
+    expect(migrateWorkbench(null).cells).toHaveLength(4);
   });
 
   it('migrates v1 with a wall layout and a selected project into the first cell', () => {

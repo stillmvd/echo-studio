@@ -25,6 +25,7 @@ import {
   terminalKey,
   topStatus,
   urgency,
+  urgentTab,
   type WallCell,
 } from './workbench';
 
@@ -367,9 +368,7 @@ describe('wall cells', () => {
   });
 
   it('gives two cells of one project different tabs', () => {
-    const cells = at(['A', 'A', 'B', null]).map((c) =>
-      c.id === 'c2' ? { ...c, activeTab: 'a1' } : c,
-    );
+    const cells = at(['A', 'A', 'B', null]);
     const tabs: Record<string, string[]> = { A: ['a1', 'a2'], B: [] };
     const keys = assignTabs(
       cells,
@@ -377,6 +376,29 @@ describe('wall cells', () => {
       () => 'a1',
     );
     expect(keys).toEqual(['a1', 'a2', null, null]);
+  });
+
+  it('lets an explicit cell tab win over an earlier cell without one', () => {
+    const cells = at(['A', 'A', null, null]).map((c) =>
+      c.id === 'c2' ? { ...c, activeTab: 'a1' } : c,
+    );
+    const keys = assignTabs(
+      cells,
+      () => ['a1', 'a2'],
+      () => 'a1',
+    );
+    expect(keys).toEqual(['a2', 'a1', null, null]);
+  });
+
+  it('opens a tab automatically only for waiting or failed sessions', () => {
+    expect(
+      urgentTab([session('w', 'waiting', 1, 'A'), session('i', 'idle', 2, 'A')], 'A', {}),
+    ).toBe('w');
+    expect(urgentTab([session('e', 'error', 1, 'A')], 'a', {})).toBe('e');
+    expect(urgentTab([session('d', 'done', 1, 'A'), session('i', 'idle', 2, 'A')], 'A', {})).toBe(
+      null,
+    );
+    expect(urgentTab([session('r', 'working', 1, 'A')], 'A', {})).toBeNull();
   });
 });
 

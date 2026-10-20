@@ -35,7 +35,14 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
   const cancel = () => {
     state.current.open = null;
     setOpen(null);
-    back.current?.focus();
+    if (back.current?.isConnected) {
+      back.current.focus();
+      return;
+    }
+    const s = useWorkbenchStore.getState();
+    const cell = s.cells.find((c) => c.id === s.focusCell);
+    const key = cell?.projectPath ? (cell.activeTab ?? s.activeTab[cell.projectPath]) : undefined;
+    if (key) focusTerminal(key);
   };
   const jump = (target: ClaudeSession) => {
     state.current.open = null;
