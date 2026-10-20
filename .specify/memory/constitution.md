@@ -1,12 +1,14 @@
 <!--
 Sync Impact Report
-- Version: 1.0.0 → 1.1.0 (2026-09-29, feature 004-memory)
-- Modified: I. Claude config belongs to the user — new rule for the echo-memory plugin's writes
+- Version: 1.1.0 → 1.2.0 (2026-10-20, feature 005-workbench)
+- Added: VII. User processes — starting and stopping processes (Claude Code sessions, dev servers)
+- Modified: none
+- Removed: none
 - Templates: no edits required
 - Deferred: none
 
-Previous: template → 1.0.0 (first ratification, 2026-09-26) — principles I–VI, Technology Constraints,
-Development Workflow, Governance
+Previous: 1.0.0 → 1.1.0 (2026-09-29, 004-memory) — I. echo-memory plugin writes;
+template → 1.0.0 (2026-09-26) — principles I–VI, Technology Constraints, Development Workflow, Governance
 -->
 
 # Echo Studio Constitution
@@ -59,6 +61,21 @@ Echo Studio reads Claude Code configuration (`~/.claude`, `~/.claude.json`, proj
 - UI follows the Trail plastic chosen in `.planning/REDESIGN-TRAIL.md`; a new screen's form is picked
   on a stand before it is built.
 
+### VII. User processes
+
+Echo Studio may start and stop processes on the user's machine (Claude Code sessions, project dev
+servers). These processes are the user's work, so the app treats them like config: hands off unless asked.
+
+- A process is started or stopped only by an explicit user action, never as a side effect of browsing,
+  scanning or opening a section.
+- The app terminates only processes from the lists it shows, by a pid re-checked on the Rust side right
+  before the kill. A live Claude session or a running dev server is stopped only after a confirmation;
+  orphaned processes listed as such may be stopped without one.
+- Processes outside these lists (the user's own browser, system processes, other apps) are neither shown
+  nor terminated.
+- Claude Code sessions run under Claude Code's own CLI (`claude --bg`, `attach`, `stop`); the app does not
+  replace or wrap the Claude Code session host.
+
 ## Technology Constraints
 
 - Tauri 2 (Rust, `thiserror` + `anyhow` at the IPC boundary), React 19, TypeScript strict with
@@ -80,4 +97,4 @@ This constitution overrides conflicting habits in specs and plans. Amendments ar
 ones, PATCH for wording) and record the change in the Sync Impact Report. Plans must include a
 Constitution Check against these principles; any violation needs a written justification.
 
-**Version**: 1.1.0 | **Ratified**: 2026-09-26 | **Last Amended**: 2026-09-29
+**Version**: 1.2.0 | **Ratified**: 2026-09-26 | **Last Amended**: 2026-10-20
