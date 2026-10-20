@@ -221,5 +221,58 @@ describe('arrangeCells', () => {
     const r = arrangeCells(cells, sessions, now, null);
     expect(placed(r.cells)).toEqual(['Manual', 'Y', 'X']);
     expect(r.offGrid).toEqual([]);
+    expect(r.moved).toEqual(['c1', 'c2']);
+  });
+
+  it('a project shown in two cells stays on the grid when one of them is taken', () => {
+    const cells = [cell('c0', 'P'), cell('c1', 'P', { pinned: true })];
+    const sessions = [session('P', 'idle', 1), session('Q', 'waiting', 5)];
+    const r = arrangeCells(cells, sessions, now, null);
+    expect(placed(r.cells)).toEqual(['Q', 'P']);
+    expect(r.offGrid).toEqual([]);
+    expect(r.pendingCount).toBe(0);
+  });
+
+  it('is idempotent on its own result', () => {
+    const first = arrangeCells(wall(), five('waiting'), now, null);
+    const second = arrangeCells(first.cells, five('waiting'), now, null);
+    expect(placed(second.cells)).toEqual(placed(first.cells));
+    expect(second.moved).toEqual([]);
+    expect(second.offGrid).toEqual(first.offGrid);
+  });
+
+  it('does not displace on equal priority and orders ties deterministically', () => {
+    const cells = [cell('c0', 'A')];
+    const tie = [session('A', 'working', null), session('B', 'working', null)];
+    const r = arrangeCells(cells, tie, now, null);
+    expect(placed(r.cells)).toEqual(['A']);
+    const flipped = arrangeCells([cell('c0', null)], [...tie].reverse(), now, null);
+    expect(placed(flipped.cells)).toEqual(['A']);
+    expect(flipped.offGrid).toEqual(['B']);
+  });
+
+  it('uses seen inside: a seen done project no longer outranks idle', () => {
+    const cells = [cell('c0', 'D')];
+    const sessions = [session('D', 'idle', 1), session('C', 'done', 10)];
+    expect(placed(arrangeCells(cells, sessions, now, null).cells)).toEqual(['C']);
+    expect(placed(arrangeCells(cells, sessions, now, null, { C: 20 }).cells)).toEqual(['D']);
+  });
+
+  it('unlocks a cell exactly HANDS_ON_MS after the last input', () => {
+    const cells = [cell('c0', 'D', { lastInputAt: now - HANDS_ON_MS })];
+    const sessions = [session('D', 'idle', 1), session('E', 'waiting', 5)];
+    expect(placed(arrangeCells(cells, sessions, now, null).cells)).toEqual(['E']);
+  });
+
+  it('ranks a project by its most urgent session', () => {
+    const cells = [cell('c0', 'B')];
+    const sessions = [
+      session('a1', 'idle', 1, 'A'),
+      session('a2', 'error', 50, 'A'),
+      session('b1', 'working', 1, 'B'),
+    ];
+    const r = arrangeCells(cells, sessions, now, null);
+    expect(placed(r.cells)).toEqual(['A']);
+    expect(r.offGrid).toEqual(['B']);
   });
 });

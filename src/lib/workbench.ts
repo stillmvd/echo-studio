@@ -92,14 +92,19 @@ function sinceKey(since: number | null): number {
   return since ?? Number.POSITIVE_INFINITY;
 }
 
+function cmp(a: number | string, b: number | string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 export function byUrgency<S extends ClaudeSession>(
   sessions: S[],
   seen: Record<string, number>,
 ): S[] {
   return [...sessions].sort(
     (a, b) =>
-      urgency(effectiveStatus(a, seen)) - urgency(effectiveStatus(b, seen)) ||
-      sinceKey(a.since) - sinceKey(b.since),
+      cmp(urgency(effectiveStatus(a, seen)), urgency(effectiveStatus(b, seen))) ||
+      cmp(sinceKey(a.since), sinceKey(b.since)) ||
+      cmp(a.sessionId, b.sessionId),
   );
 }
 
@@ -123,6 +128,7 @@ export interface WallCell {
 
 export interface Arrangement<C extends WallCell> {
   cells: C[];
+  moved: string[];
   offGrid: string[];
   pendingCount: number;
 }
@@ -141,9 +147,13 @@ const WORST: Rank = {
   waiting: false,
 };
 
+function compareRank(a: Rank, b: Rank): number {
+  return cmp(a.rank, b.rank) || cmp(a.since, b.since) || cmp(a.path, b.path);
+}
+
 function better(a: Rank, b: Rank | undefined): boolean {
   if (!b) return true;
-  return a.rank < b.rank || (a.rank === b.rank && a.since < b.since);
+  return cmp(a.rank, b.rank) < 0 || (a.rank === b.rank && cmp(a.since, b.since) < 0);
 }
 
 export function arrangeCells<C extends WallCell>(
@@ -164,27 +174,32 @@ export function arrangeCells<C extends WallCell>(
       waiting: status === 'waiting',
     });
   }
-  const order = [...ranks.values()].sort((a, b) => a.rank - b.rank || a.since - b.since);
+  const order = [...ranks.values()].sort(compareRank);
   const out = cells.map((c) => ({ ...c }));
   const locked = (c: C) =>
     c.pinned || c.manual || c.id === focus || now - c.lastInputAt < HANDS_ON_MS;
   const rankOf = (c: C) => (c.projectPath ? ranks.get(c.projectPath) : undefined);
-  const shown = new Set(out.map((c) => c.projectPath).filter((p): p is string => !!p));
+  const shown = new Map<string, number>();
+  const show = (path: string | null, delta: number) => {
+    if (path) shown.set(path, (shown.get(path) ?? 0) + delta);
+  };
+  for (const c of out) show(c.projectPath, 1);
   for (const candidate of order) {
-    if (shown.has(candidate.path)) continue;
+    if ((shown.get(candidate.path) ?? 0) > 0) continue;
     let target: C | undefined;
     for (const c of out) {
       if (locked(c) || !better(candidate, rankOf(c))) continue;
       if (!target || better(rankOf(target) ?? WORST, rankOf(c) ?? WORST)) target = c;
     }
     if (!target) continue;
-    if (target.projectPath) shown.delete(target.projectPath);
+    show(target.projectPath, -1);
     target.projectPath = candidate.path;
-    shown.add(candidate.path);
+    show(candidate.path, 1);
   }
-  const offGrid = order.filter((r) => !shown.has(r.path));
+  const offGrid = order.filter((r) => (shown.get(r.path) ?? 0) === 0);
   return {
     cells: out,
+    moved: out.filter((c, i) => c.projectPath !== cells[i]?.projectPath).map((c) => c.id),
     offGrid: offGrid.map((r) => r.path),
     pendingCount: offGrid.filter((r) => r.waiting).length,
   };
