@@ -1,4 +1,8 @@
+pub mod git;
+pub mod limits;
+pub mod processes;
 pub mod projects;
+pub mod usage;
 pub mod watch;
 
 use std::path::PathBuf;

@@ -1,0 +1,1604 @@
+{
+  "takenAt": 1792512256726,
+  "processes": [
+    {
+      "pid": 3572,
+      "ppid": 23632,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "cmd.exe /d /c npx -y rea-agents@6.5.0 mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485106283,
+      "memory": 5799936
+    },
+    {
+      "pid": 5424,
+      "ppid": 49108,
+      "name": "bash.exe",
+      "exe": "C:\\Program Files\\Git\\usr\\bin\\bash.exe",
+      "cmd": "\"C:\\Program Files\\Git\\bin\\..\\usr\\bin\\bash.exe\" -c \"source /c/Users/stillmvd/.claude/shell-snapshots/snapshot-bash-1792510743540-b91eje.sh 2>/dev/null || true && export TEMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' TMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' && shopt -u extglob 2>/dev/null || true && { \\builtin unalias -- 'unsetenv'; \\builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'cd \\\"C:/Users/stillmvd/Projects/Windows Apps/Echo Studio/src-tauri/src\\\" && sed -i '\\\"'\\\"'s/^pub mod tooling;$/pub mod tooling;\\npub mod workbench;/'\\\"'\\\"' commands/mod.rs && sed -i '\\\"'\\\"'s/^mod tooling;$/mod tooling;\\nmod workbench;/'\\\"'\\\"' lib.rs && sed -i '\\\"'\\\"'s/^            commands::memory::merge_memory_records,$/            commands::memory::merge_memory_records,\\n            commands::workbench::list_workbench_projects,/'\\\"'\\\"' lib.rs && sed -i '\\\"'\\\"'s/^            if let Some(home) = dirs::home_dir() {$/            if let Some(root) = workbench::projects_root() {\\n                workbench::watch::start_projects(app.handle().clone(), root);\\n            }\\n            if let Some(home) = dirs::home_dir() {/'\\\"'\\\"' lib.rs && grep -n \\\"workbench\\\" lib.rs commands/mod.rs && cd .. && cargo test workbench 2>&1 | tail -25' < /dev/null && pwd -P >| /c/Users/stillmvd/AppData/Local/Temp/claude-d1f6-cwd\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri",
+      "startTime": 1792512199638,
+      "memory": 13606912
+    },
+    {
+      "pid": 5904,
+      "ppid": 31036,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\\\node.exe\" C:\\Users\\stillmvd\\AppData\\Roaming\\npm\\node_modules\\npm\\bin\\npx-cli.js -y rea-agents@6.5.0 mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792486394214,
+      "memory": 2768896
+    },
+    {
+      "pid": 6992,
+      "ppid": 5968,
+      "name": "chrome.exe",
+      "exe": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "cmd": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe <личный Chrome: аргументы скрыты>",
+      "cwd": "C:\\Program Files\\Google\\Chrome\\Application\\155.0.8059.85",
+      "startTime": 1792479851966,
+      "memory": 288514048
+    },
+    {
+      "pid": 9564,
+      "ppid": 36128,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c chrome-devtools-mcp --categoryExtensions --ignore-default-chrome-arg=--disable-extensions --headless --viewport=1920x1080",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792508048933,
+      "memory": 10702848
+    },
+    {
+      "pid": 9668,
+      "ppid": 29852,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c chrome-devtools-mcp --categoryExtensions --ignore-default-chrome-arg=--disable-extensions --headless --viewport=1920x1080 --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\am-2",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485108909,
+      "memory": 5840896
+    },
+    {
+      "pid": 9976,
+      "ppid": 46108,
+      "name": "bash.exe",
+      "exe": "C:\\Program Files\\Git\\bin\\bash.exe",
+      "cmd": "\"C:\\Program Files\\Git\\bin\\bash.exe\" -c -l \"export TEMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' TMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' && shopt -u extglob 2>/dev/null || true && { \\builtin unalias -- 'unsetenv'; \\builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'S=\\\"/c/Users/stillmvd/AppData/Local/Temp/claude/C--Users-stillmvd-Projects/cb941db8-6434-443d-b30c-394497753357/scratchpad/spike\\\"; cd $S && export PYTHONIOENCODING=utf-8 PYTHONPATH=.; ./venv/Scripts/python snap.py fx2 && ./venv/Scripts/python synth.py fx2 && ./venv/Scripts/python classify.py fx2 \\\"/c/Users/stillmvd/Projects/Windows Apps/Echo Studio/.planning/sketches/301-workbench/data.json\\\"' < /dev/null && pwd -P >| /c/Users/stillmvd/AppData/Local/Temp/claude-70ed-cwd\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512248063,
+      "memory": 10342400
+    },
+    {
+      "pid": 13188,
+      "ppid": 50808,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\\\node.exe\" C:\\Users\\stillmvd\\AppData\\Roaming\\npm\\node_modules\\npm\\bin\\npx-cli.js -y rea-agents@6.5.0 mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792508046814,
+      "memory": 61235200
+    },
+    {
+      "pid": 13232,
+      "ppid": 27416,
+      "name": "claude.exe",
+      "exe": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe",
+      "cmd": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792486391285,
+      "memory": 363859968
+    },
+    {
+      "pid": 13852,
+      "ppid": 35968,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "cmd.exe /d /c npx -y rea-agents@6.5.0 mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "startTime": 1792510730410,
+      "memory": 13918208
+    },
+    {
+      "pid": 13896,
+      "ppid": 45444,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\\\node.exe\" C:\\Users\\stillmvd\\AppData\\Roaming\\npm\\node_modules\\npm\\bin\\npx-cli.js chrome-devtools-mcp@latest --categoryExtensions --ignore-default-chrome-arg=--disable-extensions --headless --viewport=1920x1080",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512039114,
+      "memory": 100904960
+    },
+    {
+      "pid": 18200,
+      "ppid": 3572,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792485106287,
+      "memory": 4005888
+    },
+    {
+      "pid": 18240,
+      "ppid": 50832,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\\\node.exe\" C:\\Users\\stillmvd\\AppData\\Roaming\\npm\\node_modules\\npm\\bin\\npx-cli.js chrome-devtools-mcp@latest --categoryExtensions --ignore-default-chrome-arg=--disable-extensions --headless --viewport=1920x1080 --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\echo-studio",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "startTime": 1792510730607,
+      "memory": 112967680
+    },
+    {
+      "pid": 19436,
+      "ppid": 45012,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c quasar dev",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792509639825,
+      "memory": 10493952
+    },
+    {
+      "pid": 20252,
+      "ppid": 20320,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\ad9a3fdbcad992c6\\node_modules\\.bin\\\\..\\rea-agents\\scripts\\rea.mjs mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485108944,
+      "memory": 3297280
+    },
+    {
+      "pid": 20320,
+      "ppid": 27008,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c rea mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485108911,
+      "memory": 5718016
+    },
+    {
+      "pid": 21552,
+      "ppid": 38060,
+      "name": "bash.exe",
+      "exe": "C:\\Program Files\\Git\\usr\\bin\\bash.exe",
+      "cmd": "\"C:\\Program Files\\Git\\bin\\..\\usr\\bin\\bash.exe\" -c -l \"export TEMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' TMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' && shopt -u extglob 2>/dev/null || true && { \\builtin unalias -- 'unsetenv'; \\builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'S=\\\"/c/Users/stillmvd/AppData/Local/Temp/claude/C--Users-stillmvd-Projects/cb941db8-6434-443d-b30c-394497753357/scratchpad/spike\\\"; cd $S && export PYTHONIOENCODING=utf-8 PYTHONPATH=.; ./venv/Scripts/python snap.py fx2 && ./venv/Scripts/python synth.py fx2 && ./venv/Scripts/python classify.py fx2 \\\"/c/Users/stillmvd/Projects/Windows Apps/Echo Studio/.planning/sketches/301-workbench/data.json\\\"' < /dev/null && pwd -P >| /c/Users/stillmvd/AppData/Local/Temp/claude-70ed-cwd\"",
+      "cwd": "C:\\Users\\stillmvd\\AppData\\Local\\Temp\\claude\\C--Users-stillmvd-Projects\\cb941db8-6434-443d-b30c-394497753357\\scratchpad\\spike",
+      "startTime": 1792512249247,
+      "memory": 13565952
+    },
+    {
+      "pid": 21564,
+      "ppid": 35968,
+      "name": "bash.exe",
+      "exe": "C:\\Program Files\\Git\\bin\\bash.exe",
+      "cmd": "\"C:\\Program Files\\Git\\bin\\bash.exe\" -c \"source /c/Users/stillmvd/.claude/shell-snapshots/snapshot-bash-1792510743540-b91eje.sh 2>/dev/null || true && export TEMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' TMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' && shopt -u extglob 2>/dev/null || true && { \\builtin unalias -- 'unsetenv'; \\builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'cd \\\"C:/Users/stillmvd/Projects/Windows Apps/Echo Studio/src-tauri/src\\\" && sed -i '\\\"'\\\"'s/^pub mod tooling;$/pub mod tooling;\\npub mod workbench;/'\\\"'\\\"' commands/mod.rs && sed -i '\\\"'\\\"'s/^mod tooling;$/mod tooling;\\nmod workbench;/'\\\"'\\\"' lib.rs && sed -i '\\\"'\\\"'s/^            commands::memory::merge_memory_records,$/            commands::memory::merge_memory_records,\\n            commands::workbench::list_workbench_projects,/'\\\"'\\\"' lib.rs && sed -i '\\\"'\\\"'s/^            if let Some(home) = dirs::home_dir() {$/            if let Some(root) = workbench::projects_root() {\\n                workbench::watch::start_projects(app.handle().clone(), root);\\n            }\\n            if let Some(home) = dirs::home_dir() {/'\\\"'\\\"' lib.rs && grep -n \\\"workbench\\\" lib.rs commands/mod.rs && cd .. && cargo test workbench 2>&1 | tail -25' < /dev/null && pwd -P >| /c/Users/stillmvd/AppData/Local/Temp/claude-d1f6-cwd\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "startTime": 1792512197925,
+      "memory": 10366976
+    },
+    {
+      "pid": 21668,
+      "ppid": 41916,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\15c61037b1978c83\\node_modules\\.bin\\\\..\\chrome-devtools-mcp\\build\\src\\bin\\chrome-devtools-mcp.js --categoryExtensions --ignore-default-chrome-arg=--disable-extensions --headless --viewport=1920x1080 --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\echo-studio",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "startTime": 1792510732896,
+      "memory": 137117696
+    },
+    {
+      "pid": 22596,
+      "ppid": 21668,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\node.exe\" C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\15c61037b1978c83\\node_modules\\chrome-devtools-mcp\\build\\src\\telemetry\\watchdog\\main.js --parent-pid=21668 --app-version=1.11.0 --os-type=1",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "startTime": 1792510733561,
+      "memory": 82333696
+    },
+    {
+      "pid": 22644,
+      "ppid": 34416,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\node.exe\" C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\15c61037b1978c83\\node_modules\\chrome-devtools-mcp\\build\\src\\telemetry\\watchdog\\main.js --parent-pid=34416 --app-version=1.11.0 --os-type=1",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792486396837,
+      "memory": 13561856
+    },
+    {
+      "pid": 22832,
+      "ppid": 23632,
+      "name": "bash.exe",
+      "exe": "C:\\Program Files\\Git\\bin\\bash.exe",
+      "cmd": "\"C:\\Program Files\\Git\\bin\\bash.exe\" -c \"source /c/Users/stillmvd/.claude/shell-snapshots/snapshot-bash-1792485143340-6kbjga.sh 2>/dev/null || true && export TEMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' TMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' && shopt -u extglob 2>/dev/null || true && { \\builtin unalias -- 'unsetenv'; \\builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'cd \\\"C:/Users/stillmvd/Projects/Freelance/AM 2.0\\\" && pnpm dev' < /dev/null && pwd -P >| /c/Users/stillmvd/AppData/Local/Temp/claude-404d-cwd\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792496295346,
+      "memory": 3440640
+    },
+    {
+      "pid": 22964,
+      "ppid": 44176,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\node.exe\" --env-file-if-exists=.env src/index.ts",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0\\apps\\worker",
+      "startTime": 1792512227634,
+      "memory": 149241856
+    },
+    {
+      "pid": 23464,
+      "ppid": 19436,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node \"C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control\\node_modules\\.bin\\\\..\\@quasar\\app-webpack\\bin\\quasar\" dev",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792509639873,
+      "memory": 354365440
+    },
+    {
+      "pid": 23592,
+      "ppid": 5424,
+      "name": "cargo.exe",
+      "exe": "C:\\Users\\stillmvd\\.cargo\\bin\\cargo.exe",
+      "cmd": "C:\\Users\\stillmvd\\.cargo\\bin\\cargo.exe test workbench",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri",
+      "startTime": 1792512199745,
+      "memory": 13979648
+    },
+    {
+      "pid": 23632,
+      "ppid": 32308,
+      "name": "claude.exe",
+      "exe": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe",
+      "cmd": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe --resume efe666bc-bc8c-463e-8e23-134163981341",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485103306,
+      "memory": 531038208
+    },
+    {
+      "pid": 24648,
+      "ppid": 26272,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792485106094,
+      "memory": 4272128
+    },
+    {
+      "pid": 24672,
+      "ppid": 45264,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\node.exe\" C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\15c61037b1978c83\\node_modules\\chrome-devtools-mcp\\build\\src\\telemetry\\watchdog\\main.js --parent-pid=45264 --app-version=1.11.0 --os-type=1",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512043349,
+      "memory": 73953280
+    },
+    {
+      "pid": 25660,
+      "ppid": 33576,
+      "name": "claude.exe",
+      "exe": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe",
+      "cmd": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe --bg-pty-host \\\\.\\pipe\\cc-daemon-01b74a95b573d263-pty-327452eb 200 50 -- C:\\Users\\stillmvd\\.local\\bin\\claude.exe --session-id 327452eb-e02a-4667-b6c4-24f530877780 -n workbench-helper \"Read the file C:\\Users\\stillmvd\\.claude\\projects\\C--Users-stillmvd-Projects\\handoff-workbench.md fully and follow it. Answer and think in Russian.\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512031782,
+      "memory": 153419776
+    },
+    {
+      "pid": 25664,
+      "ppid": 51132,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node \"C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0\\apps\\web\\node_modules\\.bin\\\\..\\vite\\bin\\vite.js\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0\\apps\\web",
+      "startTime": 1792496297160,
+      "memory": 39792640
+    },
+    {
+      "pid": 26036,
+      "ppid": 9564,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\15c61037b1978c83\\node_modules\\.bin\\\\..\\chrome-devtools-mcp\\build\\src\\bin\\chrome-devtools-mcp.js --categoryExtensions --ignore-default-chrome-arg=--disable-extensions --headless --viewport=1920x1080",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792508049058,
+      "memory": 73355264
+    },
+    {
+      "pid": 26272,
+      "ppid": 23632,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c \"npx ^chrome-devtools-mcp@latest^ ^--categoryExtensions^ ^--ignore-default-chrome-arg=--disable-extensions^ ^--headless^ ^--viewport=1920x1080^ ^--user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\am-2^\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485106088,
+      "memory": 5787648
+    },
+    {
+      "pid": 26592,
+      "ppid": 38060,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792512248118,
+      "memory": 8445952
+    },
+    {
+      "pid": 26812,
+      "ppid": 13896,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c chrome-devtools-mcp --categoryExtensions --ignore-default-chrome-arg=--disable-extensions --headless --viewport=1920x1080",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512041599,
+      "memory": 13840384
+    },
+    {
+      "pid": 27008,
+      "ppid": 3572,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\\\node.exe\" C:\\Users\\stillmvd\\AppData\\Roaming\\npm\\node_modules\\npm\\bin\\npx-cli.js -y rea-agents@6.5.0 mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485106527,
+      "memory": 2383872
+    },
+    {
+      "pid": 27488,
+      "ppid": 46108,
+      "name": "bash.exe",
+      "exe": "C:\\Program Files\\Git\\bin\\bash.exe",
+      "cmd": "\"C:\\Program Files\\Git\\bin\\bash.exe\" -c \"timeout -k 2 15 bash \\\"$HOME/.claude/statusline.sh\\\"\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512248576,
+      "memory": 10338304
+    },
+    {
+      "pid": 28840,
+      "ppid": 33804,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792486393428,
+      "memory": 1822720
+    },
+    {
+      "pid": 29168,
+      "ppid": 26036,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\node.exe\" C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\15c61037b1978c83\\node_modules\\chrome-devtools-mcp\\build\\src\\telemetry\\watchdog\\main.js --parent-pid=26036 --app-version=1.11.0 --os-type=1",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792508050206,
+      "memory": 70848512
+    },
+    {
+      "pid": 29176,
+      "ppid": 49108,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792512198093,
+      "memory": 8445952
+    },
+    {
+      "pid": 29520,
+      "ppid": 46108,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "cmd.exe /d /c npx -y rea-agents@6.5.0 mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512038157,
+      "memory": 13594624
+    },
+    {
+      "pid": 29852,
+      "ppid": 26272,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\\\node.exe\" C:\\Users\\stillmvd\\AppData\\Roaming\\npm\\node_modules\\npm\\bin\\npx-cli.js chrome-devtools-mcp@latest --categoryExtensions --ignore-default-chrome-arg=--disable-extensions --headless --viewport=1920x1080 --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\am-2",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485106322,
+      "memory": 2150400
+    },
+    {
+      "pid": 30576,
+      "ppid": 31372,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\node.exe\" C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\15c61037b1978c83\\node_modules\\chrome-devtools-mcp\\build\\src\\telemetry\\watchdog\\main.js --parent-pid=31372 --app-version=1.11.0 --os-type=1",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485109512,
+      "memory": 11329536
+    },
+    {
+      "pid": 31032,
+      "ppid": 33804,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\\\node.exe\" C:\\Users\\stillmvd\\AppData\\Roaming\\npm\\node_modules\\npm\\bin\\npx-cli.js chrome-devtools-mcp@latest --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\smartcontrol",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792486393696,
+      "memory": 2826240
+    },
+    {
+      "pid": 31036,
+      "ppid": 13232,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "cmd.exe /d /c npx -y rea-agents@6.5.0 mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792486393836,
+      "memory": 2793472
+    },
+    {
+      "pid": 31372,
+      "ppid": 9668,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\15c61037b1978c83\\node_modules\\.bin\\\\..\\chrome-devtools-mcp\\build\\src\\bin\\chrome-devtools-mcp.js --categoryExtensions --ignore-default-chrome-arg=--disable-extensions --headless --viewport=1920x1080 --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\am-2",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485108944,
+      "memory": 1826816
+    },
+    {
+      "pid": 32508,
+      "ppid": 42036,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c pnpm -r --parallel --filter ./apps/* dev",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792496296471,
+      "memory": 2748416
+    },
+    {
+      "pid": 32760,
+      "ppid": 31036,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792486393842,
+      "memory": 1884160
+    },
+    {
+      "pid": 33576,
+      "ppid": 29912,
+      "name": "claude.exe",
+      "exe": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe",
+      "cmd": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe daemon run --origin transient --spawned-by \"{\\\"label\\\":\\\"claude --bg\\\",\\\"cwd\\\":\\\"C:\\\\Users\\\\stillmvd\\\\Projects\\\",\\\"pid\\\":48292}\"",
+      "cwd": "C:\\Users\\stillmvd",
+      "startTime": 1792512031312,
+      "memory": 192229376
+    },
+    {
+      "pid": 33804,
+      "ppid": 13232,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c \"npx ^chrome-devtools-mcp@latest^ ^--user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\smartcontrol^\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792486393423,
+      "memory": 2723840
+    },
+    {
+      "pid": 34164,
+      "ppid": 23592,
+      "name": "cargo.exe",
+      "exe": "C:\\Users\\stillmvd\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\cargo.exe",
+      "cmd": "C:\\Users\\stillmvd\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\cargo.exe test workbench",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri",
+      "startTime": 1792512199820,
+      "memory": 106029056
+    },
+    {
+      "pid": 34192,
+      "ppid": 47628,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792496295375,
+      "memory": 4251648
+    },
+    {
+      "pid": 34416,
+      "ppid": 39596,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\15c61037b1978c83\\node_modules\\.bin\\\\..\\chrome-devtools-mcp\\build\\src\\bin\\chrome-devtools-mcp.js --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\smartcontrol",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792486396101,
+      "memory": 23269376
+    },
+    {
+      "pid": 34512,
+      "ppid": 23464,
+      "name": "esbuild.exe",
+      "exe": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control\\node_modules\\@esbuild\\win32-x64\\esbuild.exe",
+      "cmd": "\"C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control\\node_modules\\@esbuild\\win32-x64\\esbuild.exe\" --service=0.27.7 --ping",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792509640651,
+      "memory": 24588288
+    },
+    {
+      "pid": 34532,
+      "ppid": 50112,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\ad9a3fdbcad992c6\\node_modules\\.bin\\\\..\\rea-agents\\scripts\\rea.mjs mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "startTime": 1792510732939,
+      "memory": 281776128
+    },
+    {
+      "pid": 34720,
+      "ppid": 38732,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\ad9a3fdbcad992c6\\node_modules\\.bin\\\\..\\rea-agents\\scripts\\rea.mjs mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792486396345,
+      "memory": 4943872
+    },
+    {
+      "pid": 35220,
+      "ppid": 36304,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\ad9a3fdbcad992c6\\node_modules\\.bin\\\\..\\rea-agents\\scripts\\rea.mjs mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792508049232,
+      "memory": 62545920
+    },
+    {
+      "pid": 35324,
+      "ppid": 25660,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\\\?\\C:\\WINDOWS\\system32\\conhost.exe --headless --width 200 --height 50 --signal 0x238 --server 0x22c",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512031985,
+      "memory": 10747904
+    },
+    {
+      "pid": 35708,
+      "ppid": 50808,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792508046142,
+      "memory": 7888896
+    },
+    {
+      "pid": 35968,
+      "ppid": 42828,
+      "name": "claude.exe",
+      "exe": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe",
+      "cmd": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "startTime": 1792510727517,
+      "memory": 478642176
+    },
+    {
+      "pid": 36128,
+      "ppid": 37620,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\\\node.exe\" C:\\Users\\stillmvd\\AppData\\Roaming\\npm\\node_modules\\npm\\bin\\npx-cli.js chrome-devtools-mcp@latest --categoryExtensions --ignore-default-chrome-arg=--disable-extensions --headless --viewport=1920x1080",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792508046420,
+      "memory": 62005248
+    },
+    {
+      "pid": 36304,
+      "ppid": 13188,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c rea mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792508049111,
+      "memory": 10481664
+    },
+    {
+      "pid": 37508,
+      "ppid": 47100,
+      "name": "rust-analyzer.exe",
+      "exe": "C:\\Users\\stillmvd\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\rust-analyzer.exe",
+      "cmd": "C:\\Users\\stillmvd\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\rust-analyzer.exe",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "startTime": 1792512140908,
+      "memory": 383561728
+    },
+    {
+      "pid": 37540,
+      "ppid": 50832,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792510730283,
+      "memory": 8736768
+    },
+    {
+      "pid": 37620,
+      "ppid": 48900,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c \"npx ^chrome-devtools-mcp@latest^ ^--categoryExtensions^ ^--ignore-default-chrome-arg=--disable-extensions^ ^--headless^ ^--viewport=1920x1080^\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792508045786,
+      "memory": 10358784
+    },
+    {
+      "pid": 37684,
+      "ppid": 47100,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792512140656,
+      "memory": 8445952
+    },
+    {
+      "pid": 38060,
+      "ppid": 9976,
+      "name": "bash.exe",
+      "exe": "C:\\Program Files\\Git\\usr\\bin\\bash.exe",
+      "cmd": "\"C:\\Program Files\\Git\\bin\\..\\usr\\bin\\bash.exe\" -c -l \"export TEMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' TMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' && shopt -u extglob 2>/dev/null || true && { \\builtin unalias -- 'unsetenv'; \\builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'S=\\\"/c/Users/stillmvd/AppData/Local/Temp/claude/C--Users-stillmvd-Projects/cb941db8-6434-443d-b30c-394497753357/scratchpad/spike\\\"; cd $S && export PYTHONIOENCODING=utf-8 PYTHONPATH=.; ./venv/Scripts/python snap.py fx2 && ./venv/Scripts/python synth.py fx2 && ./venv/Scripts/python classify.py fx2 \\\"/c/Users/stillmvd/Projects/Windows Apps/Echo Studio/.planning/sketches/301-workbench/data.json\\\"' < /dev/null && pwd -P >| /c/Users/stillmvd/AppData/Local/Temp/claude-70ed-cwd\"",
+      "cwd": "C:\\Users\\stillmvd\\AppData\\Local\\Temp\\claude\\C--Users-stillmvd-Projects\\cb941db8-6434-443d-b30c-394497753357\\scratchpad\\spike",
+      "startTime": 1792512248105,
+      "memory": 15536128
+    },
+    {
+      "pid": 38292,
+      "ppid": 38580,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792509654483,
+      "memory": 7966720
+    },
+    {
+      "pid": 38580,
+      "ppid": 23464,
+      "name": "dart.exe",
+      "exe": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control\\node_modules\\sass-embedded-win32-x64\\dart-sass\\src\\dart.exe",
+      "cmd": "\"C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control\\node_modules\\sass-embedded-win32-x64\\dart-sass\\src\\dart.exe\" \"C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control\\node_modules\\sass-embedded-win32-x64\\dart-sass\\src\\sass.snapshot\" --embedded",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control\\node_modules\\sass-embedded-win32-x64\\dart-sass\\src",
+      "startTime": 1792509654472,
+      "memory": 21942272
+    },
+    {
+      "pid": 38732,
+      "ppid": 5904,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c rea mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792486396303,
+      "memory": 2768896
+    },
+    {
+      "pid": 38752,
+      "ppid": 29520,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792512038425,
+      "memory": 8650752
+    },
+    {
+      "pid": 38968,
+      "ppid": 23632,
+      "name": "bash.exe",
+      "exe": "C:\\Program Files\\Git\\bin\\bash.exe",
+      "cmd": "\"C:\\Program Files\\Git\\bin\\bash.exe\" -c \"source /c/Users/stillmvd/.claude/shell-snapshots/snapshot-bash-1792485143340-6kbjga.sh 2>/dev/null || true && export TEMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' TMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' && shopt -u extglob 2>/dev/null || true && { \\builtin unalias -- 'unsetenv'; \\builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'node \\\"C:/Users/stillmvd/AppData/Local/Temp/claude/C--Users-stillmvd-Projects-Freelance-AM-2-0/efe666bc-bc8c-463e-8e23-134163981341/scratchpad/bridge.cjs\\\"' < /dev/null && pwd -P >| /c/Users/stillmvd/AppData/Local/Temp/claude-c3e4-cwd\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485230256,
+      "memory": 3371008
+    },
+    {
+      "pid": 39132,
+      "ppid": 39808,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\node.exe\" C:/Users/stillmvd/AppData/Local/Temp/claude/C--Users-stillmvd-Projects-Freelance-AM-2-0/efe666bc-bc8c-463e-8e23-134163981341/scratchpad/bridge.cjs",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485230409,
+      "memory": 2383872
+    },
+    {
+      "pid": 39596,
+      "ppid": 31032,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c chrome-devtools-mcp --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\smartcontrol",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792486396063,
+      "memory": 2633728
+    },
+    {
+      "pid": 39680,
+      "ppid": 27488,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792512248582,
+      "memory": 8454144
+    },
+    {
+      "pid": 39700,
+      "ppid": 39748,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792485230289,
+      "memory": 2658304
+    },
+    {
+      "pid": 39748,
+      "ppid": 38968,
+      "name": "bash.exe",
+      "exe": "C:\\Program Files\\Git\\usr\\bin\\bash.exe",
+      "cmd": "\"C:\\Program Files\\Git\\bin\\..\\usr\\bin\\bash.exe\" -c \"source /c/Users/stillmvd/.claude/shell-snapshots/snapshot-bash-1792485143340-6kbjga.sh 2>/dev/null || true && export TEMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' TMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' && shopt -u extglob 2>/dev/null || true && { \\builtin unalias -- 'unsetenv'; \\builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'node \\\"C:/Users/stillmvd/AppData/Local/Temp/claude/C--Users-stillmvd-Projects-Freelance-AM-2-0/efe666bc-bc8c-463e-8e23-134163981341/scratchpad/bridge.cjs\\\"' < /dev/null && pwd -P >| /c/Users/stillmvd/AppData/Local/Temp/claude-c3e4-cwd\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485230279,
+      "memory": 4190208
+    },
+    {
+      "pid": 39808,
+      "ppid": 39748,
+      "name": "bash.exe",
+      "exe": "C:\\Program Files\\Git\\usr\\bin\\bash.exe",
+      "cmd": "\"C:\\Program Files\\Git\\bin\\..\\usr\\bin\\bash.exe\" -c \"source /c/Users/stillmvd/.claude/shell-snapshots/snapshot-bash-1792485143340-6kbjga.sh 2>/dev/null || true && export TEMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' TMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' && shopt -u extglob 2>/dev/null || true && { \\builtin unalias -- 'unsetenv'; \\builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'node \\\"C:/Users/stillmvd/AppData/Local/Temp/claude/C--Users-stillmvd-Projects-Freelance-AM-2-0/efe666bc-bc8c-463e-8e23-134163981341/scratchpad/bridge.cjs\\\"' < /dev/null && pwd -P >| /c/Users/stillmvd/AppData/Local/Temp/claude-c3e4-cwd\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792485230373,
+      "memory": 3919872
+    },
+    {
+      "pid": 40056,
+      "ppid": 27488,
+      "name": "bash.exe",
+      "exe": "C:\\Program Files\\Git\\usr\\bin\\bash.exe",
+      "cmd": "\"C:\\Program Files\\Git\\bin\\..\\usr\\bin\\bash.exe\" -c \"timeout -k 2 15 bash \\\"$HOME/.claude/statusline.sh\\\"\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512248693,
+      "memory": 14626816
+    },
+    {
+      "pid": 40224,
+      "ppid": 13852,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792510730416,
+      "memory": 8740864
+    },
+    {
+      "pid": 40844,
+      "ppid": 46276,
+      "name": "rustc.exe",
+      "exe": "C:\\Users\\stillmvd\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\rustc.exe",
+      "cmd": "C:\\Users\\stillmvd\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\rustc.exe --crate-name tauri_utils --edition=2024 C:\\Users\\stillmvd\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\tauri-utils-2.10.0\\src\\lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no --warn=clippy::redundant_clone --warn=clippy::or_fun_call --allow=clippy::collapsible_if --warn=clippy::assigning_clones --cfg feature=\\\"brotli\\\" --cfg feature=\\\"build-2\\\" --cfg feature=\\\"cargo_metadata\\\" --cfg feature=\\\"compression\\\" --cfg feature=\\\"html-manipulation-2\\\" --cfg feature=\\\"proc-macro2\\\" --cfg feature=\\\"quote\\\" --cfg feature=\\\"resources\\\" --cfg feature=\\\"schema\\\" --cfg feature=\\\"schemars\\\" --cfg feature=\\\"swift-rs\\\" --cfg feature=\\\"walkdir\\\" --check-cfg cfg(docsrs,test) --check-cfg \"cfg(feature, values(\\\"aes-gcm\\\", \\\"brotli\\\", \\\"build\\\", \\\"build-2\\\", \\\"cargo_metadata\\\", \\\"compression\\\", \\\"config-json5\\\", \\\"config-toml\\\", \\\"getrandom\\\", \\\"html-manipulation\\\", \\\"html-manipulation-2\\\", \\\"isolation\\\", \\\"json5\\\", \\\"proc-macro2\\\", \\\"process-relaunch-dangerous-allow-symlink-macos\\\", \\\"quote\\\", \\\"resources\\\", \\\"schema\\\", \\\"schemars\\\", \\\"serialize-to-javascript\\\", \\\"swift-rs\\\", \\\"walkdir\\\"))\" -C metadata=762d83b251494316 -C extra-filename=-2b4eb151d560fc80 --out-dir \"C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\" -L \"dependency=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\" --extern \"anyhow=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libanyhow-3333638104415a3d.rmeta\" --extern \"brotli=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libbrotli-b19af9974d3008ba.rmeta\" --extern \"cargo_metadata=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libcargo_metadata-00c951502c2eb560.rmeta\" --extern \"ctor=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libctor-872b25bd8b5b83bf.rmeta\" --extern \"dom_query=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libdom_query-90dede872642f85c.rmeta\" --extern \"dunce=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libdunce-5ab542988ccbd109.rmeta\" --extern \"glob=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libglob-38767551ac023f97.rmeta\" --extern \"http=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libhttp-70c485a5b3d5fb6e.rmeta\" --extern \"infer=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libinfer-65f2aa264a2c9d47.rmeta\" --extern \"json_patch=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libjson_patch-85e5914453167598.rmeta\" --extern \"log=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\liblog-18bceeea8dec74fc.rmeta\" --extern \"memchr=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libmemchr-9f4422384332a5a5.rmeta\" --extern \"phf=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libphf-7fc21bfe1cb0531c.rmeta\" --extern \"plist=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libplist-f2221e12bd7d800e.rmeta\" --extern \"proc_macro2=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libproc_macro2-16bf7005541e6a9e.rmeta\" --extern \"quote=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libquote-310aece1a18a9dbb.rmeta\" --extern \"regex=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libregex-d27b52286c34b862.rmeta\" --extern \"schemars=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libschemars-98b5e97b732b8bf8.rmeta\" --extern \"semver=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libsemver-a45d576cfac3e9db.rmeta\" --extern \"serde=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libserde-498a88d4e0bbbf27.rmeta\" --extern \"serde_untagged=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libserde_untagged-47cc5300951f8a13.rmeta\" --extern \"serde_json=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libserde_json-746ecaa60ec7a69f.rmeta\" --extern \"serde_with=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libserde_with-4e68011119e28b98.rmeta\" --extern \"thiserror=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libthiserror-35535e6504ff2ffd.rmeta\" --extern \"toml=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libtoml-6efde1888a77ba47.rmeta\" --extern \"url=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\liburl-d1b8c5e515fc2ca2.rmeta\" --extern \"urlpattern=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\liburlpattern-1ea627b2fb767a06.rmeta\" --extern \"uuid=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libuuid-63d393dd5f5702cc.rmeta\" --extern \"walkdir=C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\target\\debug\\deps\\libwalkdir-72ca025f48347331.rmeta\" --cap-lints allow",
+      "cwd": "C:\\Users\\stillmvd\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\tauri-utils-2.10.0",
+      "startTime": 1792512233636,
+      "memory": 739590144
+    },
+    {
+      "pid": 41220,
+      "ppid": 13852,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\\\node.exe\" C:\\Users\\stillmvd\\AppData\\Roaming\\npm\\node_modules\\npm\\bin\\npx-cli.js -y rea-agents@6.5.0 mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "startTime": 1792510730736,
+      "memory": 113823744
+    },
+    {
+      "pid": 41916,
+      "ppid": 18240,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c chrome-devtools-mcp --categoryExtensions --ignore-default-chrome-arg=--disable-extensions --headless --viewport=1920x1080 --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\echo-studio",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "startTime": 1792510732845,
+      "memory": 13959168
+    },
+    {
+      "pid": 42036,
+      "ppid": 45436,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\node.exe\" C:\\Users\\stillmvd\\AppData\\Roaming\\npm/node_modules/pnpm/bin/pnpm.mjs dev",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792496295919,
+      "memory": 8015872
+    },
+    {
+      "pid": 42064,
+      "ppid": 48280,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\node.exe\" --env-file-if-exists=.env src/index.ts",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0\\apps\\api",
+      "startTime": 1792512133364,
+      "memory": 148094976
+    },
+    {
+      "pid": 42156,
+      "ppid": 48948,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c node --watch --env-file-if-exists=.env src/index.ts",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0\\apps\\worker",
+      "startTime": 1792496297113,
+      "memory": 2732032
+    },
+    {
+      "pid": 43436,
+      "ppid": 37620,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792508045798,
+      "memory": 7872512
+    },
+    {
+      "pid": 43448,
+      "ppid": 45444,
+      "name": "conhost.exe",
+      "exe": "C:\\Windows\\System32\\conhost.exe",
+      "cmd": "\\??\\C:\\WINDOWS\\system32\\conhost.exe 0x4",
+      "cwd": "C:\\WINDOWS",
+      "startTime": 1792512037909,
+      "memory": 8658944
+    },
+    {
+      "pid": 44176,
+      "ppid": 42156,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node --watch --env-file-if-exists=.env src/index.ts",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0\\apps\\worker",
+      "startTime": 1792496297146,
+      "memory": 36708352
+    },
+    {
+      "pid": 45012,
+      "ppid": 45216,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\node.exe\" C:\\Users\\stillmvd\\AppData\\Roaming\\npm/node_modules/npm/bin/npx-cli.js quasar dev",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "startTime": 1792509638955,
+      "memory": 75059200
+    },
+    {
+      "pid": 45100,
+      "ppid": 29520,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "\"C:\\Program Files\\nodejs\\\\node.exe\" C:\\Users\\stillmvd\\AppData\\Roaming\\npm\\node_modules\\npm\\bin\\npx-cli.js -y rea-agents@6.5.0 mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512039148,
+      "memory": 101998592
+    },
+    {
+      "pid": 45264,
+      "ppid": 26812,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\15c61037b1978c83\\node_modules\\.bin\\\\..\\chrome-devtools-mcp\\build\\src\\bin\\chrome-devtools-mcp.js --categoryExtensions --ignore-default-chrome-arg=--disable-extensions --headless --viewport=1920x1080",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512041839,
+      "memory": 136081408
+    },
+    {
+      "pid": 45444,
+      "ppid": 46108,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c \"npx ^chrome-devtools-mcp@latest^ ^--categoryExtensions^ ^--ignore-default-chrome-arg=--disable-extensions^ ^--headless^ ^--viewport=1920x1080^\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512037729,
+      "memory": 13582336
+    },
+    {
+      "pid": 46108,
+      "ppid": 25660,
+      "name": "claude.exe",
+      "exe": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe",
+      "cmd": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe --session-id 327452eb-e02a-4667-b6c4-24f530877780 -n workbench-helper \"Read the file C:\\Users\\stillmvd\\.claude\\projects\\C--Users-stillmvd-Projects\\handoff-workbench.md fully and follow it. Answer and think in Russian.\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512031994,
+      "memory": 416686080
+    },
+    {
+      "pid": 46276,
+      "ppid": 49648,
+      "name": "cargo.exe",
+      "exe": "C:\\Users\\stillmvd\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\cargo.exe",
+      "cmd": "C:\\Users\\stillmvd\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\cargo.exe check --quiet --workspace --message-format=json --manifest-path \"C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\Cargo.toml\" -Zlockfile-path --keep-going --compile-time-deps --all-targets -Zunstable-options",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri",
+      "startTime": 1792512176144,
+      "memory": 113799168
+    },
+    {
+      "pid": 46632,
+      "ppid": 45100,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c rea mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512041932,
+      "memory": 13635584
+    },
+    {
+      "pid": 47100,
+      "ppid": 35968,
+      "name": "rust-analyzer.exe",
+      "exe": "C:\\Users\\stillmvd\\.cargo\\bin\\rust-analyzer.exe",
+      "cmd": "C:\\Users\\stillmvd\\.cargo\\bin\\rust-analyzer.exe",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "startTime": 1792512140562,
+      "memory": 13996032
+    },
+    {
+      "pid": 47628,
+      "ppid": 22832,
+      "name": "bash.exe",
+      "exe": "C:\\Program Files\\Git\\usr\\bin\\bash.exe",
+      "cmd": "\"C:\\Program Files\\Git\\bin\\..\\usr\\bin\\bash.exe\" -c \"source /c/Users/stillmvd/.claude/shell-snapshots/snapshot-bash-1792485143340-6kbjga.sh 2>/dev/null || true && export TEMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' TMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' && shopt -u extglob 2>/dev/null || true && { \\builtin unalias -- 'unsetenv'; \\builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'cd \\\"C:/Users/stillmvd/Projects/Freelance/AM 2.0\\\" && pnpm dev' < /dev/null && pwd -P >| /c/Users/stillmvd/AppData/Local/Temp/claude-404d-cwd\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792496295368,
+      "memory": 3514368
+    },
+    {
+      "pid": 48280,
+      "ppid": 49984,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node --watch --env-file-if-exists=.env src/index.ts",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0\\apps\\api",
+      "startTime": 1792496297137,
+      "memory": 30191616
+    },
+    {
+      "pid": 48900,
+      "ppid": 26856,
+      "name": "claude.exe",
+      "exe": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe",
+      "cmd": "C:\\Users\\stillmvd\\.local\\bin\\claude.exe -c",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792508041286,
+      "memory": 449929216
+    },
+    {
+      "pid": 48948,
+      "ppid": 32508,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node C:\\Users\\stillmvd\\AppData\\Roaming\\npm\\\\node_modules\\pnpm\\bin\\pnpm.mjs -r --parallel --filter ./apps/* dev",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792496296512,
+      "memory": 16900096
+    },
+    {
+      "pid": 49108,
+      "ppid": 21564,
+      "name": "bash.exe",
+      "exe": "C:\\Program Files\\Git\\usr\\bin\\bash.exe",
+      "cmd": "\"C:\\Program Files\\Git\\bin\\..\\usr\\bin\\bash.exe\" -c \"source /c/Users/stillmvd/.claude/shell-snapshots/snapshot-bash-1792510743540-b91eje.sh 2>/dev/null || true && export TEMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' TMP='C:\\Users\\stillmvd\\AppData\\Local\\Temp' && shopt -u extglob 2>/dev/null || true && { \\builtin unalias -- 'unsetenv'; \\builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'cd \\\"C:/Users/stillmvd/Projects/Windows Apps/Echo Studio/src-tauri/src\\\" && sed -i '\\\"'\\\"'s/^pub mod tooling;$/pub mod tooling;\\npub mod workbench;/'\\\"'\\\"' commands/mod.rs && sed -i '\\\"'\\\"'s/^mod tooling;$/mod tooling;\\nmod workbench;/'\\\"'\\\"' lib.rs && sed -i '\\\"'\\\"'s/^            commands::memory::merge_memory_records,$/            commands::memory::merge_memory_records,\\n            commands::workbench::list_workbench_projects,/'\\\"'\\\"' lib.rs && sed -i '\\\"'\\\"'s/^            if let Some(home) = dirs::home_dir() {$/            if let Some(root) = workbench::projects_root() {\\n                workbench::watch::start_projects(app.handle().clone(), root);\\n            }\\n            if let Some(home) = dirs::home_dir() {/'\\\"'\\\"' lib.rs && grep -n \\\"workbench\\\" lib.rs commands/mod.rs && cd .. && cargo test workbench 2>&1 | tail -25' < /dev/null && pwd -P >| /c/Users/stillmvd/AppData/Local/Temp/claude-d1f6-cwd\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri",
+      "startTime": 1792512197970,
+      "memory": 15446016
+    },
+    {
+      "pid": 49648,
+      "ppid": 37508,
+      "name": "cargo.exe",
+      "exe": "C:\\Users\\stillmvd\\.cargo\\bin\\cargo.exe",
+      "cmd": "C:\\Users\\stillmvd\\.cargo\\bin\\cargo.exe check --quiet --workspace --message-format=json --manifest-path \"C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri\\Cargo.toml\" -Zlockfile-path --keep-going --compile-time-deps --all-targets -Zunstable-options",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio\\src-tauri",
+      "startTime": 1792512176043,
+      "memory": 13930496
+    },
+    {
+      "pid": 49984,
+      "ppid": 48948,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c node --watch --env-file-if-exists=.env src/index.ts",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0\\apps\\api",
+      "startTime": 1792496297106,
+      "memory": 3223552
+    },
+    {
+      "pid": 50112,
+      "ppid": 41220,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c rea mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "startTime": 1792510732901,
+      "memory": 13697024
+    },
+    {
+      "pid": 50160,
+      "ppid": 46632,
+      "name": "node.exe",
+      "exe": "C:\\Program Files\\nodejs\\node.exe",
+      "cmd": "node C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\ad9a3fdbcad992c6\\node_modules\\.bin\\\\..\\rea-agents\\scripts\\rea.mjs mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792512042032,
+      "memory": 269004800
+    },
+    {
+      "pid": 50808,
+      "ppid": 48900,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "cmd.exe /d /c npx -y rea-agents@6.5.0 mcp",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "startTime": 1792508046040,
+      "memory": 10465280
+    },
+    {
+      "pid": 50832,
+      "ppid": 35968,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c \"npx ^chrome-devtools-mcp@latest^ ^--categoryExtensions^ ^--ignore-default-chrome-arg=--disable-extensions^ ^--headless^ ^--viewport=1920x1080^ ^--user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\echo-studio^\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "startTime": 1792510730277,
+      "memory": 13918208
+    },
+    {
+      "pid": 51132,
+      "ppid": 48948,
+      "name": "cmd.exe",
+      "exe": "C:\\Windows\\System32\\cmd.exe",
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c vite",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0\\apps\\web",
+      "startTime": 1792496297118,
+      "memory": 3452928
+    },
+    {
+      "pid": 900001,
+      "ppid": 900000,
+      "name": "rust-analyzer.exe",
+      "exe": null,
+      "cmd": "C:\\Users\\stillmvd\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\rust-analyzer.exe",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Tolk",
+      "startTime": 1792501456726,
+      "memory": 2610000000,
+      "synthetic": "S1: rust-analyzer закрытой сессии Tolk"
+    },
+    {
+      "pid": 900010,
+      "ppid": 900009,
+      "name": "cmd.exe",
+      "exe": null,
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c \"npx ^chrome-devtools-mcp@latest^ ^--headless^ ^--user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\am-2^\"",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792494256726,
+      "memory": 4000000,
+      "synthetic": "S2: MCP-цепочка закрытой сессии AM 2.0"
+    },
+    {
+      "pid": 900011,
+      "ppid": 900010,
+      "name": "node.exe",
+      "exe": null,
+      "cmd": "\"C:\\Program Files\\nodejs\\node.exe\" C:\\Users\\stillmvd\\AppData\\Roaming\\npm\\node_modules\\npm\\bin\\npx-cli.js chrome-devtools-mcp@latest --headless --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\am-2",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792494256726,
+      "memory": 70000000,
+      "synthetic": "S2"
+    },
+    {
+      "pid": 900012,
+      "ppid": 900011,
+      "name": "node.exe",
+      "exe": null,
+      "cmd": "node C:\\Users\\stillmvd\\AppData\\Local\\npm-cache\\_npx\\15c61037b1978c83\\node_modules\\.bin\\..\\chrome-devtools-mcp\\build\\src\\bin\\chrome-devtools-mcp.js --headless --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\am-2",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792494256726,
+      "memory": 80000000,
+      "synthetic": "S2"
+    },
+    {
+      "pid": 900020,
+      "ppid": 900012,
+      "name": "chrome.exe",
+      "exe": null,
+      "cmd": "\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" --headless --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\am-2 --remote-debugging-pipe about:blank",
+      "cwd": "C:\\Program Files\\Google\\Chrome\\Application",
+      "startTime": 1792494256726,
+      "memory": 160000000,
+      "synthetic": "S3: headless Chrome-профиль под висящим MCP"
+    },
+    {
+      "pid": 900021,
+      "ppid": 21668,
+      "name": "chrome.exe",
+      "exe": null,
+      "cmd": "\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" --headless --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\echo-studio --remote-debugging-pipe about:blank",
+      "cwd": "C:\\Program Files\\Google\\Chrome\\Application",
+      "startTime": 1792508656726,
+      "memory": 150000000,
+      "synthetic": "S3: Chrome-профиль живой сессии Echo Studio"
+    },
+    {
+      "pid": 900022,
+      "ppid": 900099,
+      "name": "chrome.exe",
+      "exe": null,
+      "cmd": "\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" --user-data-dir=C:\\Users\\stillmvd\\.cache\\chrome-profiles\\booked about:blank",
+      "cwd": "C:\\Program Files\\Google\\Chrome\\Application",
+      "startTime": 1792418656726,
+      "memory": 120000000,
+      "synthetic": "S3: видимый Chrome-профиль Booked, MCP давно закрыт"
+    },
+    {
+      "pid": 900030,
+      "ppid": 900029,
+      "name": "node.exe",
+      "exe": null,
+      "cmd": "node --watch --env-file-if-exists=.env src/index.ts",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0\\apps\\api",
+      "startTime": 1792483456726,
+      "memory": 110000000,
+      "synthetic": "S4: второй экземпляр api AM 2.0, старше живого"
+    },
+    {
+      "pid": 900031,
+      "ppid": 900030,
+      "name": "node.exe",
+      "exe": null,
+      "cmd": "\"C:\\Program Files\\nodejs\\node.exe\" --env-file-if-exists=.env src/index.ts",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0\\apps\\api",
+      "startTime": 1792483456726,
+      "memory": 90000000,
+      "synthetic": "S4"
+    },
+    {
+      "pid": 900040,
+      "ppid": 900039,
+      "name": "node.exe",
+      "exe": null,
+      "cmd": "node C:\\Users\\stillmvd\\Projects\\Windows Apps\\Booked\\node_modules\\.bin\\..\\vite\\bin\\vite.js",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Booked",
+      "startTime": 1792505056726,
+      "memory": 60000000,
+      "synthetic": "S5: dev, запущенный вне Echo, без сессии — проект, не висящий"
+    },
+    {
+      "pid": 900060,
+      "ppid": 900059,
+      "name": "cmd.exe",
+      "exe": null,
+      "cmd": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c pnpm dev",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Fullstack Apps\\Waypoint",
+      "startTime": 1792508656726,
+      "memory": 4000000,
+      "synthetic": "S7: dev-job Waypoint, запущен из Echo"
+    },
+    {
+      "pid": 900061,
+      "ppid": 900060,
+      "name": "node.exe",
+      "exe": null,
+      "cmd": "node C:\\Users\\stillmvd\\Projects\\Fullstack Apps\\Waypoint\\node_modules\\.bin\\..\\astro\\astro.js dev",
+      "cwd": "C:\\Users\\stillmvd\\AppData\\Local\\Temp",
+      "startTime": 1792508656726,
+      "memory": 95000000,
+      "synthetic": "S7: член dev-job с cwd вне проекта — проект по job"
+    },
+    {
+      "pid": 900051,
+      "ppid": 900050,
+      "name": "rust-analyzer.exe",
+      "exe": null,
+      "cmd": "C:\\Users\\stillmvd\\.vscode\\extensions\\rust-lang.rust-analyzer-0.3.2600-win32-x64\\server\\rust-analyzer.exe",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Ghbdtn",
+      "startTime": 1792497856726,
+      "memory": 1800000000,
+      "synthetic": "S6: rust-analyzer редактора VS Code — проект"
+    }
+  ],
+  "outsideParents": [
+    {
+      "pid": 45436,
+      "ppid": 16632,
+      "name": "sh.exe",
+      "exe": "C:\\Program Files\\Git\\usr\\bin\\sh.exe",
+      "cmd": "\"C:\\Program Files\\Git\\usr\\bin\\sh.exe\" /c/Users/stillmvd/AppData/Roaming/npm/pnpm dev",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "startTime": 1792496295505,
+      "memory": 4358144
+    },
+    {
+      "pid": 29912,
+      "ppid": 1708,
+      "name": "WmiPrvSE.exe",
+      "exe": "C:\\Windows\\System32\\wbem\\WmiPrvSE.exe",
+      "cmd": null,
+      "cwd": null,
+      "startTime": 1792510729911,
+      "memory": 20996096
+    },
+    {
+      "pid": 5968,
+      "ppid": 5324,
+      "name": "explorer.exe",
+      "exe": "C:\\Windows\\explorer.exe",
+      "cmd": "C:\\WINDOWS\\Explorer.EXE",
+      "cwd": "C:\\WINDOWS\\system32",
+      "startTime": 1792479694917,
+      "memory": 264482816
+    },
+    {
+      "pid": 900050,
+      "ppid": 900049,
+      "name": "Code.exe",
+      "exe": "C:\\Users\\stillmvd\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+      "cmd": "Code.exe --type=utility",
+      "cwd": null,
+      "startTime": 1792490656726,
+      "memory": 0,
+      "synthetic": "S6"
+    }
+  ],
+  "hookSessions": [
+    {
+      "sessionId": "327452eb-e02a-4667-b6c4-24f530877780",
+      "claudePid": 46108,
+      "projectDir": "C:/Users/stillmvd/Projects",
+      "state": "working",
+      "startedAt": 1792512036286,
+      "updatedAt": 1792512247870
+    },
+    {
+      "sessionId": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+      "claudePid": 13232,
+      "projectDir": "C:/Users/stillmvd/Projects/ProHouse/Smart Control",
+      "state": "idle",
+      "startedAt": 1792486392596,
+      "updatedAt": 1792510504486
+    },
+    {
+      "sessionId": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+      "claudePid": 23632,
+      "projectDir": "C:/Users/stillmvd/Projects/Freelance/AM 2.0",
+      "state": "working",
+      "startedAt": 1792509480718,
+      "updatedAt": 1792512253995
+    },
+    {
+      "sessionId": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+      "claudePid": 35968,
+      "projectDir": "C:/Users/stillmvd/Projects/Windows Apps/Echo Studio",
+      "state": "working",
+      "startedAt": 1792510729296,
+      "updatedAt": 1792512195578
+    },
+    {
+      "sessionId": "cb941db8-6434-443d-b30c-394497753357",
+      "claudePid": 48900,
+      "projectDir": "C:/Users/stillmvd/Projects",
+      "state": "done",
+      "startedAt": 1792508043187,
+      "updatedAt": 1792512174419
+    },
+    {
+      "sessionId": "11111111-0000-4000-8000-000000000001",
+      "claudePid": 900000,
+      "projectDir": "C:/Users/stillmvd/Projects/Windows Apps/Tolk",
+      "state": "done",
+      "startedAt": 1792497856726,
+      "updatedAt": 1792505056726,
+      "synthetic": "S1"
+    },
+    {
+      "sessionId": "11111111-0000-4000-8000-000000000002",
+      "claudePid": 900008,
+      "projectDir": "C:/Users/stillmvd/Projects/Freelance/AM 2.0",
+      "state": "done",
+      "startedAt": 1792490656726,
+      "updatedAt": 1792494856726,
+      "synthetic": "S2"
+    }
+  ],
+  "agents": [
+    {
+      "id": "addf9966",
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Fullstack Apps\\Waypoint",
+      "kind": "background",
+      "startedAt": 1790088143869,
+      "sessionId": "addf9966-22f5-4925-9aca-f5f114f6e4b6",
+      "name": "Waypoint десктопный редизайн",
+      "state": "blocked"
+    },
+    {
+      "pid": 23632,
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "kind": "interactive",
+      "startedAt": 1792485104864,
+      "sessionId": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+      "name": "am-2-0-7e",
+      "status": "busy"
+    },
+    {
+      "pid": 13232,
+      "cwd": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "kind": "interactive",
+      "startedAt": 1792486392372,
+      "sessionId": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+      "name": "smart-control-f5",
+      "status": "idle"
+    },
+    {
+      "pid": 48900,
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "kind": "interactive",
+      "startedAt": 1792508042609,
+      "sessionId": "cb941db8-6434-443d-b30c-394497753357",
+      "name": "projects-99",
+      "status": "idle"
+    },
+    {
+      "pid": 35968,
+      "cwd": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "kind": "interactive",
+      "startedAt": 1792510729078,
+      "sessionId": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+      "name": "echo-studio-e6",
+      "status": "busy"
+    },
+    {
+      "pid": 46108,
+      "id": "327452eb",
+      "cwd": "C:\\Users\\stillmvd\\Projects",
+      "kind": "background",
+      "startedAt": 1792512035346,
+      "sessionId": "327452eb-e02a-4667-b6c4-24f530877780",
+      "name": "workbench-helper",
+      "status": "busy",
+      "state": "working"
+    }
+  ],
+  "devJobs": [
+    {
+      "name": "echo-dev-waypoint",
+      "projectPath": "C:\\Users\\stillmvd\\Projects\\Fullstack Apps\\Waypoint",
+      "pids": [900060, 900061],
+      "synthetic": "S7"
+    }
+  ],
+  "projectsRoot": "C:\\Users\\stillmvd\\Projects",
+  "projects": [
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Android Apps\\Adb Keeper",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Android Apps\\Businka",
+      "profile": "businka"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Android Apps\\Clash Helper",
+      "profile": "clash-helper"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Android Apps\\Mozhno",
+      "profile": "mozhno"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Android Apps\\Scrolly",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Android Apps\\Wrist",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Browser Extensions\\Horizon",
+      "profile": "horizon"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Browser Extensions\\Image Parser",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Browser Extensions\\Skull Click",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Browser Extensions\\Sorter 2ch",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Browser Extensions\\Sorter 34",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Browser Extensions\\Sorter 95",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Browser Extensions\\Tube Grab",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Browser Extensions\\Vault Skin",
+      "profile": "vault-skin"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Freelance\\Agregation Messages",
+      "profile": "atlant-am"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+      "profile": "am-2"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Freelance\\Strategym OT",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Freelance\\Strategym Vite",
+      "profile": "strategym"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Fullstack Apps\\Car Hunt",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Fullstack Apps\\Gnezdo",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Fullstack Apps\\Waypoint",
+      "profile": "waypoint"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Games\\First Game",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Breeze",
+      "profile": "breeze"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+      "profile": "smartcontrol"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control-review",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Tweaks\\Bitrix24 Dark",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Tweaks\\Dev Clean",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Tweaks\\Logbook",
+      "profile": "logbook"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Tweaks\\Tauri Ship",
+      "profile": "tauri-ship"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\VSCode Extensions\\Claude Session Focus",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\VSCode Extensions\\Status Command Buttons",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windhawk Mods\\Taskbar Audio Switcher",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windhawk Mods\\Taskbar Claude Sessions",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windhawk Mods\\Taskbar Fluent Media Player Audio Dock",
+      "profile": "taskbar-fluent-media-player-audio-dock"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windhawk Mods\\Taskbar IP Glance",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Booked",
+      "profile": "booked"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Cache Out",
+      "profile": "cache-out"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Click It",
+      "profile": "click-it"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Demo Prep",
+      "profile": "demo-prep"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Drop Flow",
+      "profile": "drop-flow"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+      "profile": "echo-studio"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\FL Copilot",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Folderize",
+      "profile": "folderize"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Ghbdtn",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Link Gate",
+      "profile": "link-gate"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Markdown",
+      "profile": "markdown"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Sorter",
+      "profile": "sorter"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Sound Grab",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Tolk",
+      "profile": null
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Trail",
+      "profile": "timeline"
+    },
+    {
+      "path": "C:\\Users\\stillmvd\\Projects\\Kockers DS",
+      "profile": null
+    }
+  ]
+}

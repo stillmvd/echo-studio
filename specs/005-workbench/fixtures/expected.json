@@ -1,0 +1,1062 @@
+[
+  {
+    "pid": 3572,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 5424,
+    "name": "bash.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 5904,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "session": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 6992,
+    "name": "chrome.exe",
+    "ignore": "user-browser",
+    "rule": "user-browser",
+    "visible": false
+  },
+  {
+    "pid": 9564,
+    "name": "cmd.exe",
+    "projectPath": null,
+    "session": "cb941db8-6434-443d-b30c-394497753357",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 9668,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 9976,
+    "name": "bash.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 13188,
+    "name": "node.exe",
+    "projectPath": null,
+    "session": "cb941db8-6434-443d-b30c-394497753357",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 13232,
+    "name": "claude.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "session": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+    "guard": "live-session",
+    "rule": "claude-itself",
+    "visible": true
+  },
+  {
+    "pid": 13852,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 13896,
+    "name": "node.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 18200,
+    "name": "conhost.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 18240,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 19436,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "rule": "cwd",
+    "visible": false
+  },
+  {
+    "pid": 20252,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 20320,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 21552,
+    "name": "bash.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 21564,
+    "name": "bash.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 21668,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 22596,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 22644,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "session": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 22832,
+    "name": "bash.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 22964,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "rule": "cwd",
+    "visible": true
+  },
+  {
+    "pid": 23464,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "rule": "cwd",
+    "visible": true
+  },
+  {
+    "pid": 23592,
+    "name": "cargo.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 23632,
+    "name": "claude.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "claude-itself",
+    "visible": true
+  },
+  {
+    "pid": 24648,
+    "name": "conhost.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 24672,
+    "name": "node.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 25660,
+    "name": "claude.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "pty-host-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 25664,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "rule": "cwd",
+    "visible": true
+  },
+  {
+    "pid": 26036,
+    "name": "node.exe",
+    "projectPath": null,
+    "session": "cb941db8-6434-443d-b30c-394497753357",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 26272,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 26592,
+    "name": "conhost.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 26812,
+    "name": "cmd.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 27008,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 27488,
+    "name": "bash.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 28840,
+    "name": "conhost.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "session": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 29168,
+    "name": "node.exe",
+    "projectPath": null,
+    "session": "cb941db8-6434-443d-b30c-394497753357",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 29176,
+    "name": "conhost.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 29520,
+    "name": "cmd.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 29852,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 30576,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 31032,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "session": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 31036,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "session": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 31372,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 32508,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "rule": "cwd",
+    "visible": false
+  },
+  {
+    "pid": 32760,
+    "name": "conhost.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "session": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 33576,
+    "name": "claude.exe",
+    "ignore": "claude-daemon",
+    "rule": "claude-daemon",
+    "visible": false
+  },
+  {
+    "pid": 33804,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "session": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 34164,
+    "name": "cargo.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 34192,
+    "name": "conhost.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 34416,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "session": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 34512,
+    "name": "esbuild.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "rule": "cwd",
+    "visible": true
+  },
+  {
+    "pid": 34532,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 34720,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "session": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 35220,
+    "name": "node.exe",
+    "projectPath": null,
+    "session": "cb941db8-6434-443d-b30c-394497753357",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 35324,
+    "name": "conhost.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "inherited",
+    "visible": false
+  },
+  {
+    "pid": 35708,
+    "name": "conhost.exe",
+    "projectPath": null,
+    "session": "cb941db8-6434-443d-b30c-394497753357",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 35968,
+    "name": "claude.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "claude-itself",
+    "visible": true
+  },
+  {
+    "pid": 36128,
+    "name": "node.exe",
+    "projectPath": null,
+    "session": "cb941db8-6434-443d-b30c-394497753357",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 36304,
+    "name": "cmd.exe",
+    "projectPath": null,
+    "session": "cb941db8-6434-443d-b30c-394497753357",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 37508,
+    "name": "rust-analyzer.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 37540,
+    "name": "conhost.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 37620,
+    "name": "cmd.exe",
+    "projectPath": null,
+    "session": "cb941db8-6434-443d-b30c-394497753357",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 37684,
+    "name": "conhost.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 38060,
+    "name": "bash.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 38292,
+    "name": "conhost.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "rule": "inherited",
+    "visible": false
+  },
+  {
+    "pid": 38580,
+    "name": "dart.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "rule": "cwd",
+    "visible": true
+  },
+  {
+    "pid": 38732,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "session": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 38752,
+    "name": "conhost.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 38968,
+    "name": "bash.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 39132,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 39596,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "session": "56b05866-c97c-4d27-b1b6-1ef1686a3533",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 39680,
+    "name": "conhost.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 39700,
+    "name": "conhost.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 39748,
+    "name": "bash.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 39808,
+    "name": "bash.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 40056,
+    "name": "bash.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 40224,
+    "name": "conhost.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 40844,
+    "name": "rustc.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 41220,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 41916,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 42036,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "rule": "cwd",
+    "visible": true
+  },
+  {
+    "pid": 42064,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "rule": "cwd",
+    "visible": true
+  },
+  {
+    "pid": 42156,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "rule": "cwd",
+    "visible": false
+  },
+  {
+    "pid": 43436,
+    "name": "conhost.exe",
+    "projectPath": null,
+    "session": "cb941db8-6434-443d-b30c-394497753357",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 43448,
+    "name": "conhost.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 44176,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "rule": "cwd",
+    "visible": true
+  },
+  {
+    "pid": 45012,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\ProHouse\\Smart Control",
+    "rule": "cwd",
+    "visible": true
+  },
+  {
+    "pid": 45100,
+    "name": "node.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 45264,
+    "name": "node.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 45444,
+    "name": "cmd.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 46108,
+    "name": "claude.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "claude-itself",
+    "visible": true
+  },
+  {
+    "pid": 46276,
+    "name": "cargo.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 46632,
+    "name": "cmd.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 47100,
+    "name": "rust-analyzer.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 47628,
+    "name": "bash.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "session": "8e5e1113-effe-47a2-832a-a2c5bf110aaf",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 48280,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "rule": "cwd",
+    "visible": true
+  },
+  {
+    "pid": 48900,
+    "name": "claude.exe",
+    "projectPath": null,
+    "session": "cb941db8-6434-443d-b30c-394497753357",
+    "guard": "live-session",
+    "rule": "claude-itself",
+    "visible": true
+  },
+  {
+    "pid": 48948,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "rule": "cwd",
+    "visible": true
+  },
+  {
+    "pid": 49108,
+    "name": "bash.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 49648,
+    "name": "cargo.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 49984,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "rule": "cwd",
+    "visible": false
+  },
+  {
+    "pid": 50112,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 50160,
+    "name": "node.exe",
+    "projectPath": null,
+    "session": "327452eb-e02a-4667-b6c4-24f530877780",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 50808,
+    "name": "cmd.exe",
+    "projectPath": null,
+    "session": "cb941db8-6434-443d-b30c-394497753357",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 50832,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 51132,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "rule": "cwd",
+    "visible": false
+  },
+  {
+    "pid": 900001,
+    "name": "rust-analyzer.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Tolk",
+    "orphan": {
+      "reason": "session-closed",
+      "since": 1792505056726
+    },
+    "rule": "tool-without-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 900010,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "orphan": {
+      "reason": "session-closed",
+      "since": 1792494856726
+    },
+    "rule": "tool-without-live-claude",
+    "visible": false
+  },
+  {
+    "pid": 900011,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "orphan": {
+      "reason": "session-closed",
+      "since": 1792494856726
+    },
+    "rule": "tool-without-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 900012,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "orphan": {
+      "reason": "session-closed",
+      "since": 1792494856726
+    },
+    "rule": "tool-without-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 900020,
+    "name": "chrome.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "orphan": {
+      "reason": "session-closed",
+      "since": 1792494856726
+    },
+    "rule": "tool-without-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 900021,
+    "name": "chrome.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Echo Studio",
+    "session": "c5b7d2a9-ed27-4f84-b62b-72d290af8c17",
+    "guard": "live-session",
+    "rule": "descendant-of-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 900022,
+    "name": "chrome.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Booked",
+    "orphan": {
+      "reason": "session-closed"
+    },
+    "rule": "tool-without-live-claude",
+    "visible": true
+  },
+  {
+    "pid": 900030,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "orphan": {
+      "reason": "duplicate",
+      "of": 48280
+    },
+    "rule": "same-cmd-cwd-older",
+    "visible": true
+  },
+  {
+    "pid": 900031,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Freelance\\AM 2.0",
+    "orphan": {
+      "reason": "duplicate",
+      "of": 42064
+    },
+    "rule": "same-cmd-cwd-older",
+    "visible": true
+  },
+  {
+    "pid": 900040,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Booked",
+    "rule": "cwd",
+    "visible": true
+  },
+  {
+    "pid": 900051,
+    "name": "rust-analyzer.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Windows Apps\\Ghbdtn",
+    "rule": "editor-tool",
+    "visible": true
+  },
+  {
+    "pid": 900060,
+    "name": "cmd.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Fullstack Apps\\Waypoint",
+    "guard": "running-dev",
+    "rule": "dev-job",
+    "visible": false
+  },
+  {
+    "pid": 900061,
+    "name": "node.exe",
+    "projectPath": "C:\\Users\\stillmvd\\Projects\\Fullstack Apps\\Waypoint",
+    "guard": "running-dev",
+    "rule": "dev-job",
+    "visible": true
+  }
+]

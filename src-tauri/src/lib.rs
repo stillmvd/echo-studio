@@ -60,6 +60,7 @@ pub fn run() {
             if let Some(root) = workbench::projects_root() {
                 workbench::watch::start_projects(app.handle().clone(), root);
             }
+            workbench::limits::start_limits(app.handle().clone());
             if let Some(home) = dirs::home_dir() {
                 memory::watch::start(app.handle().clone(), memory::projects_root(&home));
                 let handle = app.handle().clone();
@@ -104,6 +105,11 @@ pub fn run() {
             commands::memory::patch_memory_record,
             commands::memory::merge_memory_records,
             commands::workbench::list_workbench_projects,
+            commands::workbench::read_rate_limits,
+            commands::workbench::read_usage,
+            commands::workbench::read_git_states,
+            commands::workbench::list_processes,
+            commands::workbench::kill_processes,
             app_ready,
         ])
         .run(context)
