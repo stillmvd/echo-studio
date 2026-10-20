@@ -159,8 +159,8 @@ contracts/ipc.md, quickstart.md. Форма — `.planning/WORKBENCH.md`, сте
 - [X] T053 [P] Узкое окно и 2×2: вкладки сжимаются с многоточием, имена проектов не наезжают (edge cases spec.md) — `Cell.tsx`, `ProjectHeader.tsx`
 - [X] T054 [P] Производительность SC-004: 8 attach + 4 лога — нет задержки ввода, окно не замирает на выводе сборки; при проблеме — увеличить пачку Channel до 32 мс и отключить WebGL у скрытых ячеек
 - [ ] T055 Обновить `CLAUDE.md` проекта: раздел «Где смотреть контекст» — `specs/005-workbench/`, `.planning/WORKBENCH.md`; инварианты — фоновые сессии Claude (`--bg`, resume без флагов, доверие не ставим), dev-серверы в именованном job, процессы по принципу VII — **текст подготовлен** (`claude-md-patch.md`), применяет пользователь
-- [ ] T056 Проверки: `pnpm biome check .` → `pnpm typecheck` → `pnpm test` → `pnpm build`; `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings`, `cargo test --manifest-path src-tauri/Cargo.toml`
-- [ ] T057 Пройти quickstart.md §2–§7 на живом приложении (`browser-verify`/CDP), результаты — в `.planning/WORKBENCH.md`
+- [X] T056 Проверки: `pnpm biome check .` → `pnpm typecheck` → `pnpm test` → `pnpm build`; `cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings`, `cargo test --manifest-path src-tauri/Cargo.toml` — финальные проверки на b3a76e3 зелёные (vitest 155, cargo test 124)
+- [X] T057 Пройти quickstart.md §2–§7 на живом приложении (`browser-verify`/CDP), результаты — в `.planning/WORKBENCH.md` — quickstart §2–§7 пройден, см. `live-check.md`; не проверено: Alt+V, недоверенная папка, `pnpm release`, перезагрузка ПК, Ctrl+Z, сессия из WT, «Завершить все», вытеснение в «Вне сетки»/«ещё ждут», ошибка dev вживую (покрыто тестами)
 
 ---
 
