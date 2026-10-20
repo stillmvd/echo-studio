@@ -27,4 +27,5 @@ pub struct SessionMeta {
     pub ai_title: Option<String>,
     pub user_title: Option<String>,
     pub first_prompt: Option<String>,
+    pub first_reply: Option<String>,
 }

@@ -128,7 +128,7 @@ contracts/ipc.md, quickstart.md. Форма — `.planning/WORKBENCH.md`, сте
 
 **Independent Test**: quickstart.md §6.
 
-- [ ] T044 [P] [US5] `first_reply` в `src-tauri/src/conversations/scanner.rs` `parse_session_meta`: первая строка первого текстового блока ответа ассистента, обрезка до 120 символов; поле в `SessionMeta` (`src-tauri/src/conversations/models.rs`) и в `src/lib/types.ts`; тест в `scanner.rs`
+- [x] T044 [P] [US5] `first_reply` в `src-tauri/src/conversations/scanner.rs` `parse_session_meta`: первая строка первого текстового блока ответа ассистента, обрезка до 120 символов; поле в `SessionMeta` (`src-tauri/src/conversations/models.rs`) и в `src/lib/types.ts`; тест в `scanner.rs`
 - [ ] T045 [US5] `src/components/workbench/EmptyProject.tsx` (Пустой B): «Новая сессия Claude», «запустить dev», список разговоров проекта (`listConversationSessions`, последние сверху, ограниченная высота, прокрутка, виртуализация `@tanstack/react-virtual`), строка — время + название или `first_reply`; клик → `start_claude_session(project, sessionId)` (уже открыт → переход к живой сессии, FR-051)
 
 ---

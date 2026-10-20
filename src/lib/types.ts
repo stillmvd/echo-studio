@@ -21,6 +21,7 @@ export interface SessionMeta {
   aiTitle: string | null;
   userTitle: string | null;
   firstPrompt: string | null;
+  firstReply: string | null;
 }
 
 export function sessionDisplayTitle(s: {

@@ -151,6 +151,7 @@ pub fn parse_session_meta(path: &Path) -> Option<SessionMeta> {
     let mut custom_title: Option<String> = None;
     let mut ai_title: Option<String> = None;
     let mut first_prompt: Option<String> = None;
+    let mut first_reply: Option<String> = None;
 
     for line in jsonl_lines(reader) {
         if line.trim().is_empty() {
@@ -167,6 +168,9 @@ pub fn parse_session_meta(path: &Path) -> Option<SessionMeta> {
 
         if first_prompt.is_none() && event_type == "user" {
             first_prompt = prompt_text(&parsed);
+        }
+        if first_reply.is_none() && event_type == "assistant" {
+            first_reply = reply_text(&parsed);
         }
 
         if event_type == "custom-title" {
@@ -227,7 +231,18 @@ pub fn parse_session_meta(path: &Path) -> Option<SessionMeta> {
         ai_title,
         user_title: None,
         first_prompt,
+        first_reply,
     })
+}
+
+fn reply_text(event: &Value) -> Option<String> {
+    let parts = event.get("message")?.get("content")?.as_array()?;
+    let text = parts
+        .iter()
+        .filter(|p| p.get("type").and_then(Value::as_str) == Some("text"))
+        .find_map(|p| p.get("text").and_then(Value::as_str))?;
+    let line = text.lines().map(str::trim).find(|l| !l.is_empty())?;
+    Some(line.chars().take(PROMPT_TITLE_CHARS).collect())
 }
 
 const PROMPT_TITLE_CHARS: usize = 120;
@@ -288,5 +303,47 @@ mod tests {
             prompt_text(&user(json!("я".repeat(200)))).map(|s| s.chars().count()),
             Some(PROMPT_TITLE_CHARS)
         );
+    }
+
+    #[test]
+    fn reply_text_takes_first_line_of_first_text_block() {
+        let assistant =
+            |content: Value| json!({"type": "assistant", "message": {"content": content}});
+        assert_eq!(
+            reply_text(&assistant(json!([
+                {"type": "thinking", "thinking": "hm"},
+                {"type": "text", "text": "\n  Готово: поправил отступы.\nДальше тесты."}
+            ]))),
+            Some("Готово: поправил отступы.".into())
+        );
+        assert_eq!(
+            reply_text(&assistant(json!([{"type": "tool_use", "name": "Read"}]))),
+            None
+        );
+        assert_eq!(
+            reply_text(&assistant(
+                json!([{"type": "text", "text": "я".repeat(200)}])
+            ))
+            .map(|s| s.chars().count()),
+            Some(PROMPT_TITLE_CHARS)
+        );
+    }
+
+    #[test]
+    fn session_meta_reads_first_reply_after_tool_calls() {
+        let dir = std::env::temp_dir().join("echo-first-reply-test");
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("s1.jsonl");
+        let lines = [
+            json!({"type": "user", "message": {"content": "почини vk"}}),
+            json!({"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Read"}]}}),
+            json!({"type": "assistant", "message": {"content": [{"type": "text", "text": "Нашёл причину"}]}}),
+            json!({"type": "assistant", "message": {"content": [{"type": "text", "text": "Второй ответ"}]}}),
+        ];
+        let body: Vec<String> = lines.iter().map(Value::to_string).collect();
+        fs::write(&path, body.join("\n")).unwrap();
+        let meta = parse_session_meta(&path).unwrap();
+        assert_eq!(meta.first_reply.as_deref(), Some("Нашёл причину"));
+        assert_eq!(meta.first_prompt.as_deref(), Some("почини vk"));
     }
 }
