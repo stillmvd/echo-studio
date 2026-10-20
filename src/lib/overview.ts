@@ -52,7 +52,16 @@ export function args(commandLine: string): string {
   const rest = tokens
     .slice(1)
     .map((t) => t.replace(/^"|"$/g, ''))
-    .map((t) => (/^[A-Za-z]:[\\/]|[\\/].*[\\/]/.test(t) ? (t.split(/[\\/]+/).pop() ?? t) : t))
+    .map((t) => {
+      const path = /^[A-Za-z]:[\\/][^\\/]/.test(t) || /^[\\/][^\\/]+[\\/]/.test(t);
+      if (!path || t.includes('://')) return t;
+      return (
+        t
+          .split(/[\\/]+/)
+          .filter(Boolean)
+          .pop() || t
+      );
+    })
     .join(' ');
   return rest || commandLine;
 }

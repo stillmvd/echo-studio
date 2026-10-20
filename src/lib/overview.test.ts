@@ -59,6 +59,10 @@ suite('overview formatting', () => {
     );
     expect(args('rust-analyzer.exe')).toBe('rust-analyzer.exe');
     expect(args('C:\\WINDOWS\\system32\\cmd.exe /d /s /c vite')).toBe('/d /s /c vite');
+    expect(args('node --watch=src/a/b.ts http://localhost:5173/')).toBe(
+      '--watch=src/a/b.ts http://localhost:5173/',
+    );
+    expect(args('node /usr/lib/x.js C:\\')).toBe('x.js C:\\');
     expect(
       args(
         '"C:\\Program Files\\nodejs\\node.exe" C:\\Users\\me\\AppData\\Roaming\\npm\\npx-cli.js -y rea-agents@6.5.0 mcp',

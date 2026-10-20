@@ -762,7 +762,7 @@ fn own_tree(all: &HashMap<u32, Proc>, me: u32) -> HashSet<u32> {
     out
 }
 
-fn take(sys: &System, agents: Vec<AgentRef>, dev_jobs: Vec<DevJob>, root: &str) -> Snapshot {
+fn all_but_own(sys: &System) -> HashMap<u32, Proc> {
     let mut all: HashMap<u32, Proc> = sys
         .processes()
         .iter()
@@ -771,6 +771,15 @@ fn take(sys: &System, agents: Vec<AgentRef>, dev_jobs: Vec<DevJob>, root: &str) 
     for pid in own_tree(&all, std::process::id()) {
         all.remove(&pid);
     }
+    all
+}
+
+pub fn table() -> HashMap<u32, Proc> {
+    all_but_own(&system())
+}
+
+fn take(sys: &System, agents: Vec<AgentRef>, dev_jobs: Vec<DevJob>, root: &str) -> Snapshot {
+    let all = all_but_own(sys);
     let root = root.to_lowercase();
     let job_pids: HashSet<u32> = dev_jobs
         .iter()

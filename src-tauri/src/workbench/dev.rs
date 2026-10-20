@@ -26,13 +26,18 @@ use windows_sys::Win32::System::Threading::{
     CREATE_BREAKAWAY_FROM_JOB, CREATE_NEW_PROCESS_GROUP, CREATE_NO_WINDOW,
 };
 
-use super::processes::{self, Guard};
+use super::processes::{self, Proc};
 use super::projects::is_within;
 
 pub const EVENT_DEV: &str = "workbench://dev";
 const JOB_OBJECT_QUERY: u32 = 0x0004;
 const JOB_OBJECT_TERMINATE: u32 = 0x0008;
 const ERROR_ACCESS_DENIED: i32 = 5;
+const ERROR_INSUFFICIENT_BUFFER: u32 = 122;
+const SEEN_MAX: usize = 4096;
+const SWEEP_SLACK_MS: u64 = 1_000;
+const HEARTBEAT_TICKS: u32 = 25;
+const LOG_PORT_SCAN: u64 = 64 * 1024;
 const STARTING_FOR: u64 = 30_000;
 const TAIL_MAX: u64 = 2 * 1024 * 1024;
 const TAIL_POLL: Duration = Duration::from_millis(200);
@@ -47,6 +52,12 @@ struct DevFile {
     command: String,
     pid: u32,
     started_at: u64,
+    #[serde(default)]
+    seen_pids: Vec<u32>,
+    #[serde(default)]
+    exit_code: Option<i32>,
+    #[serde(default)]
+    stopped: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -75,7 +86,6 @@ pub struct DevServer {
 #[derive(Default)]
 struct Runtime {
     stopping: bool,
-    exit_code: Option<i32>,
 }
 
 static RUNTIME: LazyLock<Mutex<HashMap<String, Runtime>>> =
@@ -215,22 +225,26 @@ fn tcp_table(family: u16) -> Vec<u8> {
             0,
         )
     };
-    let mut buf = vec![0u8; size as usize + 1024];
-    size = buf.len() as u32;
-    let rc = unsafe {
-        GetExtendedTcpTable(
-            buf.as_mut_ptr().cast(),
-            &mut size,
-            FALSE,
-            u32::from(family),
-            TCP_TABLE_OWNER_PID_LISTENER,
-            0,
-        )
-    };
-    if rc != 0 {
-        return Vec::new();
+    for _ in 0..3 {
+        let mut buf = vec![0u8; size as usize + 4096];
+        size = buf.len() as u32;
+        let rc = unsafe {
+            GetExtendedTcpTable(
+                buf.as_mut_ptr().cast(),
+                &mut size,
+                FALSE,
+                u32::from(family),
+                TCP_TABLE_OWNER_PID_LISTENER,
+                0,
+            )
+        };
+        match rc {
+            0 => return buf,
+            ERROR_INSUFFICIENT_BUFFER => continue,
+            _ => return Vec::new(),
+        }
     }
-    buf
+    Vec::new()
 }
 
 fn rows_of<T: Copy>(buf: &[u8]) -> Vec<T> {
@@ -286,10 +300,19 @@ fn write_file(dir: &Path, slug: &str, file: &DevFile) -> Result<(), String> {
     fs::rename(&tmp, dir.join(format!("{slug}.json"))).map_err(|e| e.to_string())
 }
 
-fn server(dir: &Path, slug: &str, file: DevFile, table: &[(u32, u16)], now: u64) -> DevServer {
+fn server(dir: &Path, slug: &str, mut file: DevFile, table: &[(u32, u16)], now: u64) -> DevServer {
     let pids = Job::open(slug).map(|j| j.pids()).unwrap_or_default();
+    let fresh: Vec<u32> = pids
+        .iter()
+        .copied()
+        .filter(|p| !file.seen_pids.contains(p))
+        .collect();
+    if !fresh.is_empty() && file.seen_pids.len() < SEEN_MAX {
+        file.seen_pids.extend(fresh);
+        let _ = write_file(dir, slug, &file);
+    }
     let ports = ports_for(&pids, table);
-    let exit_code = runtime().get(slug).and_then(|r| r.exit_code);
+    let exit_code = file.exit_code;
     let state = match (pids.is_empty(), exit_code) {
         (false, _) if ports.is_empty() && now.saturating_sub(file.started_at) < STARTING_FOR => {
             DevState::Starting
@@ -392,19 +415,28 @@ pub fn start_in(
         command: line,
         pid: child.id(),
         started_at: now_ms(),
+        seen_pids: vec![child.id()],
+        exit_code: None,
+        stopped: false,
     };
-    write_file(dir, &slug, &file)?;
+    if let Err(e) = write_file(dir, &slug, &file) {
+        job.terminate();
+        let _ = child.kill();
+        return Err(e);
+    }
     runtime().insert(slug.clone(), Runtime::default());
     let watched = slug.clone();
+    let state = dir.to_path_buf();
     std::thread::spawn(move || {
-        let job = job;
+        let _job = job;
         let code = child.wait().ok().and_then(|s| s.code());
-        let mut rt = runtime();
-        let entry = rt.entry(watched).or_default();
-        if !entry.stopping && job.pids().is_empty() {
-            entry.exit_code = code;
+        let stopping = runtime().entry(watched.clone()).or_default().stopping;
+        if !stopping {
+            if let Some(mut file) = read_file(&state, &watched) {
+                file.exit_code = code;
+                let _ = write_file(&state, &watched, &file);
+            }
         }
-        drop(rt);
         on_exit();
     });
     Ok(server(dir, &slug, file, &listeners(), now_ms()))
@@ -421,79 +453,122 @@ pub fn start(
     start_in(&dir, &project.path, &cwd, &args, on_exit)
 }
 
-fn leftovers(project_path: &str, started_at: u64, root: &Path) -> Vec<u32> {
-    let root = root.to_string_lossy();
-    let snap = processes::snapshot(Vec::new(), Vec::new(), &root);
-    let projects = [processes::ProjectRef {
-        path: project_path.to_owned(),
-        profile: None,
-    }];
-    let classes = processes::classify(&snap, &projects, &root);
-    let needle = project_path.to_lowercase();
-    snap.processes
-        .iter()
-        .filter(|p| p.start_time >= started_at)
-        .filter(|p| !p.name.eq_ignore_ascii_case("claude.exe"))
+fn chain<'a>(table: &'a HashMap<u32, Proc>, pid: u32) -> impl Iterator<Item = &'a Proc> + 'a {
+    let mut seen = HashSet::new();
+    let mut cur = table.get(&pid).map(|p| p.ppid);
+    std::iter::from_fn(move || {
+        let p = table.get(&cur?)?;
+        if !seen.insert(p.pid) {
+            return None;
+        }
+        cur = Some(p.ppid);
+        Some(p)
+    })
+}
+
+pub fn leftovers(
+    table: &HashMap<u32, Proc>,
+    project_path: &str,
+    started_at: u64,
+    job_pids: &HashSet<u32>,
+) -> Vec<(u32, u64)> {
+    let since = started_at.saturating_sub(SWEEP_SLACK_MS);
+    let is_claude = |p: &Proc| p.name.eq_ignore_ascii_case("claude.exe");
+    table
+        .values()
+        .filter(|p| p.start_time >= since && !is_claude(p))
+        .filter(|p| !chain(table, p.pid).any(is_claude))
         .filter(|p| {
-            p.cwd.as_deref().is_some_and(|c| is_within(c, project_path))
-                || p.cmd
-                    .as_deref()
-                    .is_some_and(|c| c.to_lowercase().contains(&needle))
+            let was_in_job = job_pids.contains(&p.pid);
+            let under_job = chain(table, p.pid)
+                .take_while(|a| a.start_time >= since)
+                .any(|a| job_pids.contains(&a.pid));
+            let orphan_here = !table.contains_key(&p.ppid)
+                && p.cwd.as_deref().is_some_and(|c| is_within(c, project_path));
+            was_in_job || under_job || orphan_here
         })
-        .filter(|p| {
-            classes.get(&p.pid).is_some_and(|c| {
-                c.session.is_none()
-                    && c.guard != Some(Guard::LiveSession)
-                    && c.rule != "editor-tool"
-                    && c.ignore.is_none()
-            })
-        })
-        .map(|p| p.pid)
+        .map(|p| (p.pid, p.start_time))
         .collect()
 }
 
-pub fn stop_in(dir: &Path, project_path: &str, root: &Path) -> Result<(), String> {
+fn kill_exact(targets: &[(u32, u64)]) {
+    if targets.is_empty() {
+        return;
+    }
+    let mut sys = sysinfo::System::new();
+    let pids: Vec<sysinfo::Pid> = targets
+        .iter()
+        .map(|(p, _)| sysinfo::Pid::from_u32(*p))
+        .collect();
+    sys.refresh_processes(sysinfo::ProcessesToUpdate::Some(&pids), true);
+    for (pid, start) in targets {
+        if let Some(p) = sys.process(sysinfo::Pid::from_u32(*pid)) {
+            if p.start_time() * 1000 == *start {
+                p.kill();
+            }
+        }
+    }
+}
+
+pub fn stop_in(dir: &Path, project_path: &str) -> Result<(), String> {
     let slug = slug(project_path);
-    let file = read_file(dir, &slug).ok_or("dev server was never started")?;
+    let mut file = read_file(dir, &slug).ok_or("dev server was never started")?;
     runtime().entry(slug.clone()).or_default().stopping = true;
-    if let Some(job) = Job::open(&slug) {
-        if !job.pids().is_empty() && !job.terminate() {
+    let job = Job::open(&slug);
+    let live = job.as_ref().map(Job::pids).unwrap_or_default();
+    if let Some(job) = job.filter(|_| !live.is_empty()) {
+        if !job.terminate() {
             return Err(format!(
                 "TerminateJobObject: {}",
                 std::io::Error::last_os_error()
             ));
         }
+        let mut in_job: HashSet<u32> = file.seen_pids.iter().copied().collect();
+        in_job.extend(live);
+        let table = processes::table();
+        kill_exact(&leftovers(
+            &table,
+            &file.project_path,
+            file.started_at,
+            &in_job,
+        ));
     }
-    let rest = leftovers(&file.project_path, file.started_at, root);
-    if !rest.is_empty() {
-        let mut sys = sysinfo::System::new();
-        let pids: Vec<sysinfo::Pid> = rest.iter().map(|p| sysinfo::Pid::from_u32(*p)).collect();
-        sys.refresh_processes(sysinfo::ProcessesToUpdate::Some(&pids), true);
-        for pid in pids {
-            if let Some(p) = sys.process(pid) {
-                p.kill();
-            }
-        }
-    }
-    let mut rt = runtime();
-    let entry = rt.entry(slug).or_default();
-    entry.exit_code = None;
-    Ok(())
+    file.stopped = true;
+    file.exit_code = None;
+    write_file(dir, &slug, &file)
 }
 
 pub fn stop(project_path: &str) -> Result<(), String> {
     let project = super::projects::ensure_project(project_path)?;
     let dir = state_dir().ok_or("cannot resolve state dir")?;
-    let root = super::projects_root().ok_or("cannot resolve Projects root")?;
-    stop_in(&dir, &project.path, &root)
+    stop_in(&dir, &project.path)
+}
+
+pub fn port_from_log(text: &str, ports: &[u16]) -> Option<u16> {
+    ["localhost:", "127.0.0.1:", "[::1]:"]
+        .iter()
+        .flat_map(|host| text.match_indices(host).map(move |(i, _)| i + host.len()))
+        .filter_map(|start| {
+            let digits: String = text[start..]
+                .chars()
+                .take_while(char::is_ascii_digit)
+                .collect();
+            digits.parse::<u16>().ok()
+        })
+        .find(|p| ports.contains(p))
 }
 
 pub fn first_port(project_path: &str) -> Option<u16> {
     let slug = slug(project_path);
-    list()
+    let server = list()
         .into_iter()
-        .find(|s| slug == self::slug(&s.project_path))
-        .and_then(|s| s.ports.first().copied())
+        .find(|s| slug == self::slug(&s.project_path))?;
+    let log = fs::read(&server.log).ok().map(|bytes| {
+        let from = bytes.len().saturating_sub(LOG_PORT_SCAN as usize);
+        String::from_utf8_lossy(&bytes[from..]).into_owned()
+    });
+    log.and_then(|text| port_from_log(&text, &server.ports))
+        .or_else(|| server.ports.first().copied())
 }
 
 pub fn read_new(path: &Path, pos: u64) -> std::io::Result<(Vec<u8>, u64)> {
@@ -520,11 +595,23 @@ pub fn tail(project_path: &str, channel: Channel<Vec<u8>>) -> Result<u32, String
         let mut pos = fs::metadata(&path)
             .map(|m| m.len().saturating_sub(TAIL_MAX))
             .unwrap_or(0);
+        let mut align = pos > 0;
+        let mut idle = 0u32;
         while alive.load(Ordering::Relaxed) {
-            if let Ok((bytes, next)) = read_new(&path, pos) {
+            if let Ok((mut bytes, next)) = read_new(&path, pos) {
                 pos = next;
-                if !bytes.is_empty() && channel.send(bytes).is_err() {
+                if align && !bytes.is_empty() {
+                    align = false;
+                    let cut = bytes.iter().position(|b| *b == b'\n').map_or(0, |i| i + 1);
+                    bytes.drain(..cut);
+                }
+                idle = if bytes.is_empty() { idle + 1 } else { 0 };
+                let heartbeat = idle >= HEARTBEAT_TICKS;
+                if (!bytes.is_empty() || heartbeat) && channel.send(bytes).is_err() {
                     break;
+                }
+                if heartbeat {
+                    idle = 0;
                 }
             }
             std::thread::sleep(TAIL_POLL);
@@ -648,11 +735,86 @@ mod tests {
         let listed = list_in(&dir);
         assert_eq!(listed.len(), 1);
         assert!(!listed[0].pids.is_empty());
-        stop_in(&dir, &project_path, &base).unwrap();
+        stop_in(&dir, &project_path).unwrap();
         std::thread::sleep(Duration::from_millis(500));
         let after = list_in(&dir);
         assert_eq!(after[0].state, DevState::Stopped);
         assert!(after[0].pids.is_empty());
+        stop_in(&dir, &project_path).unwrap();
+        assert!(read_file(&dir, &slug(&project_path)).is_some_and(|f| f.stopped));
         let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn crash_is_kept_in_the_state_file() {
+        let base = std::env::temp_dir().join(format!("echo-dev-crash-{}", std::process::id()));
+        let project = base.join("project");
+        let dir = base.join("state");
+        fs::create_dir_all(&project).unwrap();
+        let project_path = project.to_string_lossy().into_owned();
+        let (tx, rx) = std::sync::mpsc::channel();
+        start_in(
+            &dir,
+            &project_path,
+            &project,
+            &["exit 3".to_owned()],
+            move || {
+                let _ = tx.send(());
+            },
+        )
+        .unwrap();
+        rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        let listed = list_in(&dir);
+        assert_eq!(listed[0].state, DevState::Error);
+        assert_eq!(listed[0].exit_code, Some(3));
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    fn p(pid: u32, ppid: u32, name: &str, cwd: &str, start: u64) -> Proc {
+        Proc {
+            pid,
+            ppid,
+            name: name.into(),
+            cwd: Some(cwd.into()),
+            start_time: start,
+            ..Proc::default()
+        }
+    }
+
+    #[test]
+    fn leftovers_take_job_tree_and_orphans_in_the_project_only() {
+        let project = r"C:\P\Breeze";
+        let table: HashMap<u32, Proc> = [
+            p(10, 1, "terminal.exe", r"C:\Users\me", 1),
+            p(101, 100, "node.exe", project, 5_000),
+            p(102, 101, "esbuild.exe", r"C:\Temp", 5_100),
+            p(201, 900, "node.exe", r"C:\P\Breeze-main", 6_000),
+            p(202, 10, "cargo.exe", project, 7_000),
+            p(203, 900, "node.exe", r"C:\P\Breeze\apps\web", 4_500),
+            p(204, 900, "node.exe", project, 1_000),
+            p(205, 900, "claude.exe", project, 8_000),
+            p(206, 205, "node.exe", project, 8_100),
+        ]
+        .into_iter()
+        .map(|p| (p.pid, p))
+        .collect();
+        let job = HashSet::from([100, 101]);
+        let mut got: Vec<u32> = leftovers(&table, project, 5_000, &job)
+            .into_iter()
+            .map(|(pid, _)| pid)
+            .collect();
+        got.sort_unstable();
+        assert_eq!(got, vec![101, 102, 203]);
+    }
+
+    #[test]
+    fn port_from_log_prefers_the_printed_url() {
+        let log = "VITE ready\n  ➜  Local:   http://localhost:1420/\n  ➜  Network: use --host";
+        assert_eq!(port_from_log(log, &[1420, 9222]), Some(1420));
+        assert_eq!(
+            port_from_log("listening on 127.0.0.1:3001", &[3000, 3001]),
+            Some(3001)
+        );
+        assert_eq!(port_from_log("http://localhost:5173", &[1420]), None);
     }
 }
