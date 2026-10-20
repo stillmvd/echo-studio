@@ -104,6 +104,8 @@ pub struct Snapshot {
     pub dev_jobs: Vec<DevJob>,
     #[serde(default)]
     pub listening: Vec<u32>,
+    #[serde(default)]
+    pub ports_unknown: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -191,6 +193,7 @@ struct Classifier<'a> {
     live: HashMap<u32, Live>,
     jobs: HashMap<u32, &'a str>,
     listening: HashSet<u32>,
+    ports_unknown: bool,
     agents: &'a [AgentRef],
     hooks: &'a [HookSession],
     projects: &'a [ProjectRef],
@@ -297,6 +300,7 @@ impl<'a> Classifier<'a> {
             live,
             jobs,
             listening: snap.listening.iter().copied().collect(),
+            ports_unknown: snap.ports_unknown,
             agents: &snap.agents,
             hooks: &snap.hook_sessions,
             projects,
@@ -448,6 +452,11 @@ impl<'a> Classifier<'a> {
             Class {
                 guard: Some(Guard::RunningDev),
                 rule: "no-project-serving",
+                ..Class::default()
+            }
+        } else if self.ports_unknown {
+            Class {
+                rule: "no-project-ports-unknown",
                 ..Class::default()
             }
         } else {
@@ -915,6 +924,7 @@ fn take(sys: &System, agents: Vec<AgentRef>, dev_jobs: Vec<DevJob>, root: &str) 
     }
     let mut processes: Vec<Proc> = keep.iter().map(|pid| all[pid].clone()).collect();
     processes.sort_by_key(|p| p.pid);
+    let listening = super::dev::read_listeners();
     Snapshot {
         processes,
         outside_parents: outside
@@ -924,7 +934,9 @@ fn take(sys: &System, agents: Vec<AgentRef>, dev_jobs: Vec<DevJob>, root: &str) 
         hook_sessions: read_hook_sessions(),
         agents,
         dev_jobs,
-        listening: super::dev::listeners()
+        ports_unknown: listening.is_none(),
+        listening: listening
+            .unwrap_or_default()
             .into_iter()
             .map(|(pid, _)| pid)
             .collect(),
@@ -1174,6 +1186,19 @@ mod tests {
             Some(OrphanReason::NoProject)
         );
         assert_eq!(classes[&50].guard, None);
+    }
+
+    #[test]
+    fn unknown_ports_mark_nothing_without_a_project_as_orphan() {
+        let snap = Snapshot {
+            processes: vec![proc(50, 2, "node.exe", "node vite.js", r"D:\work\old")],
+            outside_parents: vec![proc(2, 1, "sh.exe", "sh", r"D:\")],
+            ports_unknown: true,
+            ..Snapshot::default()
+        };
+        let c = &classify(&snap, &[], r"C:\P")[&50];
+        assert_eq!(c.orphan, None, "{c:?}");
+        assert_eq!(c.rule, "no-project-ports-unknown");
     }
 
     #[test]

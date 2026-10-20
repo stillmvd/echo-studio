@@ -14,7 +14,7 @@ import {
   terminalWrite,
   untailDevLog,
 } from '@/lib/ipc';
-import { terminalKey } from '@/lib/workbench';
+import { isPathTitle, terminalKey } from '@/lib/workbench';
 
 export type TermState = 'idle' | 'attaching' | 'live' | 'ended' | 'error';
 
@@ -57,10 +57,24 @@ function notify(entry: Entry) {
   for (const l of entry.listeners) l();
 }
 
+const TWIN = 'Сессия уже открыта в другой вкладке';
+
+function busy(state: TermState) {
+  return state === 'attaching' || state === 'live';
+}
+
+function wakeTwins(shortId: string | null) {
+  for (const e of entries.values()) {
+    if (e.state === 'error' && e.error === TWIN && e.shortId === shortId) setState(e, 'idle');
+  }
+}
+
 function setState(entry: Entry, state: TermState, error: string | null = null) {
+  const was = entry.state;
   entry.state = state;
   entry.error = error;
   notify(entry);
+  if (busy(was) && !busy(state)) wakeTwins(entry.shortId);
 }
 
 const earlyExits = new Set<string>();
@@ -135,7 +149,7 @@ function create(options: Partial<ITerminalOptions>): Entry {
   };
   term.onTitleChange((t) => {
     const title = t.trim();
-    if (!title || /[\\/]|\.exe$/i.test(title)) return;
+    if (!title || isPathTitle(title)) return;
     entry.title = title;
     notify(entry);
   });
@@ -240,18 +254,19 @@ export function fitTerm(entry: Entry) {
   }
 }
 
+const inflight = new Map<string, Promise<unknown>>();
+
 export function connect(key: string, shortId: string) {
   const entry = claudeEntry(key);
-  if (entry.state === 'attaching' || entry.state === 'live') return;
+  if (busy(entry.state)) return;
+  entry.shortId = shortId;
   const twin = [...entries.entries()].some(
-    ([k, e]) =>
-      k !== key && e.shortId === shortId && (e.state === 'attaching' || e.state === 'live'),
+    ([k, e]) => k !== key && e.shortId === shortId && busy(e.state),
   );
   if (twin) {
-    setState(entry, 'error', 'Сессия уже открыта в другой вкладке');
+    setState(entry, 'error', TWIN);
     return;
   }
-  entry.shortId = shortId;
   entry.attachedAt = Date.now();
   setState(entry, 'attaching');
   entry.term.reset();
@@ -260,8 +275,22 @@ export function connect(key: string, shortId: string) {
   channel.onmessage = (chunk) => {
     entry.term.write(chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : new Uint8Array(chunk));
   };
-  terminalAttach(shortId, entry.term.cols, entry.term.rows, channel as Channel<ArrayBuffer>)
+  const call = (inflight.get(shortId) ?? Promise.resolve())
+    .catch(() => {})
+    .then(() =>
+      entries.get(key) === entry
+        ? terminalAttach(shortId, entry.term.cols, entry.term.rows, channel as Channel<ArrayBuffer>)
+        : null,
+    );
+  inflight.set(shortId, call);
+  void call
+    .finally(() => {
+      if (inflight.get(shortId) === call) inflight.delete(shortId);
+    })
+    .catch(() => {});
+  call
     .then((id) => {
+      if (id === null) return;
       const exited = earlyExits.delete(id);
       if (entries.get(key) !== entry) {
         if (!exited) detach(id);
@@ -295,6 +324,7 @@ export function dispose(key: string) {
   entries.delete(key);
   stopTail(key);
   if (entry.terminalId) detach(entry.terminalId);
+  if (busy(entry.state)) wakeTwins(entry.shortId);
   entry.term.dispose();
   entry.host.remove();
 }

@@ -68,6 +68,14 @@ export type KeyAction =
   | { pass: true }
   | null;
 
+export function isPathTitle(title: string): boolean {
+  return (
+    /^[A-Za-z]:[\\/]/.test(title) ||
+    /^(\\\\|\/)[^\\/]*[\\/]/.test(title) ||
+    /^\S+\.exe$/i.test(title)
+  );
+}
+
 export function terminalKey(e: KeyInput, hasSelection: boolean): KeyAction {
   if (e.type !== 'keydown' || e.metaKey) return null;
   if (e.ctrlKey && e.code === 'Tab') return { pass: true };
@@ -294,15 +302,15 @@ export function arrangeWall(
   );
   const holds = (c: WallCell, path: string | null) =>
     path !== null && c.projectPath !== null && samePath(c.projectPath, path);
+  const locked = (c: WallCell) =>
+    c.pinned || c.manual || c.id === focus || now - c.lastInputAt < HANDS_ON_MS;
   const keys = shownKeys(visible, tabs);
   for (const [i, c] of visible.entries()) {
     const twin = visible.some(
       (o, j) => j !== i && holds(o, c.projectPath) && (j < i || o.pinned || o.manual),
     );
-    if (twin && !keys[i] && !c.pinned && !c.manual) visible[i] = { ...c, ...freeCell() };
+    if (twin && !keys[i] && !locked(c)) visible[i] = { ...c, ...freeCell() };
   }
-  const locked = (c: WallCell) =>
-    c.pinned || c.manual || c.id === focus || now - c.lastInputAt < HANDS_ON_MS;
   const rankOfKey = (key: string | null) => {
     const s = key ? sessions.find((x) => x.sessionId === key) : undefined;
     return s ? urgency(effectiveStatus(s, seen)) : URGENCY.length;
@@ -333,7 +341,11 @@ export function arrangeWall(
   }
   const hidden = cells
     .slice(count)
-    .map((c) => (visible.some((v) => holds(v, c.projectPath)) ? { ...c, ...freeCell() } : c));
+    .map((c) =>
+      !c.pinned && !c.manual && visible.some((v) => holds(v, c.projectPath))
+        ? { ...c, ...freeCell() }
+        : c,
+    );
   const all = [...visible, ...hidden];
   const moved = visible
     .filter(

@@ -225,7 +225,7 @@ impl Job {
     }
 }
 
-fn tcp_table(family: u16) -> Vec<u8> {
+fn tcp_table(family: u16) -> Option<Vec<u8>> {
     let mut size: u32 = 0;
     unsafe {
         GetExtendedTcpTable(
@@ -251,12 +251,12 @@ fn tcp_table(family: u16) -> Vec<u8> {
             )
         };
         match rc {
-            0 => return buf,
+            0 => return Some(buf),
             ERROR_INSUFFICIENT_BUFFER => continue,
-            _ => return Vec::new(),
+            _ => return None,
         }
     }
-    Vec::new()
+    None
 }
 
 fn rows_of<T: Copy>(buf: &[u8]) -> Vec<T> {
@@ -278,14 +278,18 @@ fn port_of(raw: u32) -> u16 {
     u16::from_be(raw as u16)
 }
 
+pub fn read_listeners() -> Option<Vec<(u32, u16)>> {
+    let v4 = rows_of::<MIB_TCPROW_OWNER_PID>(&tcp_table(AF_INET)?)
+        .into_iter()
+        .map(|r| (r.dwOwningPid, port_of(r.dwLocalPort)));
+    let v6 = rows_of::<MIB_TCP6ROW_OWNER_PID>(&tcp_table(AF_INET6)?)
+        .into_iter()
+        .map(|r| (r.dwOwningPid, port_of(r.dwLocalPort)));
+    Some(v4.chain(v6).collect())
+}
+
 pub fn listeners() -> Vec<(u32, u16)> {
-    let v4 = rows_of::<MIB_TCPROW_OWNER_PID>(&tcp_table(AF_INET))
-        .into_iter()
-        .map(|r| (r.dwOwningPid, port_of(r.dwLocalPort)));
-    let v6 = rows_of::<MIB_TCP6ROW_OWNER_PID>(&tcp_table(AF_INET6))
-        .into_iter()
-        .map(|r| (r.dwOwningPid, port_of(r.dwLocalPort)));
-    v4.chain(v6).collect()
+    read_listeners().unwrap_or_default()
 }
 
 pub fn ports_for(pids: &[u32], table: &[(u32, u16)]) -> Vec<u16> {
@@ -343,11 +347,11 @@ fn server(dir: &Path, slug: &str, file: DevFile, table: &[(u32, u16)], now: u64)
     let ports = ports_for(&pids, table);
     let exit_code = file.exit_code;
     let state = match (pids.is_empty(), exit_code) {
+        (_, Some(code)) if code != 0 => DevState::Error,
         (false, _) if ports.is_empty() && now.saturating_sub(file.started_at) < STARTING_FOR => {
             DevState::Starting
         }
         (false, _) => DevState::Running,
-        (true, Some(code)) if code != 0 => DevState::Error,
         (true, _) => DevState::Stopped,
     };
     DevServer {
@@ -424,9 +428,16 @@ pub fn start_in(
 ) -> Result<DevServer, String> {
     fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let slug = slug(project_path);
-    let started_at = read_file(dir, &slug).map_or(0, |f| f.started_at);
+    let previous = read_file(dir, &slug);
+    let started_at = previous.as_ref().map_or(0, |f| f.started_at);
     if !running_members(&slug, started_at).is_empty() {
-        return Err("dev server is already running".into());
+        if previous
+            .and_then(|f| f.exit_code)
+            .is_none_or(|code| code == 0)
+        {
+            return Err("dev server is already running".into());
+        }
+        stop_in(dir, project_path)?;
     }
     let line = args.join(" ");
     let log = File::create(dir.join(format!("{slug}.log"))).map_err(|e| e.to_string())?;
@@ -972,6 +983,34 @@ mod tests {
         }
         assert_eq!(listed[0].state, DevState::Error);
         assert_eq!(listed[0].exit_code, Some(3));
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn a_failed_root_is_an_error_at_once_and_restart_clears_its_children() {
+        let base = std::env::temp_dir().join(format!("echo-dev-failed-{}", std::process::id()));
+        let project = base.join("project");
+        let dir = base.join("state");
+        fs::create_dir_all(&project).unwrap();
+        let project_path = project.to_string_lossy().into_owned();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let args = [
+            "ping -n 2 127.0.0.1 > nul & start /b ping -n 30 127.0.0.1 > nul & exit 3".to_owned(),
+        ];
+        start_in(&dir, &project_path, &project, &args, move || {
+            let _ = tx.send(());
+        })
+        .unwrap();
+        rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        std::thread::sleep(Duration::from_millis(100));
+        let listed = list_in(&dir);
+        assert!(!listed[0].pids.is_empty());
+        assert_eq!(listed[0].state, DevState::Error);
+        let left = listed[0].pids.clone();
+        start_in(&dir, &project_path, &project, &["exit 0".to_owned()], || {}).unwrap();
+        let table = processes::table();
+        assert!(left.iter().all(|pid| !table.contains_key(pid)), "{left:?}");
+        stop_in(&dir, &project_path).unwrap();
         let _ = fs::remove_dir_all(&base);
     }
 

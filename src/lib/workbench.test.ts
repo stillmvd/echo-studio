@@ -15,6 +15,7 @@ import {
   effectiveStatus,
   emptyCells,
   HANDS_ON_MS,
+  isPathTitle,
   type KeyInput,
   nextInRecency,
   normalizeCells,
@@ -40,6 +41,19 @@ const key = (over: Partial<KeyInput>): KeyInput => ({
   ctrlKey: false,
   metaKey: false,
   ...over,
+});
+
+describe('isPathTitle', () => {
+  it('drops paths and executables, keeps titles with slashes', () => {
+    expect(isPathTitle('C:\\Users\\me\\.local\\bin\\claude.exe')).toBe(true);
+    expect(isPathTitle('C:\\Program Files\\Git\\usr\\bin\\bash.exe')).toBe(true);
+    expect(isPathTitle('claude.exe')).toBe(true);
+    expect(isPathTitle('/usr/bin/bash')).toBe(true);
+    expect(isPathTitle('\\\\server\\share')).toBe(true);
+    expect(isPathTitle('Fix CI/CD pipeline')).toBe(false);
+    expect(isPathTitle('Update src/lib')).toBe(false);
+    expect(isPathTitle('Run setup.exe installer')).toBe(false);
+  });
 });
 
 describe('terminalKey', () => {
@@ -425,22 +439,36 @@ describe('arrangeWall', () => {
     activeOf: (p) => tabs[p]?.[0],
   });
 
-  it('frees a hidden cell when its project is shown again after shrinking', () => {
+  it('frees an automatic hidden cell when its project is shown again after shrinking', () => {
+    const start = at([null, null, 'X', null]);
+    const r = arrangeWall(start, 2, [session('x', 'working', 1, 'X')], 10_000, null, {}, noTabs);
+    expect(r.cells.map((c) => c.projectPath)).toEqual(['X', null, null, null]);
+  });
+
+  it('keeps a pinned hidden cell and its pin through shrinking and growing back', () => {
     const start = at([null, null, 'X', null]).map((c) =>
       c.id === 'c3' ? { ...c, pinned: true } : c,
     );
-    const r = arrangeWall(start, 2, [session('x', 'working', 1, 'X')], 10_000, null, {}, noTabs);
-    expect(r.cells.map((c) => c.projectPath)).toEqual(['X', null, null, null]);
-    const back = arrangeWall(
-      r.cells,
-      4,
-      [session('x', 'working', 1, 'X')],
-      10_000,
-      null,
-      {},
-      noTabs,
-    );
-    expect(back.cells.filter((c) => c.projectPath === 'X')).toHaveLength(1);
+    const sessions = [session('x', 'working', 1, 'X')];
+    const r = arrangeWall(start, 1, sessions, 10_000, null, {}, noTabs);
+    expect(r.cells.map((c) => c.projectPath)).toEqual(['X', null, 'X', null]);
+    expect(r.cells[2]?.pinned).toBe(true);
+    const back = arrangeWall(r.cells, 4, sessions, 10_000, null, {}, noTabs);
+    expect(back.cells.map((c) => c.projectPath)).toEqual([null, null, 'X', null]);
+    expect(back.cells[2]?.pinned).toBe(true);
+  });
+
+  it('keeps an automatic twin in the focused or freshly typed cell', () => {
+    const start = at(['X', 'X', null, null]);
+    const sessions = [session('x', 'idle', 1, 'X')];
+    const tabs = tabsFrom({ X: ['x'] });
+    const focused = arrangeWall(start, 4, sessions, 10_000, 'c2', {}, tabs);
+    expect(focused.cells.map((c) => c.projectPath)).toEqual(['X', 'X', null, null]);
+    const typed = start.map((c) => (c.id === 'c2' ? { ...c, lastInputAt: 9_000 } : c));
+    const fresh = arrangeWall(typed, 4, sessions, 10_000, null, {}, tabs);
+    expect(fresh.cells.map((c) => c.projectPath)).toEqual(['X', 'X', null, null]);
+    const stale = arrangeWall(start, 4, sessions, 10_000, null, {}, tabs);
+    expect(stale.cells.map((c) => c.projectPath)).toEqual(['X', null, null, null]);
   });
 
   it('drops an automatic twin without its own tab and keeps the pinned one', () => {

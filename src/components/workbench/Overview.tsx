@@ -32,7 +32,7 @@ function Meter({ label, limit, weekly }: { label: string; limit: Limit | null; w
 export function Overview() {
   const { data: tree } = useWorkbenchProjects();
   const limits = useRateLimits().data ?? null;
-  const usage = useUsage().data;
+  const { data: usage, isPending: usagePending } = useUsage();
   const rows = useProcesses().data ?? [];
 
   const projects = useMemo(() => new Map((tree ? all(tree) : []).map((p) => [p.path, p])), [tree]);
@@ -45,8 +45,11 @@ export function Overview() {
   const devOf = (path: string | null) =>
     rows.some((r) => r.guard === 'running-dev' && r.projectPath === path);
   const sessions = new Set(rows.filter((r) => r.session).map((r) => r.session)).size;
-  const devs = new Set(rows.filter((r) => r.guard === 'running-dev').map((r) => r.projectPath))
-    .size;
+  const devs = new Set(
+    rows
+      .filter((r) => r.guard === 'running-dev' && r.projectPath != null)
+      .map((r) => r.projectPath),
+  ).size;
   const memory = rows.reduce((s, r) => s + r.memory, 0);
   const maxWeek = top[0]?.[1].week ?? 1;
 
@@ -118,7 +121,11 @@ export function Overview() {
                     </span>
                   );
                 })}
-                {top.length === 0 && <span className="wb-dim">Нет данных за 7 дней</span>}
+                {top.length === 0 && (
+                  <span className="wb-dim">
+                    {usagePending ? 'Загрузка…' : 'Нет данных за 7 дней'}
+                  </span>
+                )}
               </div>
             </div>
             <div className="wb-sec">
