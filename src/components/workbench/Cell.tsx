@@ -52,6 +52,7 @@ export function Cell({
   busy,
 }: Props) {
   const inWall = focused !== undefined;
+  const controlled = onActivate !== undefined;
   const isFocused = visible && (focused ?? true);
   const qc = useQueryClient();
   const tabs = useWorkbenchStore((s) => s.tabs[project.path]) ?? [];
@@ -209,10 +210,10 @@ export function Cell({
           </>
         )}
       </div>
-      {hasDev && (
+      {hasDev && (!controlled || devOn) && (
         <LogTerminal tabKey={devKey} projectPath={project.path} visible={visible && devOn} />
       )}
-      {infos.map((info) => (
+      {(controlled ? infos.filter((i) => i.key === current?.key) : infos).map((info) => (
         <ClaudeTerminal
           key={info.key}
           sessionKey={info.key}
