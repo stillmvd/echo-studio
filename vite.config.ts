@@ -7,8 +7,10 @@ import { configDefaults } from 'vitest/config';
 
 const host = process.env.TAURI_DEV_HOST;
 const ownClaudeDir = path.join(import.meta.dirname, '.claude').toLowerCase();
-const inOwnClaudeDir = (file: string) =>
-  path.normalize(file).toLowerCase().startsWith(ownClaudeDir);
+const inOwnClaudeDir = (file: string) => {
+  const p = path.normalize(file).toLowerCase();
+  return p === ownClaudeDir || p.startsWith(ownClaudeDir + path.sep);
+};
 
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],

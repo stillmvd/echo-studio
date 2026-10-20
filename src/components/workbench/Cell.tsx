@@ -92,6 +92,11 @@ export function Cell({
     if (isFocused && current?.session?.status === 'done') markSeen(current.key);
   }, [isFocused, current?.key, current?.session?.status, markSeen]);
 
+  const shownKey = devOn ? devKey : current?.key;
+  useEffect(() => {
+    if (onActivate && shownKey && shownKey !== activeKey) onActivate(shownKey);
+  }, [onActivate, shownKey, activeKey]);
+
   const close = (info: TabInfo) => {
     if (!info.live && info.shortId) void forgetClaudeSession(info.shortId).catch(() => {});
     dispose(info.key);

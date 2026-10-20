@@ -117,7 +117,7 @@ contracts/ipc.md, quickstart.md. Форма — `.planning/WORKBENCH.md`, сте
 
 - [x] T040 [P] [US4] `arrangeCells(cells, sessions, now, focus)` в `src/lib/workbench.ts` по правилам пульта `.planning/WORKBENCH.md`: приоритет `waiting → error → working → done → idle`, внутри — дольше ждёт выше; новая ждущая занимает ячейку незакреплённой, не ручной, без ввода/прокрутки за последние 3 с, с самым низким приоритетом; вытесненные → `offGrid`; ячейка под рукой не двигается, `pendingCount` = ждущие вне сетки. Тесты: 2×2 + пять сессий, ячейка под рукой, булавка, ручное открытие
 - [ ] T041 [US4] `src/components/workbench/Wall.tsx`: сетка по `layout` (`302-workbench-wall/parts/g-wall.html`), три значка раскладки в шапке, смена раскладки не пересоздаёт терминалы (ключи по `terminalId`), ждущая ячейка — значок «ждёт тебя» и рамка акцента
-- [X] T042 [US4] `src/components/workbench/Cell.tsx`: шапка ячейки — проект, капсулы вкладок (Claude-сессии и лог dev), «+», булавка; переключение вкладок не останавливает процессы; `lastInputAt` обновляется на ввод и прокрутку
+- [ ] T042 [US4] `src/components/workbench/Cell.tsx`: шапка ячейки — проект, капсулы вкладок (Claude-сессии и лог dev), «+», булавка; переключение вкладок не останавливает процессы; `lastInputAt` обновляется на ввод и прокрутку — **Cell готов (fc4397d), ждёт провязки `activeKey`/`onActivate` в Wall**
 - [ ] T043 [US4] «Вне сетки» и «ещё ждут: N» в `src/components/workbench/SessionStrip.tsx`
 
 **Checkpoint**: US4 по quickstart §5
