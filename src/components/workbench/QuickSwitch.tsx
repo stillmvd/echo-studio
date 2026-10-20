@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import type { ClaudeSession, WorkbenchProject } from '@/lib/types';
-import { byRecency, effectiveStatus, nextInRecency, STATUS_LABEL } from '@/lib/workbench';
+import {
+  assignTabs,
+  byRecency,
+  CELL_COUNT,
+  effectiveStatus,
+  nextInRecency,
+  STATUS_LABEL,
+} from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { ProjectIcon } from './ProjectIcon';
 import { openSession, sessionPlace } from './SessionStrip';
@@ -40,8 +47,13 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
       return;
     }
     const s = useWorkbenchStore.getState();
-    const cell = s.cells.find((c) => c.id === s.focusCell);
-    const key = cell?.projectPath ? (cell.activeTab ?? s.activeTab[cell.projectPath]) : undefined;
+    const shown = s.cells.slice(0, CELL_COUNT[s.layout]);
+    const keys = assignTabs(
+      shown,
+      (path) => s.tabs[path] ?? [],
+      (path) => s.activeTab[path],
+    );
+    const key = keys[shown.findIndex((c) => c.id === s.focusCell)];
     if (key) focusTerminal(key);
   };
   const jump = (target: ClaudeSession) => {

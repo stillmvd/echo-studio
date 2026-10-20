@@ -62,7 +62,10 @@ export function migrateWorkbench(persisted: unknown): Partial<WorkbenchState> {
     Omit<WorkbenchState, 'view'>
   > & { view?: unknown };
   const cells = normalizeCells(state.cells);
-  const layout = state.layout && state.layout in CELL_COUNT ? state.layout : '1x1';
+  const layout =
+    typeof state.layout === 'string' && Object.hasOwn(CELL_COUNT, state.layout)
+      ? state.layout
+      : '1x1';
   const raw = state.view as { kind?: unknown; path?: unknown } | undefined;
   const view: WorkbenchView =
     raw?.kind === 'project' && typeof raw.path === 'string'
@@ -160,6 +163,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       activateCell: (id, key) =>
         set((s) => {
           const path = s.cells.find((c) => c.id === id)?.projectPath;
+          if (!path || !(s.tabs[path] ?? []).includes(key)) return {};
           return {
             cells: s.cells.map((c) =>
               c.id === id

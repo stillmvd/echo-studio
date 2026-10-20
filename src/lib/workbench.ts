@@ -277,7 +277,7 @@ export function placeProject(
   return {
     cells: cells.map((c) => {
       if (c.id === target.id) {
-        return { ...c, projectPath: path, manual: true, activeTab: hidden?.activeTab };
+        return { ...c, projectPath: path, manual: true, activeTab: undefined };
       }
       if (c.id === hidden?.id) return { ...c, ...freeCell() };
       return c;

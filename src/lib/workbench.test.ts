@@ -348,7 +348,7 @@ describe('wall cells', () => {
     );
     const r = placeProject(start, '1x1', 'c1', 'A');
     expect(r.cells.map((c) => c.projectPath)).toEqual(['A', null, null, null]);
-    expect(r.cells[0]?.activeTab).toBe('t1');
+    expect(r.cells[0]?.activeTab).toBeUndefined();
     expect(r.cells[2]).toMatchObject({ manual: false, pinned: false });
   });
 
@@ -376,6 +376,18 @@ describe('wall cells', () => {
       () => 'a1',
     );
     expect(keys).toEqual(['a1', 'a2', null, null]);
+  });
+
+  it('leaves a cell without a key when every tab is already shown', () => {
+    const cells = at(['A', 'A', null, null]).map((c) =>
+      c.id === 'c1' ? { ...c, activeTab: 't1' } : c,
+    );
+    const keys = assignTabs(
+      cells,
+      () => ['t1'],
+      () => 't1',
+    );
+    expect(keys).toEqual(['t1', null, null, null]);
   });
 
   it('lets an explicit cell tab win over an earlier cell without one', () => {

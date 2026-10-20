@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import { cn } from '@/lib/cn';
 import type { ClaudeSession, WorkbenchProject } from '@/lib/types';
 import {
@@ -36,6 +37,28 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
   const layout = useWorkbenchStore((s) => s.layout);
   const cells = useWorkbenchStore((s) => s.cells);
   const focusCell = useWorkbenchStore((s) => s.focusCell);
+  const bar = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const el = bar.current;
+    if (!el) return;
+    const clear = () => {
+      const pill = document.querySelector<HTMLElement>('[role="status"]');
+      const margin = Number.parseFloat(el.style.marginRight) || 0;
+      if (!pill) {
+        el.style.marginRight = '';
+        return;
+      }
+      const a = el.getBoundingClientRect();
+      const b = pill.getBoundingClientRect();
+      const overlaps = b.top < a.bottom && b.bottom > a.top;
+      el.style.marginRight = `${overlaps ? Math.max(0, a.right + margin - b.left + 8) : 0}px`;
+    };
+    clear();
+    const ro = new ResizeObserver(clear);
+    if (el.parentElement) ro.observe(el.parentElement);
+    return () => ro.disconnect();
+  }, []);
 
   const shown = cells.slice(0, CELL_COUNT[layout]);
   const inGrid = (s: ClaudeSession) =>
@@ -70,7 +93,7 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
   };
 
   return (
-    <div className="wb-bar2" role="toolbar" aria-label="Сессии">
+    <div ref={bar} className="wb-bar2" role="toolbar" aria-label="Сессии">
       <div
         className="wb-bar-list"
         onWheel={(e) => {

@@ -255,8 +255,8 @@ fieldset.wl-seg { margin: 0; border: 0; min-width: 0; }
 .wl-pin.half { color: var(--fg); opacity: .55; }
 .wl-twin { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; font-size: 13px; }
 .wb-sw:focus-visible { outline: none; }
-.wb-bar2 { margin-right: 132px; }
-.wb-bar-list { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+
+.wb-bar-list { flex: 1; min-width: 96px; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
 .wb-bar-list::-webkit-scrollbar { display: none; }
 .wb-bar-list .wb-bp { flex: none; }
 .wb-bar-list .wb-bp b { max-width: 140px; }

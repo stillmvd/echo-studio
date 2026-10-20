@@ -172,13 +172,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
       <div className={`wl-grid l-${layout}`}>
         {shown.map((c, i) => {
           const project = c.projectPath ? projects.get(c.projectPath) : undefined;
-          const twin =
-            !keys[i] &&
-            shown
-              .slice(0, i)
-              .some(
-                (o) => o.projectPath && c.projectPath && samePath(o.projectPath, c.projectPath),
-              );
+          const twin = !keys[i] && (tabs[c.projectPath ?? ''] ?? []).length > 0;
           const own = project
             ? sessions.filter((s) => s.projectPath && samePath(s.projectPath, project.path))
             : [];

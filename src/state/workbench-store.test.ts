@@ -94,6 +94,40 @@ describe('workbench store', () => {
     expect(useWorkbenchStore.getState().cells[2]?.activeTab).toBeUndefined();
   });
 
+  it('moves a project out of a hidden cell with the tab picked last', () => {
+    useWorkbenchStore.setState({
+      layout: '1x1',
+      view: { kind: 'overview' },
+      cells: emptyCells().map((c) =>
+        c.id === 'c3' ? { ...c, projectPath: P, activeTab: 't1' } : c,
+      ),
+      focusCell: 'c1',
+      tabs: { [P]: ['t1', 't2'] },
+      activeTab: { [P]: 't1' },
+    });
+    const st = useWorkbenchStore.getState();
+    st.openTab(P, 't2');
+    st.select({ kind: 'project', path: P });
+    const s = useWorkbenchStore.getState();
+    expect(s.cells[0]?.projectPath).toBe(P);
+    expect(s.cells[0]?.activeTab).toBeUndefined();
+    expect(s.activeTab[P]).toBe('t2');
+  });
+
+  it('ignores a cell activation with a tab of another project', () => {
+    const B = 'C:\\P\\B';
+    useWorkbenchStore.setState({
+      cells: emptyCells().map((c) => (c.id === 'c1' ? { ...c, projectPath: B } : c)),
+      tabs: { [P]: ['x'], [B]: ['y'] },
+      activeTab: { [B]: 'y' },
+    });
+    useWorkbenchStore.getState().activateCell('c1', 'x');
+    const s = useWorkbenchStore.getState();
+    expect(s.cells[0]?.activeTab).toBeUndefined();
+    expect(s.activeTab[B]).toBe('y');
+    expect(s.activeTab[P]).toBeUndefined();
+  });
+
   it('normalizes garbage layout and view', () => {
     const state = migrateWorkbench({
       layout: '9x9',
@@ -101,6 +135,7 @@ describe('workbench store', () => {
       focusCell: 'zz',
     });
     expect(state.layout).toBe('1x1');
+    expect(migrateWorkbench({ layout: 'toString' }).layout).toBe('1x1');
     expect(state.view).toEqual({ kind: 'overview' });
     expect(state.focusCell).toBeNull();
     expect(migrateWorkbench(null).cells).toHaveLength(4);
