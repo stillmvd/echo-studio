@@ -43,7 +43,9 @@ interface Props {
 
 export function EmptyProject({ project, server, visible, busy, onStart }: Props) {
   const { data: convProjects } = useConversationProjects();
-  const convId = convProjects?.find((p) => samePath(p.cwd, project.path))?.id ?? null;
+  const slug = project.path.replace(/[^A-Za-z0-9]/g, '-');
+  const matches = convProjects?.filter((p) => samePath(p.cwd, project.path)) ?? [];
+  const convId = (matches.find((p) => p.id === slug) ?? matches[0])?.id ?? null;
   const { data } = useConversationSessions(visible ? convId : null);
   const sessions = useMemo(
     () =>
