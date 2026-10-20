@@ -2,6 +2,8 @@ pub mod git;
 pub mod limits;
 pub mod processes;
 pub mod projects;
+pub mod sessions;
+pub mod terminal;
 pub mod usage;
 pub mod watch;
 

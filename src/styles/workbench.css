@@ -119,7 +119,8 @@
 .wb-tabs { flex: none; display: flex; gap: 4px; padding: 0 2px; min-width: 0; overflow: hidden; }
 .wb-tab { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 260px; height: 36px; padding: 0 6px 0 9px; border-radius: 999px; color: var(--dim); font-size: 13px; font-weight: 500; white-space: nowrap; cursor: default; transition: background-color 200ms var(--ease-trail), color 200ms var(--ease-trail); }
 .wb-tab:hover { color: var(--fg); }
-.wb-tab > span:not(.wb-gl):not(.wb-dv) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.wb-tab-b { display: inline-flex; align-items: center; gap: 8px; min-width: 0; height: 100%; text-align: left; }
+.wb-tab-b > span:not(.wb-gl):not(.wb-dv) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .wb-tab.on { background: var(--raised); color: var(--fg); }
 .wb-tab.add { flex: none; width: 36px; padding: 0; justify-content: center; }
 .wb-tab.add svg { width: 16px; height: 16px; }
@@ -128,6 +129,7 @@
 .wb-tx svg { width: 13px; height: 13px; }
 .wb-tw { position: relative; flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 20px; background: var(--ground); overflow: hidden; }
 .wb-tw.on { box-shadow: inset 0 0 0 1.5px var(--gb); }
+.wb-tw[hidden] { display: none; }
 .wb-th { flex: none; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px 0 12px; border-bottom: 1px solid var(--line); font-size: 13px; min-width: 0; white-space: nowrap; }
 .wb-th b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
 .wb-term { position: relative; flex: 1; min-height: 0; min-width: 0; padding: 10px 4px 6px 14px; }

@@ -1,12 +1,78 @@
 use std::path::{Path, PathBuf};
-use std::sync::mpsc;
-use std::time::Duration;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{mpsc, Mutex};
+use std::time::{Duration, Instant};
 
 use notify::RecursiveMode;
 use notify_debouncer_mini::{new_debouncer, DebounceEventResult};
 use tauri::{AppHandle, Emitter};
 
+use super::sessions;
+
 pub const EVENT_PROJECTS: &str = "workbench://projects";
+pub const EVENT_SESSIONS: &str = "workbench://sessions";
+const SESSIONS_TICK: Duration = Duration::from_secs(15);
+const SESSIONS_MIN_GAP: Duration = Duration::from_secs(1);
+
+pub struct SessionsHub {
+    pub active: AtomicBool,
+    poke: Mutex<mpsc::Sender<()>>,
+}
+
+impl SessionsHub {
+    pub fn poke(&self) {
+        if let Ok(tx) = self.poke.lock() {
+            let _ = tx.send(());
+        }
+    }
+}
+
+pub fn start_sessions(app: AppHandle) -> SessionsHub {
+    let (tx, rx) = mpsc::channel::<()>();
+    let hook_tx = tx.clone();
+    std::thread::spawn(move || {
+        let debouncer = new_debouncer(
+            Duration::from_millis(500),
+            move |res: DebounceEventResult| {
+                if res.is_ok() {
+                    let _ = hook_tx.send(());
+                }
+            },
+        );
+        let _debouncer = debouncer.ok().and_then(|mut d| {
+            let dir = sessions::hooks_dir()?;
+            d.watcher().watch(&dir, RecursiveMode::NonRecursive).ok()?;
+            Some(d)
+        });
+        let mut last: Option<Instant> = None;
+        loop {
+            match rx.recv_timeout(SESSIONS_TICK) {
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                Ok(()) | Err(mpsc::RecvTimeoutError::Timeout) => {}
+            }
+            if let Some(t) = last {
+                if let Some(wait) = SESSIONS_MIN_GAP.checked_sub(t.elapsed()) {
+                    std::thread::sleep(wait);
+                }
+            }
+            while rx.try_recv().is_ok() {}
+            let Some(hub) = tauri::Manager::try_state::<SessionsHub>(&app) else {
+                continue;
+            };
+            if !hub.active.load(Ordering::Relaxed) {
+                continue;
+            }
+            last = Some(Instant::now());
+            if let Ok(list) = sessions::list() {
+                let _ = app.emit(EVENT_SESSIONS, list);
+            }
+        }
+    });
+    SessionsHub {
+        active: AtomicBool::new(false),
+        poke: Mutex::new(tx),
+    }
+}
 
 fn group_dirs(root: &Path) -> Vec<PathBuf> {
     std::fs::read_dir(root)

@@ -79,6 +79,8 @@ export const useWorkbenchStore = create<WorkbenchState>()(
     }),
     {
       name: 'echo-workbench',
+      version: 1,
+      migrate: (persisted) => persisted as WorkbenchState,
       partialize: (s) => ({
         view: s.view,
         openGroups: s.openGroups,

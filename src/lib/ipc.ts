@@ -1,5 +1,6 @@
-import { invoke } from '@tauri-apps/api/core';
+import { type Channel, invoke } from '@tauri-apps/api/core';
 import type {
+  ClaudeSession,
   ConfigBackup,
   ConversationProject,
   DisplayItem,
@@ -181,4 +182,58 @@ export async function listProcesses(): Promise<ProcessRow[]> {
 
 export async function killProcesses(pids: number[], confirmed: boolean): Promise<KillResult> {
   return invoke<KillResult>('kill_processes', { pids, confirmed });
+}
+
+export type RawClaudeSession = Omit<ClaudeSession, 'projectPath'>;
+
+export async function listClaudeSessions(): Promise<RawClaudeSession[]> {
+  return invoke<RawClaudeSession[]>('list_claude_sessions');
+}
+
+export async function setWorkbenchActive(active: boolean): Promise<void> {
+  return invoke('set_workbench_active', { active });
+}
+
+export async function startClaudeSession(
+  projectPath: string,
+  resumeSessionId?: string,
+): Promise<{ sessionId: string; shortId: string }> {
+  return invoke('start_claude_session', { projectPath, resumeSessionId });
+}
+
+export async function stopClaudeSession(shortId: string): Promise<void> {
+  return invoke('stop_claude_session', { shortId });
+}
+
+export async function forgetClaudeSession(shortId: string): Promise<void> {
+  return invoke('forget_claude_session', { shortId });
+}
+
+export async function terminalAttach(
+  shortId: string,
+  cols: number,
+  rows: number,
+  onData: Channel<ArrayBuffer>,
+): Promise<string> {
+  return invoke<string>('terminal_attach', { shortId, cols, rows, onData });
+}
+
+export async function terminalWrite(terminalId: string, data: string): Promise<void> {
+  return invoke('terminal_write', { terminalId, data });
+}
+
+export async function terminalResize(
+  terminalId: string,
+  cols: number,
+  rows: number,
+): Promise<void> {
+  return invoke('terminal_resize', { terminalId, cols, rows });
+}
+
+export async function terminalDetach(terminalId: string): Promise<void> {
+  return invoke('terminal_detach', { terminalId });
+}
+
+export async function terminalDetachAll(): Promise<void> {
+  return invoke('terminal_detach_all');
 }

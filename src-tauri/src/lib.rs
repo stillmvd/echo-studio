@@ -3,8 +3,6 @@ mod conversations;
 mod memory;
 mod splash;
 mod tooling;
-// TODO(005 US1): drop once sessions.rs uses the shared helpers
-#[allow(dead_code)]
 mod workbench;
 
 use tauri::Manager;
@@ -33,9 +31,14 @@ pub fn run() {
                 .build(),
         )
         .manage(splash)
+        .manage(workbench::terminal::Terminals::default())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
                 let _ = window.app_handle().save_window_state(window_flags());
+                window
+                    .app_handle()
+                    .state::<workbench::terminal::Terminals>()
+                    .detach_all();
             }
         })
         .plugin(tauri_plugin_shell::init())
@@ -61,6 +64,7 @@ pub fn run() {
                 workbench::watch::start_projects(app.handle().clone(), root);
             }
             workbench::limits::start_limits(app.handle().clone());
+            app.manage(workbench::watch::start_sessions(app.handle().clone()));
             if let Some(home) = dirs::home_dir() {
                 memory::watch::start(app.handle().clone(), memory::projects_root(&home));
                 let handle = app.handle().clone();
@@ -110,6 +114,16 @@ pub fn run() {
             commands::workbench::read_git_states,
             commands::workbench::list_processes,
             commands::workbench::kill_processes,
+            commands::workbench::list_claude_sessions,
+            commands::workbench::set_workbench_active,
+            commands::workbench::start_claude_session,
+            commands::workbench::stop_claude_session,
+            commands::workbench::forget_claude_session,
+            commands::workbench::terminal_attach,
+            commands::workbench::terminal_write,
+            commands::workbench::terminal_resize,
+            commands::workbench::terminal_detach,
+            commands::workbench::terminal_detach_all,
             app_ready,
         ])
         .run(context)

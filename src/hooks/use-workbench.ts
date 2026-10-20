@@ -1,7 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { listen } from '@tauri-apps/api/event';
-import { useEffect, useRef } from 'react';
-import { listWorkbenchProjects } from '@/lib/ipc';
+import { useEffect, useMemo, useRef } from 'react';
+import {
+  listClaudeSessions,
+  listWorkbenchProjects,
+  type RawClaudeSession,
+  setWorkbenchActive,
+} from '@/lib/ipc';
+import type { ClaudeSession } from '@/lib/types';
+import { withProjects } from '@/lib/workbench';
 
 export function useTauriEvent<T>(event: string, handler: (payload: T) => void) {
   const ref = useRef(handler);
@@ -20,6 +27,25 @@ export function useTauriEvent<T>(event: string, handler: (payload: T) => void) {
       off?.();
     };
   }, [event]);
+}
+
+export function useClaudeSessions(active?: boolean): ClaudeSession[] {
+  const qc = useQueryClient();
+  const { data: tree } = useWorkbenchProjects();
+  useEffect(() => {
+    if (active === undefined) return;
+    void setWorkbenchActive(active).catch(() => {});
+  }, [active]);
+  useTauriEvent<RawClaudeSession[]>('workbench://sessions', (list) => {
+    qc.setQueryData(['workbench', 'sessions'], list);
+  });
+  const { data } = useQuery({
+    queryKey: ['workbench', 'sessions'],
+    queryFn: listClaudeSessions,
+    staleTime: 15_000,
+    retry: false,
+  });
+  return useMemo(() => withProjects(data ?? [], tree), [data, tree]);
 }
 
 export function useWorkbenchProjects() {

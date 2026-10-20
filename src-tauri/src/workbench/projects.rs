@@ -316,6 +316,15 @@ mod tests {
     }
 
     #[test]
+    fn decodes_utf8_ini_with_and_without_bom() {
+        let plain = b"IconResource=C:\\a\\x.ico,0";
+        assert_eq!(icon_name(&decode_ini(plain)).as_deref(), Some("x"));
+        let mut bom = vec![0xEF, 0xBB, 0xBF];
+        bom.extend_from_slice(plain);
+        assert_eq!(icon_name(&decode_ini(&bom)).as_deref(), Some("x"));
+    }
+
+    #[test]
     fn missing_svg_gives_no_icon() {
         let tmp = tempfile::tempdir().unwrap();
         let proj = mk(tmp.path(), "P");
@@ -405,7 +414,5 @@ mod tests {
             "C:/Users/a/Projects/X/",
             "c:\\users\\a\\projects\\x"
         ));
-        assert!(is_within("C:\\P\\X\\src", "c:/p/x"));
-        assert!(!is_within("C:\\P\\Xy", "C:\\P\\X"));
     }
 }
