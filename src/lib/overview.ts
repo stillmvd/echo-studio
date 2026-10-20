@@ -48,7 +48,12 @@ export function ago(ms: number, now = Date.now()): string {
 }
 
 export function args(commandLine: string): string {
-  const rest = commandLine.replace(/^\s*("[^"]*"|\S+)\s*/, '').trim();
+  const tokens = commandLine.match(/"[^"]*"|\S+/g) ?? [];
+  const rest = tokens
+    .slice(1)
+    .map((t) => t.replace(/^"|"$/g, ''))
+    .map((t) => (/^[A-Za-z]:[\\/]|^[\\/]/.test(t) ? (t.split(/[\\/]+/).pop() ?? t) : t))
+    .join(' ');
   return rest || commandLine;
 }
 

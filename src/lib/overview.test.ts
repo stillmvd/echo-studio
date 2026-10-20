@@ -57,6 +57,11 @@ suite('overview formatting', () => {
       '--watch src/index.ts',
     );
     expect(args('rust-analyzer.exe')).toBe('rust-analyzer.exe');
+    expect(
+      args(
+        '"C:\\Program Files\\nodejs\\node.exe" C:\\Users\\me\\AppData\\Roaming\\npm\\npx-cli.js -y rea-agents@6.5.0 mcp',
+      ),
+    ).toBe('npx-cli.js -y rea-agents@6.5.0 mcp');
   });
 });
 
