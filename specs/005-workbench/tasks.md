@@ -80,9 +80,9 @@ contracts/ipc.md, quickstart.md. Форма — `.planning/WORKBENCH.md`, сте
 **Independent Test**: quickstart.md §3.
 
 - [x] T026 [P] [US2] Срочность в `src/lib/workbench.ts`: `urgency(status)` по порядку `waiting → error → working → done → idle → exited`, сортировка по срочности, внутри — по `since` (дольше ждёт выше); «готово» с отметкой `seen` после `since` → `idle`; самый срочный статус проекта и группы. Тесты
-- [ ] T027 [P] [US2] `src/components/workbench/StatusIcon.tsx`: сплошной значок по статусу и `phase` (thinking/tool/agents), набор как в моде Taskbar Claude Sessions (`C:\Users\stillmvd\Projects\Windhawk Mods\Taskbar Claude Sessions`), lucide-эквиваленты, цвета из токенов
-- [ ] T028 [US2] «Запущено» `src/components/workbench/RunningList.tsx`: сессии и dev-серверы по срочности; `external` — пометка «вне оболочки», без терминала; клик → открыть сессию (ручное открытие = закрепление в пульте)
-- [ ] T029 [US2] Чипы в `src/components/workbench/ProjectTree.tsx` (строка B со стенда): значок самой срочной сессии + число, порт dev; свёрнутая группа — чипы своих проектов
+- [X] T027 [P] [US2] `src/components/workbench/StatusIcon.tsx`: сплошной значок по статусу и `phase` (thinking/tool/agents), набор как в моде Taskbar Claude Sessions (`C:\Users\stillmvd\Projects\Windhawk Mods\Taskbar Claude Sessions`), lucide-эквиваленты, цвета из токенов
+- [X] T028 [US2] «Запущено» `src/components/workbench/RunningList.tsx`: сессии и dev-серверы по срочности; `external` — пометка «вне оболочки», без терминала; клик → открыть сессию (ручное открытие = закрепление в пульте)
+- [X] T029 [US2] Чипы в `src/components/workbench/ProjectTree.tsx` (строка B со стенда): значок самой срочной сессии + число, порт dev; свёрнутая группа — чипы своих проектов
 - [ ] T030 [US2] Полоса сессий `src/components/workbench/SessionStrip.tsx`: все сессии, всегда видна; фокус ячейки отмечает `seen[sessionId] = now`
 - [ ] T031 [US2] Ctrl+Tab `src/components/workbench/QuickSwitch.tsx`: перехват `keydown` на `window` в capture; список всех сессий по `recency` (недавние первыми, обновляется при фокусе вкладки), Tab — дальше, Shift+Tab — назад, `keyup` Ctrl — переход; логика `nextInRecency()` в `src/lib/workbench.ts` с тестами
 

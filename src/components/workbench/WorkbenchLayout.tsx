@@ -4,8 +4,10 @@ import { all, samePath } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { Cell } from './Cell';
 import { Overview } from './Overview';
+import { ProjectChips } from './ProjectChips';
 import { ProjectHeader } from './ProjectHeader';
 import { ProjectTree } from './ProjectTree';
+import { RunningList } from './RunningList';
 import { useStartSession } from './useStartSession';
 
 export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
@@ -15,7 +17,9 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   const tabs = useWorkbenchStore((s) => s.tabs);
   const { start, busy, dialogs } = useStartSession();
 
+  const seen = useWorkbenchStore((s) => s.seen);
   const projects = useMemo(() => (tree ? all(tree) : []), [tree]);
+  const byPath = useMemo(() => new Map(projects.map((p) => [p.path, p])), [projects]);
   const selected =
     view.kind === 'project' ? projects.find((p) => samePath(p.path, view.path)) : undefined;
   const opened = projects.filter((p) => (tabs[p.path]?.length ?? 0) > 0 || p === selected);
@@ -25,9 +29,23 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
       <div className="wb-main">
         <div className="wb-card wb-side">
           <div className="wb-ch">
+            <b>Запущено</b>
+          </div>
+          <RunningList sessions={sessions} projects={byPath} />
+          <div className="wb-ch sub">
             <b>Проекты</b>
           </div>
-          {tree && <ProjectTree tree={tree} />}
+          {tree && (
+            <ProjectTree
+              tree={tree}
+              tail={(paths) => (
+                <ProjectChips
+                  sessions={sessions.filter((s) => s.projectPath && paths.includes(s.projectPath))}
+                  seen={seen}
+                />
+              )}
+            />
+          )}
           {error && <p className="wb-dim px-3 py-2 text-[12.5px]">{String(error)}</p>}
         </div>
         <div className="wb-card wb-pv">
