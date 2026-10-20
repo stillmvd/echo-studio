@@ -35,6 +35,16 @@ const ERROR_ACCESS_DENIED: i32 = 5;
 const ERROR_INSUFFICIENT_BUFFER: u32 = 122;
 const SEEN_MAX: usize = 4096;
 const SWEEP_SLACK_MS: u64 = 1_000;
+const SWEEP_GUARDED: [&str; 8] = [
+    "claude.exe",
+    "chrome.exe",
+    "msedge.exe",
+    "firefox.exe",
+    "code.exe",
+    "explorer.exe",
+    "windowsterminal.exe",
+    "wt.exe",
+];
 const HEARTBEAT_TICKS: u32 = 25;
 const LOG_PORT_SCAN: u64 = 64 * 1024;
 const STARTING_FOR: u64 = 30_000;
@@ -300,8 +310,12 @@ fn write_file(dir: &Path, slug: &str, file: &DevFile) -> Result<(), String> {
     fs::rename(&tmp, dir.join(format!("{slug}.json"))).map_err(|e| e.to_string())
 }
 
+fn files() -> std::sync::MutexGuard<'static, ()> {
+    FILES.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 fn update_file(dir: &Path, slug: &str, change: impl FnOnce(&mut DevFile)) -> Result<(), String> {
-    let _lock = FILES.lock().unwrap_or_else(|e| e.into_inner());
+    let _lock = files();
     let mut file = read_file(dir, slug).ok_or("dev server was never started")?;
     change(&mut file);
     write_file(dir, slug, &file)
@@ -432,7 +446,11 @@ pub fn start_in(
         exit_code: None,
         stopped: false,
     };
-    if let Err(e) = write_file(dir, &slug, &file) {
+    let written = {
+        let _lock = files();
+        write_file(dir, &slug, &file)
+    };
+    if let Err(e) = written {
         job.terminate();
         let _ = child.kill();
         return Err(e);
@@ -485,15 +503,15 @@ pub fn leftovers(
     seen: &HashSet<(u32, u64)>,
 ) -> Vec<(u32, u64)> {
     let since = started_at.saturating_sub(SWEEP_SLACK_MS);
-    let is_claude = |p: &Proc| p.name.eq_ignore_ascii_case("claude.exe");
+    let guarded = |p: &Proc| SWEEP_GUARDED.iter().any(|n| p.name.eq_ignore_ascii_case(n));
     let is_seen = |p: &Proc| seen.contains(&(p.pid, p.start_time));
     table
         .values()
-        .filter(|p| p.start_time >= since && !is_claude(p))
+        .filter(|p| p.start_time >= since && !guarded(p))
         .filter(|p| {
             is_seen(p)
                 || chain(table, p.pid)
-                    .find(|a| is_claude(a) || is_seen(a))
+                    .find(|a| guarded(a) || is_seen(a))
                     .is_some_and(is_seen)
         })
         .map(|p| (p.pid, p.start_time))
@@ -545,6 +563,7 @@ pub fn stop_in(dir: &Path, project_path: &str) -> Result<(), String> {
                 .filter_map(|pid| table.get(pid).map(|p| (p.pid, p.start_time))),
         );
         if !job.terminate() {
+            runtime().entry(slug.clone()).or_default().stopping = false;
             return Err(format!(
                 "TerminateJobObject: {}",
                 std::io::Error::last_os_error()
@@ -852,6 +871,59 @@ mod tests {
             p(105, 104, "node.exe", PROJECT, 8_100),
         ];
         assert_eq!(swept(procs, &[(100, 5_000)]), vec![100, 101, 102, 103]);
+    }
+
+    #[test]
+    fn leftovers_spare_browsers_and_editors_opened_by_dev() {
+        let procs = vec![
+            p(100, 6, "cmd.exe", PROJECT, 5_000),
+            p(101, 100, "node.exe", PROJECT, 5_100),
+            p(110, 101, "chrome.exe", r"C:\Users\me", 5_200),
+            p(111, 110, "chrome.exe", r"C:\Users\me", 5_300),
+            p(120, 101, "Code.exe", PROJECT, 5_400),
+            p(130, 101, "msedge.exe", r"C:\Users\me", 5_500),
+        ];
+        assert_eq!(swept(procs, &[(100, 5_000)]), vec![100, 101]);
+    }
+
+    #[test]
+    fn leftovers_cut_a_link_to_a_younger_parent() {
+        let procs = vec![
+            p(100, 6, "cmd.exe", PROJECT, 6_000),
+            p(200, 100, "node.exe", PROJECT, 5_500),
+            p(201, 200, "node.exe", PROJECT, 5_600),
+        ];
+        assert_eq!(swept(procs, &[(100, 6_000)]), vec![100]);
+    }
+
+    #[test]
+    fn leftovers_skip_processes_older_than_the_start_or_without_start_time() {
+        let procs = vec![
+            p(100, 6, "cmd.exe", PROJECT, 5_000),
+            p(101, 100, "node.exe", PROJECT, 3_000),
+            p(102, 100, "node.exe", PROJECT, 0),
+            p(103, 100, "node.exe", PROJECT, 5_050),
+        ];
+        assert_eq!(
+            swept(procs, &[(100, 5_000), (101, 3_000), (102, 0)]),
+            vec![100, 103]
+        );
+    }
+
+    #[test]
+    fn seen_pairs_survive_a_round_trip() {
+        let file = DevFile {
+            project_path: r"C:\P".into(),
+            command: "pnpm dev".into(),
+            pid: 7,
+            started_at: 1,
+            seen: vec![(7, 1_000), (8, 2_000)],
+            exit_code: Some(1),
+            stopped: false,
+        };
+        let text = serde_json::to_string(&file).unwrap();
+        assert!(text.contains(r#""seen":[[7,1000],[8,2000]]"#), "{text}");
+        assert_eq!(serde_json::from_str::<DevFile>(&text).unwrap(), file);
     }
 
     #[test]
