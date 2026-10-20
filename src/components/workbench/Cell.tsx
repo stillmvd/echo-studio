@@ -22,9 +22,10 @@ interface TabInfo {
   status: SessionStatus;
 }
 
-function TabTitle({ info }: { info: TabInfo }) {
+function TabTitle({ info, projectName }: { info: TabInfo; projectName: string }) {
   const entry = useClaudeTerm(info.key);
-  const title = info.session?.name || entry.title || 'Claude';
+  const own = entry.title && entry.title !== projectName ? entry.title : null;
+  const title = info.session?.name || own || 'Claude';
   return <span title={title}>{title}</span>;
 }
 
@@ -164,7 +165,7 @@ export function Cell({
                   tool: info.session?.tool ?? null,
                 }}
               />
-              <TabTitle info={info} />
+              <TabTitle info={info} projectName={project.name} />
             </button>
             <button
               type="button"

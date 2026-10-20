@@ -17,6 +17,7 @@ const FLUSH: Duration = Duration::from_millis(16);
 const PENDING_CAP: usize = 4 << 20;
 
 struct Term {
+    short_id: String,
     master: Box<dyn MasterPty + Send>,
     writer: Box<dyn Write + Send>,
     killer: Box<dyn ChildKiller + Send + Sync>,
@@ -124,17 +125,28 @@ impl Terminals {
                 break;
             }
         });
-        self.map
-            .lock()
-            .map_err(|_| "terminal registry poisoned")?
-            .insert(
+        let replaced: Vec<Term> = {
+            let mut map = self.map.lock().map_err(|_| "terminal registry poisoned")?;
+            let same: Vec<String> = map
+                .iter()
+                .filter(|(_, t)| t.short_id == short_id)
+                .map(|(k, _)| k.clone())
+                .collect();
+            let replaced = same.iter().filter_map(|k| map.remove(k)).collect();
+            map.insert(
                 id.clone(),
                 Term {
+                    short_id: short_id.to_owned(),
                     master: pair.master,
                     writer,
                     killer,
                 },
             );
+            replaced
+        };
+        for mut t in replaced {
+            let _ = t.killer.kill();
+        }
         {
             let id = id.clone();
             let app = app.clone();

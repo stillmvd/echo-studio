@@ -27,6 +27,7 @@ interface Entry {
   state: TermState;
   error: string | null;
   title: string | null;
+  shortId: string | null;
   attachedAt: number;
   version: number;
   listeners: Set<() => void>;
@@ -127,12 +128,15 @@ function create(options: Partial<ITerminalOptions>): Entry {
     state: 'idle',
     error: null,
     title: null,
+    shortId: null,
     attachedAt: 0,
     version: 0,
     listeners: new Set(),
   };
   term.onTitleChange((t) => {
-    entry.title = t;
+    const title = t.trim();
+    if (!title || /[\\/]|\.exe$/i.test(title)) return;
+    entry.title = title;
     notify(entry);
   });
   return entry;
@@ -239,6 +243,15 @@ export function fitTerm(entry: Entry) {
 export function connect(key: string, shortId: string) {
   const entry = claudeEntry(key);
   if (entry.state === 'attaching' || entry.state === 'live') return;
+  const twin = [...entries.entries()].some(
+    ([k, e]) =>
+      k !== key && e.shortId === shortId && (e.state === 'attaching' || e.state === 'live'),
+  );
+  if (twin) {
+    setState(entry, 'error', 'Сессия уже открыта в другой вкладке');
+    return;
+  }
+  entry.shortId = shortId;
   entry.attachedAt = Date.now();
   setState(entry, 'attaching');
   entry.term.reset();
