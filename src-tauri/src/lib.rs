@@ -3,6 +3,9 @@ mod conversations;
 mod memory;
 mod splash;
 mod tooling;
+// TODO(005 US1): drop once sessions.rs uses the shared helpers
+#[allow(dead_code)]
+mod workbench;
 
 use tauri::Manager;
 use tauri_plugin_window_state::{AppHandleExt, StateFlags};
@@ -54,6 +57,9 @@ pub fn run() {
                     }
                 });
             }
+            if let Some(root) = workbench::projects_root() {
+                workbench::watch::start_projects(app.handle().clone(), root);
+            }
             if let Some(home) = dirs::home_dir() {
                 memory::watch::start(app.handle().clone(), memory::projects_root(&home));
                 let handle = app.handle().clone();
@@ -97,6 +103,7 @@ pub fn run() {
             commands::memory::set_memory_duplicate_ignored,
             commands::memory::patch_memory_record,
             commands::memory::merge_memory_records,
+            commands::workbench::list_workbench_projects,
             app_ready,
         ])
         .run(context)

@@ -241,3 +241,43 @@ export interface RecordPatch {
   validTo?: string | null;
   supersedes?: string | null;
 }
+
+export type DevKind = 'tauri' | 'web';
+
+export interface WorkbenchProject {
+  path: string;
+  name: string;
+  group: string | null;
+  icon: string | null;
+  dev: { command: string; kind: DevKind } | null;
+  mcp: { profile: string | null; headless: boolean } | null;
+  hasClaudeMd: boolean;
+}
+
+export interface WorkbenchGroup {
+  name: string;
+  icon: string | null;
+  projects: WorkbenchProject[];
+}
+
+export interface ProjectTree {
+  groups: WorkbenchGroup[];
+  roots: WorkbenchProject[];
+}
+
+export type SessionStatus = 'waiting' | 'error' | 'working' | 'done' | 'idle' | 'exited';
+
+export interface ClaudeSession {
+  sessionId: string;
+  shortId: string | null;
+  kind: 'shell' | 'external';
+  projectPath: string | null;
+  cwd: string | null;
+  name: string | null;
+  status: SessionStatus;
+  phase: 'thinking' | 'tool' | 'agents' | null;
+  tool: string | null;
+  since: number | null;
+  pid: number | null;
+  transcript: string | null;
+}

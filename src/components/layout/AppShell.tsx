@@ -1,5 +1,6 @@
 import { UpdateToast } from '@stillmvd/tauri-ship';
 import { LeaveGuard } from '@/components/memory/LeaveGuard';
+import { WorkbenchLayout } from '@/components/workbench/WorkbenchLayout';
 import { useUiStore } from '@/state/ui-store';
 import { ConversationsLayout } from './ConversationsLayout';
 import { MemoryLayout } from './MemoryLayout';
@@ -18,6 +19,7 @@ export function AppShell() {
       <div className="flex min-h-0 flex-1 pt-2">
         <NavRail />
         <main className="relative min-w-0 flex-1 pr-2 pb-2">
+          <WorkbenchLayout hidden={activeTab !== 'workbench'} />
           {activeTab === 'tools' && <ToolsLayout />}
           {activeTab === 'memory' && <MemoryLayout />}
           {activeTab === 'conversations' && <ConversationsLayout />}

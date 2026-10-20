@@ -8,6 +8,7 @@ import type {
   MemoryListing,
   MemoryProject,
   MemoryRecord,
+  ProjectTree,
   RecordPatch,
   ScanResult,
   ScopeKind,
@@ -151,4 +152,8 @@ export async function mergeMemoryRecords(
   absorbed: string[],
 ): Promise<MemoryRecord> {
   return invoke<MemoryRecord>('merge_memory_records', { canonical, absorbed });
+}
+
+export async function listWorkbenchProjects(): Promise<ProjectTree> {
+  return invoke<ProjectTree>('list_workbench_projects');
 }

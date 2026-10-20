@@ -24,5 +24,6 @@ describe('ui-store', () => {
       projectsSort: 'name',
     });
     expect(migrateUiState({ activeTab: 'conversations' })).toEqual({ activeTab: 'conversations' });
+    expect(migrateUiState({ activeTab: 'workbench' })).toEqual({ activeTab: 'workbench' });
   });
 });

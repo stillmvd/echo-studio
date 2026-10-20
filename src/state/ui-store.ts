@@ -6,7 +6,7 @@ import type {
 } from '@/lib/memory';
 import type { KindFilter } from '@/lib/tooling';
 
-export type AppTab = 'tools' | 'memory' | 'conversations' | 'settings';
+export type AppTab = 'workbench' | 'tools' | 'memory' | 'conversations' | 'settings';
 export type MemoryTab = 'records' | 'sessions' | 'archive';
 export type ProjectSort = 'recent' | 'name' | 'sessions' | 'size';
 
@@ -81,7 +81,7 @@ export function migrateUiState(persisted: unknown): unknown {
 export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
-      activeTab: 'tools',
+      activeTab: 'workbench',
       conversationsProjectId: null,
       conversationsSortBy: 'date',
       conversationsSortDir: 'desc',
