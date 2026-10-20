@@ -35,6 +35,7 @@ const INHERIT: [&str; 6] = [
     "esbuild.exe",
     "dart.exe",
 ];
+const RUNTIMES: [&str; 3] = ["node.exe", "bun.exe", "cargo.exe"];
 const MAX_DEPTH: usize = 30;
 const COMMAND_MAX: usize = 240;
 
@@ -78,6 +79,8 @@ pub struct AgentRef {
     pub session_id: Option<String>,
     #[serde(default)]
     pub cwd: Option<String>,
+    #[serde(default)]
+    pub short_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -99,6 +102,8 @@ pub struct Snapshot {
     pub agents: Vec<AgentRef>,
     #[serde(default)]
     pub dev_jobs: Vec<DevJob>,
+    #[serde(default)]
+    pub listening: Vec<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -185,6 +190,8 @@ struct Classifier<'a> {
     children: HashMap<u32, Vec<u32>>,
     live: HashMap<u32, Live>,
     jobs: HashMap<u32, &'a str>,
+    listening: HashSet<u32>,
+    agents: &'a [AgentRef],
     hooks: &'a [HookSession],
     projects: &'a [ProjectRef],
     root: String,
@@ -289,6 +296,8 @@ impl<'a> Classifier<'a> {
             children,
             live,
             jobs,
+            listening: snap.listening.iter().copied().collect(),
+            agents: &snap.agents,
             hooks: &snap.hook_sessions,
             projects,
             root: root.to_lowercase(),
@@ -391,6 +400,11 @@ impl<'a> Classifier<'a> {
             .flatten()
         {
             self.session_class(child, "pty-host-of-live-claude")
+        } else if let Some(class) = (name == "claude.exe")
+            .then(|| self.attach_class(cmd))
+            .flatten()
+        {
+            class
         } else if let Some(a) = anc.iter().find(|a| self.live.contains_key(a)) {
             self.session_class(*a, "descendant-of-live-claude")
         } else if let Some(project) = self.jobs.get(&pid) {
@@ -430,6 +444,12 @@ impl<'a> Classifier<'a> {
                 rule: "inherited",
                 ..self.classify(p.ppid, depth + 1)
             }
+        } else if self.working(pid, &anc) {
+            Class {
+                guard: Some(Guard::RunningDev),
+                rule: "no-project-serving",
+                ..Class::default()
+            }
         } else {
             Class {
                 orphan: Some(Orphan {
@@ -443,6 +463,60 @@ impl<'a> Classifier<'a> {
         };
         self.rows.insert(pid, class.clone());
         class
+    }
+
+    fn attach_class(&self, cmd: &str) -> Option<Class> {
+        let mut words = cmd.split_whitespace().map(|w| w.trim_matches('"'));
+        words.by_ref().find(|w| *w == "attach")?;
+        let id = words.next()?.to_lowercase();
+        if id.len() < 8 {
+            return None;
+        }
+        let agent = self.agents.iter().find(|a| {
+            a.short_id.as_deref() == Some(id.as_str())
+                || a.session_id.as_deref().is_some_and(|s| s.starts_with(&id))
+        })?;
+        Some(Class {
+            project_path: self.project_of(agent.cwd.as_deref()),
+            session: agent.session_id.clone(),
+            guard: Some(Guard::LiveSession),
+            rule: "attach-of-live-session",
+            ..Class::default()
+        })
+    }
+
+    fn serves(&self, pid: u32, depth: usize) -> bool {
+        if self.listening.contains(&pid) {
+            return true;
+        }
+        let kids: Vec<u32> = self
+            .children
+            .get(&pid)
+            .map(|k| {
+                k.iter()
+                    .copied()
+                    .filter(|c| *c != pid)
+                    .filter(|c| {
+                        self.procs
+                            .get(c)
+                            .is_some_and(|(p, _)| lower_name(p) != "conhost.exe")
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        if depth < MAX_DEPTH && kids.iter().any(|c| self.serves(*c, depth + 1)) {
+            return true;
+        }
+        let name = self.procs.get(&pid).map(|(p, _)| lower_name(p));
+        !kids.is_empty() && name.is_some_and(|n| RUNTIMES.contains(&n.as_str()))
+    }
+
+    fn working(&self, pid: u32, anc: &[u32]) -> bool {
+        self.serves(pid, 0)
+            || anc
+                .iter()
+                .filter(|a| self.procs.get(a).is_some_and(|(_, outside)| !outside))
+                .any(|a| self.serves(*a, 0))
     }
 
     fn live_child(&self, pid: u32) -> Option<u32> {
@@ -850,6 +924,10 @@ fn take(sys: &System, agents: Vec<AgentRef>, dev_jobs: Vec<DevJob>, root: &str) 
         hook_sessions: read_hook_sessions(),
         agents,
         dev_jobs,
+        listening: super::dev::listeners()
+            .into_iter()
+            .map(|(pid, _)| pid)
+            .collect(),
     }
 }
 
@@ -1055,6 +1133,79 @@ mod tests {
             assert_eq!(c.orphan, None, "{pid}: {c:?}");
             assert_eq!(c.project_path.as_deref(), Some(r"C:\P\AM"));
         }
+    }
+
+    #[test]
+    fn dev_outside_echo_without_project_is_running_not_hanging() {
+        let snap = Snapshot {
+            processes: vec![
+                proc(30, 2, "node.exe", "node pnpm.cjs dev", r"D:\work\app"),
+                proc(
+                    31,
+                    30,
+                    "node.exe",
+                    "node vite.js --port 1427",
+                    r"D:\work\app",
+                ),
+                proc(32, 31, "esbuild.exe", "esbuild --service", r"D:\work\app"),
+                proc(
+                    40,
+                    2,
+                    "cargo.exe",
+                    "cargo test --manifest-path x",
+                    r"D:\work\rs",
+                ),
+                proc(41, 40, "node.exe", "node build.js", r"D:\work\rs"),
+                proc(50, 2, "node.exe", "node old-script.js", r"D:\work\old"),
+            ],
+            outside_parents: vec![proc(2, 1, "sh.exe", "sh", r"D:\")],
+            listening: vec![31],
+            ..Snapshot::default()
+        };
+        let classes = classify(&snap, &[], r"C:\P");
+        for pid in [30, 31, 32, 40, 41] {
+            let c = &classes[&pid];
+            assert_eq!(c.guard, Some(Guard::RunningDev), "{pid}: {c:?}");
+            assert_eq!(c.orphan, None, "{pid}: {c:?}");
+            assert_eq!(c.project_path, None, "{pid}: {c:?}");
+        }
+        assert_eq!(
+            classes[&50].orphan.as_ref().map(|o| o.reason),
+            Some(OrphanReason::NoProject)
+        );
+        assert_eq!(classes[&50].guard, None);
+    }
+
+    #[test]
+    fn claude_attach_client_belongs_to_its_session() {
+        let snap = Snapshot {
+            processes: vec![proc(
+                60,
+                2,
+                "claude.exe",
+                r#""C:\bin\claude.exe" attach 1a2b3c4d"#,
+                r"C:\Users\me",
+            )],
+            agents: vec![AgentRef {
+                pid: Some(999),
+                session_id: Some("1a2b3c4d-0000-4000-8000-000000000000".into()),
+                cwd: Some(r"C:\P\AM".into()),
+                short_id: Some("1a2b3c4d".into()),
+            }],
+            ..Snapshot::default()
+        };
+        let projects = [ProjectRef {
+            path: r"C:\P\AM".into(),
+            profile: None,
+        }];
+        let c = &classify(&snap, &projects, r"C:\P")[&60];
+        assert_eq!(c.guard, Some(Guard::LiveSession));
+        assert_eq!(
+            c.session.as_deref(),
+            Some("1a2b3c4d-0000-4000-8000-000000000000")
+        );
+        assert_eq!(c.project_path.as_deref(), Some(r"C:\P\AM"));
+        assert_eq!(c.rule, "attach-of-live-session");
     }
 
     #[test]

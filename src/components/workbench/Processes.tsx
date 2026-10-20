@@ -104,7 +104,8 @@ export function Processes({
           <div key={g.key ?? '—'} className="wb-pg">
             <div className="wb-pgh">
               <ProjectIcon svg={project?.icon ?? null} />
-              <b>{project?.name ?? nameOf(g.key)}</b>
+              <b>{project?.name ?? (g.key ? nameOf(g.key) : 'Без проекта')}</b>
+              {!g.key && <span className="wb-dim">работает</span>}
               <span className="wb-mb">{mb(g.memory)}</span>
             </div>
             {g.rows.map((r) => (

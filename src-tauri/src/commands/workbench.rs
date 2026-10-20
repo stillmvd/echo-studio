@@ -60,6 +60,7 @@ fn live_agents() -> Result<Vec<processes::AgentRef>, String> {
             pid: a.pid,
             session_id: a.session_id,
             cwd: a.cwd,
+            short_id: a.id,
         })
         .collect())
 }
