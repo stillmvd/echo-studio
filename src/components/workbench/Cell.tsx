@@ -33,16 +33,38 @@ interface Props {
   sessions: ClaudeSession[];
   server: DevServer | undefined;
   visible: boolean;
-  onStart: (resumeSessionId?: string) => void;
+  focused?: boolean;
+  activeKey?: string;
+  onActivate?: (key: string) => void;
+  onStart: (resumeSessionId?: string) => Promise<string | null>;
   busy: boolean;
 }
 
-export function Cell({ project, sessions, server, visible, onStart, busy }: Props) {
+export function Cell({
+  project,
+  sessions,
+  server,
+  visible,
+  focused,
+  activeKey,
+  onActivate,
+  onStart,
+  busy,
+}: Props) {
+  const inWall = focused !== undefined;
+  const isFocused = visible && (focused ?? true);
   const qc = useQueryClient();
   const tabs = useWorkbenchStore((s) => s.tabs[project.path]) ?? [];
-  const active = useWorkbenchStore((s) => s.activeTab[project.path]);
+  const projectActive = useWorkbenchStore((s) => s.activeTab[project.path]);
+  const active = activeKey ?? projectActive;
   const seen = useWorkbenchStore((s) => s.seen);
-  const activate = useWorkbenchStore((s) => s.activate);
+  const activateInProject = useWorkbenchStore((s) => s.activate);
+  const activate = (key: string) =>
+    onActivate ? onActivate(key) : activateInProject(project.path, key);
+  const startHere = async (resumeSessionId?: string) => {
+    const key = await onStart(resumeSessionId);
+    if (key && onActivate) onActivate(key);
+  };
   const closeTab = useWorkbenchStore((s) => s.closeTab);
   const markSeen = useWorkbenchStore((s) => s.markSeen);
   const [stopping, setStopping] = useState<TabInfo | null>(null);
@@ -67,8 +89,8 @@ export function Cell({ project, sessions, server, visible, onStart, busy }: Prop
   const current = devOn ? undefined : (infos.find((i) => i.key === active) ?? infos[0]);
 
   useEffect(() => {
-    if (visible && current?.session?.status === 'done') markSeen(current.key);
-  }, [visible, current?.key, current?.session?.status, markSeen]);
+    if (isFocused && current?.session?.status === 'done') markSeen(current.key);
+  }, [isFocused, current?.key, current?.session?.status, markSeen]);
 
   const close = (info: TabInfo) => {
     if (!info.live && info.shortId) void forgetClaudeSession(info.shortId).catch(() => {});
@@ -82,7 +104,15 @@ export function Cell({ project, sessions, server, visible, onStart, busy }: Prop
   };
 
   if (infos.length === 0 && !hasDev) {
-    return <EmptyProject project={project} server={server} busy={busy} onStart={onStart} />;
+    return (
+      <EmptyProject
+        project={project}
+        server={server}
+        visible={visible}
+        busy={busy}
+        onStart={(resume) => void startHere(resume)}
+      />
+    );
   }
 
   return (
@@ -94,7 +124,7 @@ export function Cell({ project, sessions, server, visible, onStart, busy }: Prop
               type="button"
               className="wb-tab-b"
               aria-pressed={devOn}
-              onClick={() => activate(project.path, devKey)}
+              onClick={() => activate(devKey)}
             >
               <DevDot server={server} />
               <span title={project.dev?.command}>{project.dev?.command ?? 'dev'}</span>
@@ -118,7 +148,7 @@ export function Cell({ project, sessions, server, visible, onStart, busy }: Prop
               type="button"
               className="wb-tab-b"
               aria-pressed={info.key === current?.key}
-              onClick={() => activate(project.path, info.key)}
+              onClick={() => activate(info.key)}
             >
               <StatusIcon
                 small
@@ -148,7 +178,7 @@ export function Cell({ project, sessions, server, visible, onStart, busy }: Prop
           className="wb-tab add"
           title="Ещё сессия"
           disabled={busy}
-          onClick={() => onStart()}
+          onClick={() => void startHere()}
         >
           <Plus strokeWidth={2} />
         </button>
@@ -184,8 +214,9 @@ export function Cell({ project, sessions, server, visible, onStart, busy }: Prop
           shortId={info.shortId}
           live={info.live}
           visible={visible && info.key === current?.key}
-          accent={info.status === 'waiting'}
-          onResume={() => onStart(info.key)}
+          focused={isFocused}
+          accent={!inWall && info.status === 'waiting'}
+          onResume={() => void startHere(info.key)}
         />
       ))}
       <ConfirmDialog

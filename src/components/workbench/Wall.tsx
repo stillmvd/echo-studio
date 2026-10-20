@@ -71,7 +71,7 @@ interface Props {
   projects: Map<string, WorkbenchProject>;
   busy: boolean;
   devServers: DevServer[];
-  onStart: (path: string, resume?: string) => void;
+  onStart: (path: string, resume?: string) => Promise<string | null>;
 }
 
 export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: Props) {
@@ -117,7 +117,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
           type="button"
           className="wb-btn p"
           disabled={busy || !focused}
-          onClick={() => focused && onStart(focused)}
+          onClick={() => focused && void onStart(focused)}
         >
           <Plus strokeWidth={2} />
           Claude
@@ -172,6 +172,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
                     sessions={sessions}
                     server={devServers.find((d) => samePath(d.projectPath, project.path))}
                     visible={!hidden}
+                    focused={c.id === focusCell}
                     busy={busy}
                     onStart={(resume) => onStart(project.path, resume)}
                   />

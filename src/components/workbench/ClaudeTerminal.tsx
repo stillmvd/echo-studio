@@ -8,11 +8,20 @@ interface Props {
   shortId: string | null;
   live: boolean;
   visible: boolean;
+  focused: boolean;
   accent?: boolean;
   onResume: () => void;
 }
 
-export function ClaudeTerminal({ sessionKey, shortId, live, visible, accent, onResume }: Props) {
+export function ClaudeTerminal({
+  sessionKey,
+  shortId,
+  live,
+  visible,
+  focused,
+  accent,
+  onResume,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const entry = useClaudeTerm(sessionKey);
   const { state } = entry;
@@ -33,10 +42,10 @@ export function ClaudeTerminal({ sessionKey, shortId, live, visible, accent, onR
     if (!visible) return;
     const raf = requestAnimationFrame(() => {
       fitTerm(entry);
-      focus(sessionKey);
+      if (focused) focus(sessionKey);
     });
     return () => cancelAnimationFrame(raf);
-  }, [visible, entry, sessionKey]);
+  }, [visible, focused, entry, sessionKey]);
 
   useEffect(() => {
     if (!shortId || !live) return;

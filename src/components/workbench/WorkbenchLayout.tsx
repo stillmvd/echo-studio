@@ -15,7 +15,7 @@ import { useStartSession } from './useStartSession';
 import { LayoutPicker, Wall } from './Wall';
 
 export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
-  const { data: tree, error } = useWorkbenchProjects();
+  const { data: tree, error, dataUpdatedAt } = useWorkbenchProjects();
   const sessions = useClaudeSessions(!hidden);
   const devServers = useDevServers();
   const view = useWorkbenchStore((s) => s.view);
@@ -26,8 +26,9 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   const projects = useMemo(() => (tree ? all(tree) : []), [tree]);
   const byPath = useMemo(() => new Map(projects.map((p) => [p.path, p])), [projects]);
   useEffect(() => {
-    if (tree) pruneMissing(tabs, (path) => projects.some((p) => samePath(p.path, path)));
-  }, [tree, projects, tabs]);
+    if (tree)
+      pruneMissing(dataUpdatedAt, tabs, (path) => projects.some((p) => samePath(p.path, path)));
+  }, [tree, dataUpdatedAt, projects, tabs]);
   const selected =
     view.kind === 'project' ? projects.find((p) => samePath(p.path, view.path)) : undefined;
   const layout = useWorkbenchStore((s) => s.layout);
@@ -73,7 +74,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
               projects={byPath}
               busy={busy}
               devServers={devServers}
-              onStart={(path, resume) => void start(path, resume)}
+              onStart={start}
             />
           )}
           {opened.map((p) => {
@@ -99,7 +100,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
                     server={devServers.find((d) => samePath(d.projectPath, p.path))}
                     visible={!hidden && isSelected}
                     busy={busy}
-                    onStart={(resume) => void start(p.path, resume)}
+                    onStart={(resume) => start(p.path, resume)}
                   />
                 </div>
               </div>

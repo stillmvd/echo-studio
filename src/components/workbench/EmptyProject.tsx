@@ -36,14 +36,15 @@ const title = (s: SessionMeta) =>
 interface Props {
   project: WorkbenchProject;
   server: DevServer | undefined;
+  visible: boolean;
   busy: boolean;
   onStart: (resumeSessionId?: string) => void;
 }
 
-export function EmptyProject({ project, server, busy, onStart }: Props) {
+export function EmptyProject({ project, server, visible, busy, onStart }: Props) {
   const { data: convProjects } = useConversationProjects();
   const convId = convProjects?.find((p) => samePath(p.cwd, project.path))?.id ?? null;
-  const { data } = useConversationSessions(convId);
+  const { data } = useConversationSessions(visible ? convId : null);
   const sessions = useMemo(
     () =>
       [...(data ?? [])].sort((a, b) => (b.lastEventAt ?? '').localeCompare(a.lastEventAt ?? '')),

@@ -14,7 +14,7 @@ export function useStartSession() {
   const [busy, setBusy] = useState(false);
 
   const start = useCallback(
-    async (projectPath: string, resumeSessionId?: string) => {
+    async (projectPath: string, resumeSessionId?: string): Promise<string | null> => {
       setBusy(true);
       try {
         const r = await startClaudeSession(projectPath, resumeSessionId);
@@ -29,9 +29,11 @@ export function useStartSession() {
         }
         select({ kind: 'project', path: projectPath });
         void qc.invalidateQueries({ queryKey: ['workbench', 'sessions'] });
+        return r.sessionId;
       } catch (e) {
         if (String(e) === 'untrusted') setUntrusted(projectPath);
         else setNotice({ title: 'Сессия не запустилась', text: String(e) });
+        return null;
       } finally {
         setBusy(false);
       }

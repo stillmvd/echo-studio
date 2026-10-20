@@ -64,10 +64,19 @@ function setState(entry: Entry, state: TermState, error: string | null = null) {
 
 const earlyExits = new Set<string>();
 const detached = new Set<string>();
+const ID_MEMORY = 64;
+
+function remember(set: Set<string>, id: string) {
+  set.add(id);
+  for (const old of set) {
+    if (set.size <= ID_MEMORY) break;
+    set.delete(old);
+  }
+}
 
 function detach(terminalId: string) {
   byTerminal.delete(terminalId);
-  detached.add(terminalId);
+  remember(detached, terminalId);
   void terminalDetach(terminalId).catch(() => {});
 }
 
@@ -75,7 +84,7 @@ void listen<{ terminalId: string; code: number }>('workbench://terminal-exit', (
   if (detached.delete(e.payload.terminalId)) return;
   const entry = byTerminal.get(e.payload.terminalId);
   if (!entry) {
-    earlyExits.add(e.payload.terminalId);
+    remember(earlyExits, e.payload.terminalId);
     return;
   }
   byTerminal.delete(e.payload.terminalId);
@@ -277,9 +286,24 @@ export function dispose(key: string) {
   entry.host.remove();
 }
 
-export function pruneMissing(tabs: Record<string, string[]>, exists: (path: string) => boolean) {
+const misses = new Map<string, number>();
+let lastScan = 0;
+
+export function pruneMissing(
+  scanAt: number,
+  tabs: Record<string, string[]>,
+  exists: (path: string) => boolean,
+) {
+  const fresh = scanAt !== lastScan;
+  lastScan = scanAt;
   for (const [path, keys] of Object.entries(tabs)) {
-    if (!exists(path)) for (const key of keys) dispose(key);
+    if (exists(path)) {
+      misses.delete(path);
+      continue;
+    }
+    const n = (misses.get(path) ?? 0) + (fresh ? 1 : 0);
+    misses.set(path, n);
+    if (n >= 2) for (const key of keys) dispose(key);
   }
 }
 
