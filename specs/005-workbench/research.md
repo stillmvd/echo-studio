@@ -149,6 +149,8 @@ dev-job и `chrome.exe` с `--user-data-dir` внутри `~/.cache/chrome-profi
    с живым claude-потомком → его сессия.
 3. Потомок живого `claude` → проект сессии, `guard: live-session`.
 4. Член dev-job Echo → проект job, `guard: running-dev` (важнее cwd: dev может сменить папку).
+4а. `claude.exe`, не подтверждённый хуком/`agents` (нет файла хука, `--bg` без файла), и его потомки → проект по
+   cwd этого claude, `guard: live-session`: мёртвым его не считаем, пока не доказано.
 5. «Инструмент сессии» (chrome-devtools-mcp, rea, другой `… mcp`, rust-analyzer, Chrome-профиль) без живого claude
    в предках: есть `Code.exe` в предках → проект по cwd (редактор, не висящий); иначе `orphan session-closed`, проект —
    по профилю из `.mcp.json` (для Chrome) или cwd себя/предка; `since` — последний `updatedAt` файла хука с тем же
@@ -158,6 +160,10 @@ dev-job и `chrome.exe` с `--user-data-dir` внутри `~/.cache/chrome-profi
 7. Одинаковые командная строка + cwd в одном проекте → старшие `orphan duplicate` (`of` — pid младшего), кроме
    процессов живой сессии и dev-job; потомки дубля — тоже дубль.
 8. Иначе `orphan no-project`.
+
+Сам Echo, его потомки (WebView2) и предки до первого `claude.exe` в снимок не попадают — их не показать и не
+завершить. `kill_processes` принимает `{ pid, startTime }`: время старта сверяется со свежим снимком (pid могли
+переиспользовать, пока открыт диалог). «Завершить все» у «Без проекта» — через `ConfirmDialog` со списком.
 
 Сессия вне проектов (cwd = корень `Projects`) — `session` без `projectPath`, это не висящий. Промежуточные
 `cmd`/`conhost`/`bash`/`sh` не показываются, но классифицируются — нужны для дерева при завершении. На снимке

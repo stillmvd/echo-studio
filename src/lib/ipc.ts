@@ -7,6 +7,7 @@ import type {
   DuplicatePair,
   GitState,
   KillResult,
+  KillTarget,
   MemoryHit,
   MemoryListing,
   MemoryProject,
@@ -180,8 +181,11 @@ export async function listProcesses(): Promise<ProcessRow[]> {
   return invoke<ProcessRow[]>('list_processes');
 }
 
-export async function killProcesses(pids: number[], confirmed: boolean): Promise<KillResult> {
-  return invoke<KillResult>('kill_processes', { pids, confirmed });
+export async function killProcesses(
+  targets: KillTarget[],
+  confirmed: boolean,
+): Promise<KillResult> {
+  return invoke<KillResult>('kill_processes', { targets, confirmed });
 }
 
 export type RawClaudeSession = Omit<ClaudeSession, 'projectPath'>;

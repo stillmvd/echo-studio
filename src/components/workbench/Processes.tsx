@@ -11,6 +11,11 @@ const GUARD_TITLE = {
   'running-dev': 'Остановить работающий dev-сервер?',
 } as const;
 
+interface Pending {
+  rows: ProcessRow[];
+  confirmed: boolean;
+}
+
 function failures(result: KillResult): string | null {
   return result.failed.length ? `не завершено: ${result.failed.length}` : null;
 }
@@ -42,21 +47,27 @@ export function Processes({
   projects: Map<string, WorkbenchProject>;
 }) {
   const kill = useKillProcesses();
-  const [pending, setPending] = useState<ProcessRow | null>(null);
+  const [pending, setPending] = useState<Pending | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const { stray, groups } = groupProcesses(rows);
   const strayMemory = stray.reduce((s, r) => s + r.memory, 0);
-  const killable = stray.filter((r) => !r.guard).map((r) => r.pid);
+  const killable = stray.filter((r) => !r.guard);
 
-  const run = async (pids: number[], confirmed: boolean) => {
-    const result = await kill.mutateAsync({ pids, confirmed });
+  const run = async (list: ProcessRow[], confirmed: boolean) => {
+    const targets = list.map((r) => ({ pid: r.pid, startTime: r.startTime }));
+    const result = await kill.mutateAsync({ targets, confirmed });
     setNote(failures(result));
   };
 
   const onKill = (row: ProcessRow) => {
-    if (row.guard) setPending(row);
-    else void run([row.pid], false).catch((e) => setNote(String(e)));
+    if (row.guard) setPending({ rows: [row], confirmed: true });
+    else void run([row], false).catch((e) => setNote(String(e)));
   };
+
+  const single = pending?.rows.length === 1 ? pending.rows[0] : undefined;
+  const title = single?.guard
+    ? GUARD_TITLE[single.guard]
+    : `Завершить висящие процессы: ${pending?.rows.length ?? 0}?`;
 
   return (
     <>
@@ -75,7 +86,7 @@ export function Processes({
                 type="button"
                 className="wb-btn sm"
                 disabled={kill.isPending}
-                onClick={() => void run(killable, false).catch((e) => setNote(String(e)))}
+                onClick={() => setPending({ rows: killable, confirmed: false })}
               >
                 <Power />
                 Завершить все
@@ -106,18 +117,30 @@ export function Processes({
       <ConfirmDialog
         open={!!pending}
         danger
-        title={pending?.guard ? GUARD_TITLE[pending.guard] : ''}
-        description={pending ? `${pending.name} · ${describe(pending)}` : undefined}
+        title={title}
+        description={single ? `${single.name} · ${describe(single)}` : undefined}
         confirmLabel="Завершить"
         cancelLabel="Отмена"
         busy={kill.isPending}
         onConfirm={async () => {
           if (!pending) return;
-          await run([pending.pid], true);
+          await run(pending.rows, pending.confirmed);
           setPending(null);
         }}
         onCancel={() => setPending(null)}
-      />
+      >
+        {pending && !single && (
+          <ul className="wb-klist">
+            {pending.rows.map((r) => (
+              <li key={r.pid}>
+                <b>{r.name}</b>
+                <span className="wb-dim">{describe(r)}</span>
+                <span className="wb-mb">{mb(r.memory)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ConfirmDialog>
     </>
   );
 }

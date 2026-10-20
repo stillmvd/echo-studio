@@ -115,6 +115,13 @@ pub fn by_project(
     out
 }
 
+fn slug_of(transcript: &Path) -> Option<String> {
+    transcript
+        .parent()?
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+}
+
 fn transcripts(base: &Path, cutoff: SystemTime) -> Vec<(PathBuf, Stamp)> {
     let Ok(dirs) = std::fs::read_dir(base) else {
         return Vec::new();
@@ -149,7 +156,10 @@ pub fn read_usage(tree: &ProjectTree) -> HashMap<String, Usage> {
             continue;
         }
         let Ok(file) = File::open(path) else { continue };
-        let usage = scan_lines(jsonl_lines(BufReader::new(file)));
+        let mut usage = scan_lines(jsonl_lines(BufReader::new(file)));
+        if usage.cwd.is_none() {
+            usage.cwd = slug_of(path);
+        }
         cache.insert(path.clone(), (*stamp, usage));
     }
     let raw = aggregate(cache.values().map(|(_, f)| f), &since, &today);
@@ -170,6 +180,12 @@ mod tests {
 not json
 {"type":"assistant","timestamp":"2026-10-19T09:00:00.000Z","message":{"id":"m2","usage":{"input_tokens":1,"output_tokens":2}}}
 {"type":"assistant","timestamp":"2026-10-01T09:00:00.000Z","message":{"id":"m3","usage":{"input_tokens":1000}}}"#;
+
+    #[test]
+    fn transcript_without_cwd_falls_back_to_its_slug() {
+        let path = Path::new(r"C:\Users\me\.claude\projects\C--Users-me-Projects\s.jsonl");
+        assert_eq!(slug_of(path).as_deref(), Some("C--Users-me-Projects"));
+    }
 
     #[test]
     fn scan_dedups_by_message_id_and_skips_cache_reads() {

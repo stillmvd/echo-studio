@@ -14,6 +14,7 @@ import type { ProcessRow, Usage } from './types';
 
 const row = (over: Partial<ProcessRow>): ProcessRow => ({
   pid: 1,
+  startTime: 0,
   name: 'node.exe',
   memory: 0,
   commandLine: 'node app.js',

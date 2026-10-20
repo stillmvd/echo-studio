@@ -146,6 +146,7 @@ pub struct Class {
 #[serde(rename_all = "camelCase")]
 pub struct ProcessRow {
     pub pid: u32,
+    pub start_time: u64,
     pub name: String,
     pub memory: u64,
     pub command_line: String,
@@ -153,6 +154,13 @@ pub struct ProcessRow {
     pub session: Option<String>,
     pub orphan: Option<Orphan>,
     pub guard: Option<Guard>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct KillTarget {
+    pub pid: u32,
+    pub start_time: u64,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -335,6 +343,16 @@ impl<'a> Classifier<'a> {
         }
     }
 
+    fn is_unverified_claude(&self, pid: u32) -> bool {
+        let Some((p, _)) = self.procs.get(&pid) else {
+            return false;
+        };
+        lower_name(p) == "claude.exe"
+            && !is_daemon(cmd_of(p))
+            && !self.live.contains_key(&pid)
+            && self.live_child(pid).is_none()
+    }
+
     fn visible(&self, p: &Proc) -> bool {
         let name = lower_name(p);
         if name == "chrome.exe" {
@@ -380,6 +398,20 @@ impl<'a> Classifier<'a> {
                 project_path: Some((*project).to_owned()),
                 guard: Some(Guard::RunningDev),
                 rule: "dev-job",
+                ..Class::default()
+            }
+        } else if self.is_unverified_claude(pid) {
+            Class {
+                project_path: self.project_of(p.cwd.as_deref()),
+                guard: Some(Guard::LiveSession),
+                rule: "claude-unverified",
+                ..Class::default()
+            }
+        } else if let Some(a) = anc.iter().find(|a| self.is_unverified_claude(**a)) {
+            Class {
+                project_path: self.project_of(self.procs[a].0.cwd.as_deref()),
+                guard: Some(Guard::LiveSession),
+                rule: "descendant-of-unverified-claude",
                 ..Class::default()
             }
         } else if is_session_tool(p) {
@@ -625,6 +657,7 @@ pub fn rows(snap: &Snapshot, classes: &HashMap<u32, Class>) -> Vec<ProcessRow> {
             let c = classes.get(&p.pid).filter(|c| c.visible)?;
             Some(ProcessRow {
                 pid: p.pid,
+                start_time: p.start_time,
                 name: p.name.clone(),
                 memory: p.memory,
                 command_line: short(cmd_of(p)),
@@ -708,12 +741,35 @@ pub fn read_hook_sessions() -> Vec<HookSession> {
         .unwrap_or_default()
 }
 
+fn own_tree(all: &HashMap<u32, Proc>, me: u32) -> HashSet<u32> {
+    let mut out = HashSet::from([me]);
+    let mut cur = all.get(&me).map(|p| p.ppid);
+    while let Some(pid) = cur {
+        match all.get(&pid) {
+            Some(p) if lower_name(p) != "claude.exe" && out.insert(pid) => cur = Some(p.ppid),
+            _ => break,
+        }
+    }
+    let mut stack = vec![me];
+    while let Some(parent) = stack.pop() {
+        for p in all.values().filter(|p| p.ppid == parent && p.pid != parent) {
+            if out.insert(p.pid) {
+                stack.push(p.pid);
+            }
+        }
+    }
+    out
+}
+
 fn take(sys: &System, agents: Vec<AgentRef>, dev_jobs: Vec<DevJob>, root: &str) -> Snapshot {
-    let all: HashMap<u32, Proc> = sys
+    let mut all: HashMap<u32, Proc> = sys
         .processes()
         .iter()
         .map(|(pid, p)| (pid.as_u32(), proc_of(*pid, p)))
         .collect();
+    for pid in own_tree(&all, std::process::id()) {
+        all.remove(&pid);
+    }
     let root = root.to_lowercase();
     let job_pids: HashSet<u32> = dev_jobs
         .iter()
@@ -823,7 +879,7 @@ fn descendants(sys: &System, pid: u32) -> Vec<u32> {
 }
 
 pub fn kill_processes(
-    pids: &[u32],
+    targets: &[KillTarget],
     confirmed: bool,
     tree: &ProjectTree,
     agents: Vec<AgentRef>,
@@ -836,7 +892,9 @@ pub fn kill_processes(
     let classes = classify(&snap, &project_refs(tree), &root);
     let procs: HashMap<u32, &Proc> = snap.processes.iter().map(|p| (p.pid, p)).collect();
     let mut result = KillResult::default();
-    for pid in pids {
+    let mut seen = HashSet::new();
+    for target in targets.iter().filter(|t| seen.insert(t.pid)) {
+        let pid = &target.pid;
         let fail = |error: &str| KillFailure {
             pid: *pid,
             error: error.to_owned(),
@@ -847,23 +905,29 @@ pub fn kill_processes(
                 .push(fail("process is not in the current list"));
             continue;
         };
+        if procs.get(pid).map(|p| p.start_time) != Some(target.start_time) {
+            result
+                .failed
+                .push(fail("process changed, refresh the list"));
+            continue;
+        }
         if class.guard.is_some() && !confirmed {
             result.failed.push(fail("confirmation required"));
             continue;
         }
         let whole_tree =
             class.rule == "dev-job" || procs.get(pid).is_some_and(|p| is_profile_chrome(p));
-        let mut targets = if whole_tree {
+        let mut victims = if whole_tree {
             descendants(&sys, *pid)
         } else {
             Vec::new()
         };
-        targets.reverse();
-        targets.push(*pid);
+        victims.reverse();
+        victims.push(*pid);
         let mut root_killed = false;
-        for target in targets {
-            let ok = sys.process(Pid::from_u32(target)).is_some_and(|p| p.kill());
-            if target == *pid {
+        for victim in victims {
+            let ok = sys.process(Pid::from_u32(victim)).is_some_and(|p| p.kill());
+            if victim == *pid {
                 root_killed = ok;
             }
         }
@@ -936,6 +1000,63 @@ mod tests {
         let first_project = rows.iter().position(|r| r.orphan.is_none()).unwrap();
         assert!(rows[..first_project].iter().all(|r| r.orphan.is_some()));
         assert!(rows[first_project..].iter().all(|r| r.orphan.is_none()));
+    }
+
+    fn proc(pid: u32, ppid: u32, name: &str, cmd: &str, cwd: &str) -> Proc {
+        Proc {
+            pid,
+            ppid,
+            name: name.into(),
+            cmd: Some(cmd.into()),
+            cwd: Some(cwd.into()),
+            start_time: pid as u64,
+            ..Proc::default()
+        }
+    }
+
+    #[test]
+    fn claude_without_hook_file_guards_itself_and_its_tools() {
+        let snap = Snapshot {
+            processes: vec![
+                proc(10, 1, "claude.exe", "claude.exe", r"C:\P\AM"),
+                proc(
+                    11,
+                    10,
+                    "node.exe",
+                    "node chrome-devtools-mcp.js",
+                    r"C:\P\AM",
+                ),
+                proc(12, 10, "rust-analyzer.exe", "rust-analyzer.exe", r"C:\P\AM"),
+            ],
+            ..Snapshot::default()
+        };
+        let projects = [ProjectRef {
+            path: r"C:\P\AM".into(),
+            profile: None,
+        }];
+        let classes = classify(&snap, &projects, r"C:\P");
+        for pid in [10, 11, 12] {
+            let c = &classes[&pid];
+            assert_eq!(c.guard, Some(Guard::LiveSession), "{pid}: {c:?}");
+            assert_eq!(c.orphan, None, "{pid}: {c:?}");
+            assert_eq!(c.project_path.as_deref(), Some(r"C:\P\AM"));
+        }
+    }
+
+    #[test]
+    fn own_tree_excludes_self_children_and_ancestors_up_to_claude() {
+        let all: HashMap<u32, Proc> = [
+            proc(1, 0, "claude.exe", "claude.exe", ""),
+            proc(2, 1, "node.exe", "pnpm tauri dev", ""),
+            proc(3, 2, "echo-studio.exe", "echo-studio.exe", ""),
+            proc(4, 3, "msedgewebview2.exe", "msedgewebview2.exe", ""),
+            proc(5, 1, "node.exe", "mcp", ""),
+        ]
+        .into_iter()
+        .map(|p| (p.pid, p))
+        .collect();
+        let own = own_tree(&all, 3);
+        assert_eq!(own, HashSet::from([2, 3, 4]));
     }
 
     #[test]

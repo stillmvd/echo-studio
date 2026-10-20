@@ -1,9 +1,15 @@
 use std::collections::HashMap;
+use std::io::Read;
 use std::path::Path;
+use std::process::Stdio;
+use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
 const PARALLEL: usize = 4;
+const TIMEOUT: Duration = Duration::from_secs(10);
+const POLL: Duration = Duration::from_millis(25);
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -49,25 +55,55 @@ pub fn parse_status(out: &str) -> GitStatus {
     }
 }
 
+fn read_all(mut pipe: impl Read + Send + 'static) -> JoinHandle<Vec<u8>> {
+    std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        let _ = pipe.read_to_end(&mut buf);
+        buf
+    })
+}
+
+fn status_output(path: &Path) -> Result<Vec<u8>, String> {
+    let mut child = super::child_command("git")
+        .args(["--no-optional-locks", "-C"])
+        .arg(path)
+        .args(["status", "--porcelain=v1", "-b"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    let stdout = child.stdout.take().map(read_all);
+    let stderr = child.stderr.take().map(read_all);
+    let started = Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
+            break status;
+        }
+        if started.elapsed() > TIMEOUT {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err("git status timed out".into());
+        }
+        std::thread::sleep(POLL);
+    };
+    let collect =
+        |h: Option<JoinHandle<Vec<u8>>>| h.and_then(|h| h.join().ok()).unwrap_or_default();
+    let (out, err) = (collect(stdout), collect(stderr));
+    if status.success() {
+        Ok(out)
+    } else {
+        Err(String::from_utf8_lossy(&err).trim().to_owned())
+    }
+}
+
 pub fn git_state(path: &Path) -> Option<GitState> {
     if !path.join(".git").exists() {
         return None;
     }
-    let out = super::child_command("git")
-        .arg("-C")
-        .arg(path)
-        .args(["status", "--porcelain=v1", "-b"])
-        .output();
-    Some(match out {
-        Ok(o) if o.status.success() => {
-            GitState::Status(parse_status(&String::from_utf8_lossy(&o.stdout)))
-        }
-        Ok(o) => GitState::Error {
-            error: String::from_utf8_lossy(&o.stderr).trim().to_owned(),
-        },
-        Err(e) => GitState::Error {
-            error: e.to_string(),
-        },
+    Some(match status_output(path) {
+        Ok(out) => GitState::Status(parse_status(&String::from_utf8_lossy(&out))),
+        Err(error) => GitState::Error { error },
     })
 }
 
@@ -77,16 +113,26 @@ pub fn git_states(paths: &[String]) -> HashMap<String, Option<GitState>> {
         let handles: Vec<_> = paths
             .chunks(chunk)
             .map(|part| {
-                s.spawn(move || {
+                let handle = s.spawn(move || {
                     part.iter()
                         .map(|p| (p.clone(), git_state(Path::new(p))))
                         .collect::<Vec<_>>()
-                })
+                });
+                (part, handle)
             })
             .collect();
         handles
             .into_iter()
-            .flat_map(|h| h.join().unwrap_or_default())
+            .flat_map(|(part, h)| {
+                h.join().unwrap_or_else(|_| {
+                    part.iter()
+                        .map(|p| {
+                            let error = "git status failed".to_owned();
+                            (p.clone(), Some(GitState::Error { error }))
+                        })
+                        .collect()
+                })
+            })
             .collect()
     })
 }

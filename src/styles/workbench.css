@@ -211,3 +211,6 @@
 .wb-btn.sm { height: 28px; padding: 0 12px; gap: 6px; font-size: 12px; }
 .wb-btn.sm svg { width: 14px; height: 14px; }
 .wb-pnote { display: block; padding: 4px 0; color: var(--danger); font-size: 12.5px; }
+.wb-klist { display: flex; flex-direction: column; max-height: 240px; overflow-y: auto; font-size: 12.5px; }
+.wb-klist li { display: grid; grid-template-columns: 128px minmax(0, 1fr) 64px; gap: 10px; align-items: center; height: 28px; }
+.wb-klist b { font-family: var(--font-mono); font-size: 12px; font-weight: 500; }

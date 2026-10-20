@@ -60,13 +60,13 @@ fn live_agents() -> Vec<processes::AgentRef> {
 
 #[tauri::command]
 pub async fn kill_processes(
-    pids: Vec<u32>,
+    targets: Vec<processes::KillTarget>,
     confirmed: bool,
 ) -> Result<processes::KillResult, String> {
     let root = projects_root().ok_or("cannot resolve Projects root")?;
     blocking(move || {
         processes::kill_processes(
-            &pids,
+            &targets,
             confirmed,
             &projects::scan(&root),
             live_agents(),

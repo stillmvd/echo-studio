@@ -324,6 +324,7 @@ export type ProcessGuard = 'live-session' | 'running-dev';
 
 export interface ProcessRow {
   pid: number;
+  startTime: number;
   name: string;
   memory: number;
   commandLine: string;
@@ -331,6 +332,11 @@ export interface ProcessRow {
   session: string | null;
   orphan: Orphan | null;
   guard: ProcessGuard | null;
+}
+
+export interface KillTarget {
+  pid: number;
+  startTime: number;
 }
 
 export interface KillResult {
