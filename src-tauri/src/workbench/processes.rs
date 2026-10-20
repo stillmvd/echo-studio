@@ -775,7 +775,11 @@ fn all_but_own(sys: &System) -> HashMap<u32, Proc> {
 }
 
 pub fn table() -> HashMap<u32, Proc> {
-    all_but_own(&system())
+    system()
+        .processes()
+        .iter()
+        .map(|(pid, p)| (pid.as_u32(), proc_of(*pid, p)))
+        .collect()
 }
 
 fn take(sys: &System, agents: Vec<AgentRef>, dev_jobs: Vec<DevJob>, root: &str) -> Snapshot {

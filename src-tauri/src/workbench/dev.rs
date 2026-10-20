@@ -27,7 +27,6 @@ use windows_sys::Win32::System::Threading::{
 };
 
 use super::processes::{self, Proc};
-use super::projects::is_within;
 
 pub const EVENT_DEV: &str = "workbench://dev";
 const JOB_OBJECT_QUERY: u32 = 0x0004;
@@ -53,7 +52,7 @@ struct DevFile {
     pid: u32,
     started_at: u64,
     #[serde(default)]
-    seen_pids: Vec<u32>,
+    seen: Vec<(u32, u64)>,
     #[serde(default)]
     exit_code: Option<i32>,
     #[serde(default)]
@@ -93,6 +92,7 @@ static RUNTIME: LazyLock<Mutex<HashMap<String, Runtime>>> =
 static TAILS: LazyLock<Mutex<HashMap<u32, Arc<AtomicBool>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 static NEXT_TAIL: AtomicU32 = AtomicU32::new(1);
+static FILES: Mutex<()> = Mutex::new(());
 
 pub fn state_dir() -> Option<PathBuf> {
     dirs::data_local_dir().map(|d| {
@@ -300,16 +300,29 @@ fn write_file(dir: &Path, slug: &str, file: &DevFile) -> Result<(), String> {
     fs::rename(&tmp, dir.join(format!("{slug}.json"))).map_err(|e| e.to_string())
 }
 
-fn server(dir: &Path, slug: &str, mut file: DevFile, table: &[(u32, u16)], now: u64) -> DevServer {
+fn update_file(dir: &Path, slug: &str, change: impl FnOnce(&mut DevFile)) -> Result<(), String> {
+    let _lock = FILES.lock().unwrap_or_else(|e| e.into_inner());
+    let mut file = read_file(dir, slug).ok_or("dev server was never started")?;
+    change(&mut file);
+    write_file(dir, slug, &file)
+}
+
+fn server(dir: &Path, slug: &str, file: DevFile, table: &[(u32, u16)], now: u64) -> DevServer {
     let pids = Job::open(slug).map(|j| j.pids()).unwrap_or_default();
     let fresh: Vec<u32> = pids
         .iter()
         .copied()
-        .filter(|p| !file.seen_pids.contains(p))
+        .filter(|p| !file.seen.iter().any(|(s, _)| s == p))
         .collect();
-    if !fresh.is_empty() && file.seen_pids.len() < SEEN_MAX {
-        file.seen_pids.extend(fresh);
-        let _ = write_file(dir, slug, &file);
+    if !fresh.is_empty() && file.seen.len() < SEEN_MAX {
+        let found = start_times(&fresh);
+        let _ = update_file(dir, slug, |f| {
+            for pair in found {
+                if !f.seen.contains(&pair) {
+                    f.seen.push(pair);
+                }
+            }
+        });
     }
     let ports = ports_for(&pids, table);
     let exit_code = file.exit_code;
@@ -415,7 +428,7 @@ pub fn start_in(
         command: line,
         pid: child.id(),
         started_at: now_ms(),
-        seen_pids: vec![child.id()],
+        seen: start_times(&[child.id()]),
         exit_code: None,
         stopped: false,
     };
@@ -432,10 +445,7 @@ pub fn start_in(
         let code = child.wait().ok().and_then(|s| s.code());
         let stopping = runtime().entry(watched.clone()).or_default().stopping;
         if !stopping {
-            if let Some(mut file) = read_file(&state, &watched) {
-                file.exit_code = code;
-                let _ = write_file(&state, &watched, &file);
-            }
+            let _ = update_file(&state, &watched, |f| f.exit_code = code);
         }
         on_exit();
     });
@@ -454,40 +464,51 @@ pub fn start(
 }
 
 fn chain<'a>(table: &'a HashMap<u32, Proc>, pid: u32) -> impl Iterator<Item = &'a Proc> + 'a {
-    let mut seen = HashSet::new();
-    let mut cur = table.get(&pid).map(|p| p.ppid);
+    let mut visited = HashSet::new();
+    let mut cur = table.get(&pid);
     std::iter::from_fn(move || {
-        let p = table.get(&cur?)?;
-        if !seen.insert(p.pid) {
+        let child = cur?;
+        let p = table
+            .get(&child.ppid)
+            .filter(|p| p.start_time <= child.start_time)?;
+        if !visited.insert(p.pid) {
             return None;
         }
-        cur = Some(p.ppid);
+        cur = Some(p);
         Some(p)
     })
 }
 
 pub fn leftovers(
     table: &HashMap<u32, Proc>,
-    project_path: &str,
     started_at: u64,
-    job_pids: &HashSet<u32>,
+    seen: &HashSet<(u32, u64)>,
 ) -> Vec<(u32, u64)> {
     let since = started_at.saturating_sub(SWEEP_SLACK_MS);
     let is_claude = |p: &Proc| p.name.eq_ignore_ascii_case("claude.exe");
+    let is_seen = |p: &Proc| seen.contains(&(p.pid, p.start_time));
     table
         .values()
         .filter(|p| p.start_time >= since && !is_claude(p))
-        .filter(|p| !chain(table, p.pid).any(is_claude))
         .filter(|p| {
-            let was_in_job = job_pids.contains(&p.pid);
-            let under_job = chain(table, p.pid)
-                .take_while(|a| a.start_time >= since)
-                .any(|a| job_pids.contains(&a.pid));
-            let orphan_here = !table.contains_key(&p.ppid)
-                && p.cwd.as_deref().is_some_and(|c| is_within(c, project_path));
-            was_in_job || under_job || orphan_here
+            is_seen(p)
+                || chain(table, p.pid)
+                    .find(|a| is_claude(a) || is_seen(a))
+                    .is_some_and(is_seen)
         })
         .map(|p| (p.pid, p.start_time))
+        .collect()
+}
+
+fn start_times(pids: &[u32]) -> Vec<(u32, u64)> {
+    let mut sys = sysinfo::System::new();
+    let list: Vec<sysinfo::Pid> = pids.iter().map(|p| sysinfo::Pid::from_u32(*p)).collect();
+    sys.refresh_processes(sysinfo::ProcessesToUpdate::Some(&list), true);
+    pids.iter()
+        .filter_map(|pid| {
+            sys.process(sysinfo::Pid::from_u32(*pid))
+                .map(|p| (*pid, p.start_time() * 1000))
+        })
         .collect()
 }
 
@@ -512,30 +533,29 @@ fn kill_exact(targets: &[(u32, u64)]) {
 
 pub fn stop_in(dir: &Path, project_path: &str) -> Result<(), String> {
     let slug = slug(project_path);
-    let mut file = read_file(dir, &slug).ok_or("dev server was never started")?;
+    let file = read_file(dir, &slug).ok_or("dev server was never started")?;
     runtime().entry(slug.clone()).or_default().stopping = true;
     let job = Job::open(&slug);
     let live = job.as_ref().map(Job::pids).unwrap_or_default();
     if let Some(job) = job.filter(|_| !live.is_empty()) {
+        let table = processes::table();
+        let mut seen: HashSet<(u32, u64)> = file.seen.iter().copied().collect();
+        seen.extend(
+            live.iter()
+                .filter_map(|pid| table.get(pid).map(|p| (p.pid, p.start_time))),
+        );
         if !job.terminate() {
             return Err(format!(
                 "TerminateJobObject: {}",
                 std::io::Error::last_os_error()
             ));
         }
-        let mut in_job: HashSet<u32> = file.seen_pids.iter().copied().collect();
-        in_job.extend(live);
-        let table = processes::table();
-        kill_exact(&leftovers(
-            &table,
-            &file.project_path,
-            file.started_at,
-            &in_job,
-        ));
+        kill_exact(&leftovers(&table, file.started_at, &seen));
     }
-    file.stopped = true;
-    file.exit_code = None;
-    write_file(dir, &slug, &file)
+    update_file(dir, &slug, |f| {
+        f.stopped = true;
+        f.exit_code = None;
+    })
 }
 
 pub fn stop(project_path: &str) -> Result<(), String> {
@@ -764,7 +784,12 @@ mod tests {
         )
         .unwrap();
         rx.recv_timeout(Duration::from_secs(10)).unwrap();
-        let listed = list_in(&dir);
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        let mut listed = list_in(&dir);
+        while !listed[0].pids.is_empty() && std::time::Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(50));
+            listed = list_in(&dir);
+        }
         assert_eq!(listed[0].state, DevState::Error);
         assert_eq!(listed[0].exit_code, Some(3));
         let _ = fs::remove_dir_all(&base);
@@ -781,30 +806,61 @@ mod tests {
         }
     }
 
-    #[test]
-    fn leftovers_take_job_tree_and_orphans_in_the_project_only() {
-        let project = r"C:\P\Breeze";
-        let table: HashMap<u32, Proc> = [
-            p(10, 1, "terminal.exe", r"C:\Users\me", 1),
-            p(101, 100, "node.exe", project, 5_000),
-            p(102, 101, "esbuild.exe", r"C:\Temp", 5_100),
-            p(201, 900, "node.exe", r"C:\P\Breeze-main", 6_000),
-            p(202, 10, "cargo.exe", project, 7_000),
-            p(203, 900, "node.exe", r"C:\P\Breeze\apps\web", 4_500),
-            p(204, 900, "node.exe", project, 1_000),
-            p(205, 900, "claude.exe", project, 8_000),
-            p(206, 205, "node.exe", project, 8_100),
-        ]
-        .into_iter()
-        .map(|p| (p.pid, p))
-        .collect();
-        let job = HashSet::from([100, 101]);
-        let mut got: Vec<u32> = leftovers(&table, project, 5_000, &job)
+    const PROJECT: &str = r"C:\P\Breeze";
+
+    fn swept(procs: Vec<Proc>, seen: &[(u32, u64)]) -> Vec<u32> {
+        let table: HashMap<u32, Proc> = procs.into_iter().map(|p| (p.pid, p)).collect();
+        let seen: HashSet<(u32, u64)> = seen.iter().copied().collect();
+        let mut got: Vec<u32> = leftovers(&table, 5_000, &seen)
             .into_iter()
             .map(|(pid, _)| pid)
             .collect();
         got.sort_unstable();
-        assert_eq!(got, vec![101, 102, 203]);
+        got
+    }
+
+    #[test]
+    fn leftovers_skip_a_reused_seen_pid() {
+        let procs = vec![
+            p(100, 1, "chrome.exe", r"C:\Users\me", 9_000),
+            p(101, 100, "chrome.exe", r"C:\Users\me", 9_100),
+            p(300, 100, "node.exe", PROJECT, 5_000),
+        ];
+        assert!(swept(procs, &[(100, 5_000)]).is_empty());
+    }
+
+    #[test]
+    fn leftovers_leave_orphans_in_the_project_alone() {
+        let procs = vec![
+            p(201, 900, "node.exe", PROJECT, 6_000),
+            p(202, 201, "esbuild.exe", PROJECT, 6_100),
+            p(203, 10, "cargo.exe", PROJECT, 7_000),
+        ];
+        assert!(swept(procs, &[(100, 5_000)]).is_empty());
+    }
+
+    #[test]
+    fn leftovers_follow_the_snapshot_chain_out_of_the_job() {
+        let procs = vec![
+            p(5, 1, "claude.exe", r"C:\Users\me", 1),
+            p(6, 5, "echo-studio.exe", r"C:\Users\me", 2),
+            p(100, 6, "cmd.exe", PROJECT, 5_000),
+            p(101, 100, "node.exe", PROJECT, 5_100),
+            p(102, 101, "esbuild.exe", r"C:\Temp", 5_200),
+            p(103, 102, "node.exe", PROJECT, 5_300),
+            p(104, 101, "claude.exe", PROJECT, 8_000),
+            p(105, 104, "node.exe", PROJECT, 8_100),
+        ];
+        assert_eq!(swept(procs, &[(100, 5_000)]), vec![100, 101, 102, 103]);
+    }
+
+    #[test]
+    fn old_state_file_without_start_times_still_reads() {
+        let file: DevFile = serde_json::from_str(
+            r#"{"projectPath":"C:\\P","command":"pnpm dev","pid":7,"startedAt":1,"seenPids":[7,8]}"#,
+        )
+        .unwrap();
+        assert!(file.seen.is_empty());
     }
 
     #[test]
