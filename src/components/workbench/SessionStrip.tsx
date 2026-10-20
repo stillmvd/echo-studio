@@ -1,14 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import { cn } from '@/lib/cn';
 import type { ClaudeSession, WorkbenchProject } from '@/lib/types';
-import {
-  arrangeCells,
-  byUrgency,
-  CELL_COUNT,
-  effectiveStatus,
-  STATUS_LABEL,
-  samePath,
-} from '@/lib/workbench';
+import { arrangeWall, byUrgency, CELL_COUNT, effectiveStatus, STATUS_LABEL } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { StatusIcon } from './StatusIcon';
 
@@ -34,6 +27,7 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
   const seen = useWorkbenchStore((s) => s.seen);
   const view = useWorkbenchStore((s) => s.view);
   const activeTab = useWorkbenchStore((s) => s.activeTab);
+  const tabs = useWorkbenchStore((s) => s.tabs);
   const layout = useWorkbenchStore((s) => s.layout);
   const cells = useWorkbenchStore((s) => s.cells);
   const focusCell = useWorkbenchStore((s) => s.focusCell);
@@ -60,13 +54,15 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
     return () => ro.disconnect();
   }, []);
 
-  const shown = cells.slice(0, CELL_COUNT[layout]);
-  const inGrid = (s: ClaudeSession) =>
-    !wall ||
-    shown.some((c) => c.projectPath && s.projectPath && samePath(c.projectPath, s.projectPath));
-  const pending = wall
-    ? arrangeCells(shown, sessions, Date.now(), focusCell, seen).pendingCount
-    : 0;
+  const plan = wall
+    ? arrangeWall(cells, CELL_COUNT[layout], sessions, Date.now(), focusCell, seen, {
+        tabsOf: (path) => tabs[path] ?? [],
+        activeOf: (path) => activeTab[path],
+      })
+    : null;
+  const off = new Set(plan?.offGrid ?? []);
+  const inGrid = (s: ClaudeSession) => !off.has(s.sessionId);
+  const pending = plan?.pendingCount ?? 0;
   const sorted = byUrgency(sessions, seen);
   const ins = sorted.filter(inGrid);
   const outs = sorted.filter((s) => !inGrid(s));

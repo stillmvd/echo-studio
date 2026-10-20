@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn';
 import { listWorkbenchProjects } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import {
-  arrangeCells,
+  arrangeWall,
   assignTabs,
   CELL_COUNT,
   HANDS_ON_MS,
@@ -57,7 +57,7 @@ function showUrgent(moved: WallCell[], sessions: ClaudeSession[], seen: Record<s
     for (const c of moved) {
       if (!c.projectPath) continue;
       const path = c.projectPath;
-      const key = urgentTab(sessions, path, seen);
+      const key = c.activeTab ?? urgentTab(sessions, path, seen);
       if (!key) continue;
       const list = tabs[path] ?? [];
       tabs[path] = list.includes(key) ? list : [...list, key];
@@ -65,7 +65,7 @@ function showUrgent(moved: WallCell[], sessions: ClaudeSession[], seen: Record<s
       picked.set(c.id, key);
     }
     const cells = s.cells.map((c) =>
-      moved.some((m) => m.id === c.id) ? { ...c, activeTab: picked.get(c.id) } : c,
+      moved.some((m) => m.id === c.id) ? { ...c, activeTab: picked.get(c.id) ?? c.activeTab } : c,
     );
     return { tabs, activeTab, cells };
   });
@@ -123,9 +123,12 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
 
   useEffect(() => {
     void tick;
-    const r = arrangeCells(cells.slice(0, count), sessions, Date.now(), focusCell, seen);
-    if (r.moved.length > 0) {
-      setCells([...r.cells, ...cells.slice(count)]);
+    const r = arrangeWall(cells, count, sessions, Date.now(), focusCell, seen, {
+      tabsOf: (path) => tabs[path] ?? [],
+      activeOf: (path) => activeTab[path],
+    });
+    if (r.changed) {
+      setCells(r.cells);
       showUrgent(
         r.cells.filter((c) => r.moved.includes(c.id)),
         sessions,
@@ -135,7 +138,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
     if (r.pendingCount === 0 || hidden) return;
     const t = setTimeout(() => setTick((n) => n + 1), HANDS_ON_MS);
     return () => clearTimeout(t);
-  }, [cells, count, sessions, seen, focusCell, setCells, tick, hidden]);
+  }, [cells, count, sessions, seen, focusCell, setCells, tick, hidden, tabs, activeTab]);
 
   const shown = cells.slice(0, count);
   const keys = assignTabs(

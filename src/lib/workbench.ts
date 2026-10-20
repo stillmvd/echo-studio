@@ -241,6 +241,124 @@ export function arrangeCells<C extends WallCell>(
   };
 }
 
+export interface WallTabs {
+  tabsOf: (path: string) => string[];
+  activeOf: (path: string) => string | undefined;
+}
+
+function shownKeys(visible: WallCell[], tabs: WallTabs): (string | null)[] {
+  const extra = (path: string) =>
+    visible.flatMap((c) =>
+      c.activeTab && c.projectPath && samePath(c.projectPath, path) ? [c.activeTab] : [],
+    );
+  return assignTabs(visible, (path) => [...tabs.tabsOf(path), ...extra(path)], tabs.activeOf);
+}
+
+export function displayedSessions(
+  visible: WallCell[],
+  sessions: ClaudeSession[],
+  tabs: WallTabs,
+): Set<string> {
+  const keys = new Set(shownKeys(visible, tabs).filter((k): k is string => !!k));
+  const inGrid = (path: string) =>
+    visible.some((c) => c.projectPath !== null && samePath(c.projectPath, path));
+  return new Set(
+    sessions
+      .filter((s) =>
+        s.kind === 'shell' ? keys.has(s.sessionId) : !!s.projectPath && inGrid(s.projectPath),
+      )
+      .map((s) => s.sessionId),
+  );
+}
+
+export interface WallArrangement {
+  cells: WallCell[];
+  moved: string[];
+  changed: boolean;
+  offGrid: string[];
+  pendingCount: number;
+}
+
+export function arrangeWall(
+  cells: WallCell[],
+  count: number,
+  sessions: ClaudeSession[],
+  now: number,
+  focus: string | null,
+  seen: Record<string, number>,
+  tabs: WallTabs,
+): WallArrangement {
+  const r = arrangeCells(cells.slice(0, count), sessions, now, focus, seen);
+  const visible = r.cells.map((c, i) =>
+    c.projectPath === cells[i]?.projectPath ? c : { ...c, activeTab: undefined },
+  );
+  const holds = (c: WallCell, path: string | null) =>
+    path !== null && c.projectPath !== null && samePath(c.projectPath, path);
+  const keys = shownKeys(visible, tabs);
+  for (const [i, c] of visible.entries()) {
+    const twin = visible.some(
+      (o, j) => j !== i && holds(o, c.projectPath) && (j < i || o.pinned || o.manual),
+    );
+    if (twin && !keys[i] && !c.pinned && !c.manual) visible[i] = { ...c, ...freeCell() };
+  }
+  const locked = (c: WallCell) =>
+    c.pinned || c.manual || c.id === focus || now - c.lastInputAt < HANDS_ON_MS;
+  const rankOfKey = (key: string | null) => {
+    const s = key ? sessions.find((x) => x.sessionId === key) : undefined;
+    return s ? urgency(effectiveStatus(s, seen)) : URGENCY.length;
+  };
+  for (const s of byUrgency(sessions, seen)) {
+    const status = effectiveStatus(s, seen);
+    if (s.kind !== 'shell' || !s.projectPath || (status !== 'waiting' && status !== 'error')) {
+      continue;
+    }
+    if (displayedSessions(visible, [s], tabs).size > 0) continue;
+    const current = shownKeys(visible, tabs);
+    const cellRank = (i: number) =>
+      visible[i]?.projectPath === null ? Number.POSITIVE_INFINITY : rankOfKey(current[i] ?? null);
+    const rank = urgency(status);
+    let target = -1;
+    for (const [i, c] of visible.entries()) {
+      if (locked(c) || cellRank(i) <= rank) continue;
+      if (target < 0 || cellRank(i) > cellRank(target)) target = i;
+    }
+    const cell = visible[target];
+    if (!cell) continue;
+    visible[target] = {
+      ...cell,
+      projectPath: s.projectPath,
+      activeTab: s.sessionId,
+      manual: false,
+    };
+  }
+  const hidden = cells
+    .slice(count)
+    .map((c) => (visible.some((v) => holds(v, c.projectPath)) ? { ...c, ...freeCell() } : c));
+  const all = [...visible, ...hidden];
+  const moved = visible
+    .filter(
+      (c, i) => c.projectPath !== cells[i]?.projectPath || c.activeTab !== cells[i]?.activeTab,
+    )
+    .map((c) => c.id);
+  const changed = all.some(
+    (c, i) => c.projectPath !== cells[i]?.projectPath || c.activeTab !== cells[i]?.activeTab,
+  );
+  const shown = displayedSessions(visible, sessions, tabs);
+  const off = byUrgency(
+    sessions.filter(
+      (s) => !!s.projectPath && effectiveStatus(s, seen) !== 'exited' && !shown.has(s.sessionId),
+    ),
+    seen,
+  );
+  return {
+    cells: all,
+    moved,
+    changed,
+    offGrid: off.map((s) => s.sessionId),
+    pendingCount: off.filter((s) => effectiveStatus(s, seen) === 'waiting').length,
+  };
+}
+
 export type WallLayout = '1x1' | '2x1' | '2x2';
 
 export const CELL_COUNT: Record<WallLayout, number> = { '1x1': 1, '2x1': 2, '2x2': 4 };
@@ -351,15 +469,20 @@ export function assignTabs(
     used.add(key);
     return key;
   });
-  return cells.map((c, i) => {
-    if (own[i] || !c.projectPath) return own[i] ?? null;
+  const keys = [...own];
+  const order = cells
+    .map((c, i) => ({ c, i, held: c.pinned || c.manual }))
+    .sort((a, b) => Number(b.held) - Number(a.held) || a.i - b.i);
+  for (const { c, i } of order) {
+    if (own[i] || !c.projectPath) continue;
     const list = tabsOf(c.projectPath);
     const key = [activeOf(c.projectPath), ...list].find(
       (k) => !!k && list.includes(k) && !used.has(k),
     );
     if (key) used.add(key);
-    return key ?? null;
-  });
+    keys[i] = key ?? null;
+  }
+  return keys;
 }
 
 export function byRecency<S extends ClaudeSession>(

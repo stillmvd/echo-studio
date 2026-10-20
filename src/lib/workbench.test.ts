@@ -8,6 +8,7 @@ import type {
 } from './types';
 import {
   arrangeCells,
+  arrangeWall,
   assignTabs,
   byRecency,
   byUrgency,
@@ -27,6 +28,7 @@ import {
   urgency,
   urgentTab,
   type WallCell,
+  type WallTabs,
 } from './workbench';
 
 const key = (over: Partial<KeyInput>): KeyInput => ({
@@ -411,6 +413,75 @@ describe('wall cells', () => {
       null,
     );
     expect(urgentTab([session('r', 'working', 1, 'A')], 'A', {})).toBeNull();
+  });
+});
+
+describe('arrangeWall', () => {
+  const at = (paths: (string | null)[]) =>
+    emptyCells().map((c, i) => ({ ...c, projectPath: paths[i] ?? null }));
+  const noTabs: WallTabs = { tabsOf: () => [], activeOf: () => undefined };
+  const tabsFrom = (tabs: Record<string, string[]>): WallTabs => ({
+    tabsOf: (p) => tabs[p] ?? [],
+    activeOf: (p) => tabs[p]?.[0],
+  });
+
+  it('frees a hidden cell when its project is shown again after shrinking', () => {
+    const start = at([null, null, 'X', null]).map((c) =>
+      c.id === 'c3' ? { ...c, pinned: true } : c,
+    );
+    const r = arrangeWall(start, 2, [session('x', 'working', 1, 'X')], 10_000, null, {}, noTabs);
+    expect(r.cells.map((c) => c.projectPath)).toEqual(['X', null, null, null]);
+    const back = arrangeWall(
+      r.cells,
+      4,
+      [session('x', 'working', 1, 'X')],
+      10_000,
+      null,
+      {},
+      noTabs,
+    );
+    expect(back.cells.filter((c) => c.projectPath === 'X')).toHaveLength(1);
+  });
+
+  it('drops an automatic twin without its own tab and keeps the pinned one', () => {
+    const start = at([null, 'X', 'X', null]).map((c) =>
+      c.id === 'c3' ? { ...c, pinned: true } : c,
+    );
+    const r = arrangeWall(
+      start,
+      4,
+      [session('x', 'idle', 1, 'X')],
+      10_000,
+      null,
+      {},
+      tabsFrom({ X: ['x'] }),
+    );
+    expect(r.cells.map((c) => c.projectPath)).toEqual([null, null, 'X', null]);
+  });
+
+  it('gives a waiting session of a project already on the grid its own free cell', () => {
+    const start = at(['E', null, null, null]).map((c) =>
+      c.id === 'c1' ? { ...c, manual: true } : c,
+    );
+    const sessions = [session('e1', 'working', 1, 'E'), session('e2', 'waiting', 2, 'E')];
+    const tabs = tabsFrom({ E: ['e1'] });
+    const r = arrangeWall(start, 4, sessions, 10_000, 'c1', {}, tabs);
+    expect(r.cells[1]).toMatchObject({ projectPath: 'E', activeTab: 'e2' });
+    expect(r.moved).toEqual(['c2']);
+    expect(r.pendingCount).toBe(0);
+    expect(r.offGrid).toEqual([]);
+  });
+
+  it('counts waiting sessions without a cell when every cell is held', () => {
+    const start = at(['E', 'F', null, null]).map((c) => ({ ...c, pinned: c.projectPath !== null }));
+    const sessions = [
+      session('e1', 'working', 1, 'E'),
+      session('e2', 'waiting', 2, 'E'),
+      session('f1', 'idle', 3, 'F'),
+    ];
+    const r = arrangeWall(start, 2, sessions, 10_000, null, {}, tabsFrom({ E: ['e1'], F: ['f1'] }));
+    expect(r.offGrid).toEqual(['e2']);
+    expect(r.pendingCount).toBe(1);
   });
 });
 
