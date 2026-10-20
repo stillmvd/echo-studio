@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useClaudeSessions, useDevServers, useWorkbenchProjects } from '@/hooks/use-workbench';
 import { all, samePath } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
@@ -8,6 +8,7 @@ import { ProjectChips } from './ProjectChips';
 import { ProjectHeader } from './ProjectHeader';
 import { ProjectTree } from './ProjectTree';
 import { RunningList } from './RunningList';
+import { pruneMissing } from './terminals';
 import { useStartSession } from './useStartSession';
 
 export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
@@ -21,6 +22,9 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   const seen = useWorkbenchStore((s) => s.seen);
   const projects = useMemo(() => (tree ? all(tree) : []), [tree]);
   const byPath = useMemo(() => new Map(projects.map((p) => [p.path, p])), [projects]);
+  useEffect(() => {
+    if (tree) pruneMissing(tabs, (path) => projects.some((p) => samePath(p.path, path)));
+  }, [tree, projects, tabs]);
   const selected =
     view.kind === 'project' ? projects.find((p) => samePath(p.path, view.path)) : undefined;
   const opened = projects.filter((p) => (tabs[p.path]?.length ?? 0) > 0 || p === selected);

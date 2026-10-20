@@ -129,7 +129,7 @@ contracts/ipc.md, quickstart.md. Форма — `.planning/WORKBENCH.md`, сте
 **Independent Test**: quickstart.md §6.
 
 - [x] T044 [P] [US5] `first_reply` в `src-tauri/src/conversations/scanner.rs` `parse_session_meta`: первая строка первого текстового блока ответа ассистента, обрезка до 120 символов; поле в `SessionMeta` (`src-tauri/src/conversations/models.rs`) и в `src/lib/types.ts`; тест в `scanner.rs`
-- [ ] T045 [US5] `src/components/workbench/EmptyProject.tsx` (Пустой B): «Новая сессия Claude», «запустить dev», список разговоров проекта (`listConversationSessions`, последние сверху, ограниченная высота, прокрутка, виртуализация `@tanstack/react-virtual`), строка — время + название или `first_reply`; клик → `start_claude_session(project, sessionId)` (уже открыт → переход к живой сессии, FR-051)
+- [X] T045 [US5] `src/components/workbench/EmptyProject.tsx` (Пустой B): «Новая сессия Claude», «запустить dev», список разговоров проекта (`listConversationSessions`, последние сверху, ограниченная высота, прокрутка, виртуализация `@tanstack/react-virtual`), строка — время + название или `first_reply`; клик → `start_claude_session(project, sessionId)` (уже открыт → переход к живой сессии, FR-051)
 
 ---
 
@@ -233,8 +233,12 @@ T014–T019 (Rust: sessions.rs, terminal.rs, commands)  |  T020 (src/lib/workben
 - T028: dev-серверы в «Запущено» — вместе с сессиями по срочности: ошибка = error, запускается = working, работает = idle;
   сессия без проекта (`projectPath` нет) — строка неактивна, подсказка с папкой. T029: чип dev — точка состояния и порт
   (несколько серверов в свёрнутой группе — число).
+- T045: строка списка — название сессии, без него `first_reply`, затем первый запрос; дата по-русски («сегодня, 15:55»,
+  «19 окт»); «запустить dev» — та же `DevCapsule`, что в шапке. Живая проверка (dev 1425, CDP): Tolk — 3 строки,
+  Booked — список 320 px с прокруткой, рендерятся только видимые строки.
 - T039: лог — `LogTerminal.tsx` (отдельный компонент, не режим `Terminal.tsx`); закрытие вкладки снимает подписку
-  `tail_dev_log`, сервер не трогает.
+  `tail_dev_log`, сервер не трогает; подписка — только когда вкладка лога видна; вкладки проектов, пропавших из
+  дерева, освобождаются (`pruneMissing`).
 - T025: «папки нет» — в «Запущено» (T028); после перезагрузки ПК открытые вкладки хранит `workbench-store`, сессии
   без процесса показываются «Сессия завершена · Продолжить».
 - Живая проверка US1 (2026-10-20, dev + CDP): новая сессия — вкладка 1,6 с, экран 3,2 с на прогретом демоне; первый

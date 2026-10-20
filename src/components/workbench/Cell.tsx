@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Play, Plus, RotateCcw, Square, X } from 'lucide-react';
+import { Plus, RotateCcw, Square, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { cn } from '@/lib/cn';
@@ -9,8 +9,8 @@ import { effectiveStatus } from '@/lib/workbench';
 import { devTabKey, isDevTab, useWorkbenchStore } from '@/state/workbench-store';
 import { ClaudeTerminal } from './ClaudeTerminal';
 import { DevDot } from './DevCapsule';
+import { EmptyProject } from './EmptyProject';
 import { LogTerminal } from './LogTerminal';
-import { ProjectIcon } from './ProjectIcon';
 import { StatusIcon } from './StatusIcon';
 import { dispose, isFresh, reattach, rememberShort, shortOf, useClaudeTerm } from './terminals';
 
@@ -82,25 +82,7 @@ export function Cell({ project, sessions, server, visible, onStart, busy }: Prop
   };
 
   if (infos.length === 0 && !hasDev) {
-    return (
-      <div className="wb-area">
-        <div className="wb-empty">
-          <ProjectIcon svg={project.icon} size="xl" />
-          <div className="wb-eb">
-            <button type="button" className="wb-btn p lg" disabled={busy} onClick={() => onStart()}>
-              <Plus strokeWidth={2} />
-              Новая сессия Claude
-            </button>
-            {project.dev && (
-              <button type="button" className="wb-btn lg" disabled>
-                <Play strokeWidth={2} />
-                {project.dev.command}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
+    return <EmptyProject project={project} server={server} busy={busy} onStart={onStart} />;
   }
 
   return (

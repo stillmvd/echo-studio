@@ -63,11 +63,18 @@ function setState(entry: Entry, state: TermState, error: string | null = null) {
 }
 
 const earlyExits = new Set<string>();
+const detached = new Set<string>();
+
+function detach(terminalId: string) {
+  byTerminal.delete(terminalId);
+  detached.add(terminalId);
+  void terminalDetach(terminalId).catch(() => {});
+}
 
 void listen<{ terminalId: string; code: number }>('workbench://terminal-exit', (e) => {
+  if (detached.delete(e.payload.terminalId)) return;
   const entry = byTerminal.get(e.payload.terminalId);
   if (!entry) {
-    if (earlyExits.size > 64) earlyExits.clear();
     earlyExits.add(e.payload.terminalId);
     return;
   }
@@ -235,7 +242,7 @@ export function connect(key: string, shortId: string) {
     .then((id) => {
       const exited = earlyExits.delete(id);
       if (entries.get(key) !== entry) {
-        if (!exited) void terminalDetach(id).catch(() => {});
+        if (!exited) detach(id);
         return;
       }
       if (exited) {
@@ -253,8 +260,7 @@ export function connect(key: string, shortId: string) {
 export function reattach(key: string, shortId: string) {
   const entry = entries.get(key);
   if (entry?.terminalId) {
-    byTerminal.delete(entry.terminalId);
-    void terminalDetach(entry.terminalId).catch(() => {});
+    detach(entry.terminalId);
     entry.terminalId = null;
     entry.state = 'ended';
   }
@@ -266,12 +272,15 @@ export function dispose(key: string) {
   if (!entry) return;
   entries.delete(key);
   stopTail(key);
-  if (entry.terminalId) {
-    byTerminal.delete(entry.terminalId);
-    void terminalDetach(entry.terminalId).catch(() => {});
-  }
+  if (entry.terminalId) detach(entry.terminalId);
   entry.term.dispose();
   entry.host.remove();
+}
+
+export function pruneMissing(tabs: Record<string, string[]>, exists: (path: string) => boolean) {
+  for (const [path, keys] of Object.entries(tabs)) {
+    if (!exists(path)) for (const key of keys) dispose(key);
+  }
 }
 
 export function focus(key: string) {

@@ -12,8 +12,8 @@ export function LogTerminal({ tabKey, projectPath, visible }: Props) {
   const entry = logEntry(tabKey);
 
   useEffect(() => {
-    startTail(tabKey, projectPath);
-  }, [tabKey, projectPath]);
+    if (visible) startTail(tabKey, projectPath);
+  }, [visible, tabKey, projectPath]);
 
   useEffect(() => {
     const el = ref.current;

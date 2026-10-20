@@ -25,9 +25,11 @@ export function DevDot({ server, large }: { server: DevServer | undefined; large
 export function DevCapsule({
   project,
   server,
+  large,
 }: {
   project: WorkbenchProject;
   server: DevServer | undefined;
+  large?: boolean;
 }) {
   const qc = useQueryClient();
   const openTab = useWorkbenchStore((s) => s.openTab);
@@ -83,12 +85,12 @@ export function DevCapsule({
       <>
         <button
           type="button"
-          className="wb-btn"
+          className={cn('wb-btn', large && 'lg')}
           title={project.dev.command}
           onClick={() => void start()}
         >
           <Play strokeWidth={2} />
-          dev
+          {large ? project.dev.command : 'dev'}
         </button>
         {dialogs}
       </>
