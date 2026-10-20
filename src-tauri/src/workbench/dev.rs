@@ -604,49 +604,87 @@ fn kill_exact(targets: &[(u32, u64)]) {
     }
 }
 
+struct StopPlan {
+    targets: Vec<(u32, u64)>,
+    free: usize,
+    shielded: bool,
+}
+
+fn plan_stop(
+    table: &HashMap<u32, Proc>,
+    started_at: u64,
+    live: &[u32],
+    seen: &mut HashSet<(u32, u64)>,
+) -> StopPlan {
+    let members: Vec<(u32, u64)> = live
+        .iter()
+        .filter_map(|pid| table.get(pid).map(|p| (p.pid, p.start_time)))
+        .collect();
+    seen.extend(members.iter().copied());
+    let free = unguarded(table, started_at, live);
+    let mut targets = leftovers(table, started_at, seen);
+    for pid in &free {
+        if let Some(p) = table.get(pid) {
+            if !targets.contains(&(p.pid, p.start_time)) {
+                targets.push((p.pid, p.start_time));
+            }
+        }
+    }
+    StopPlan {
+        targets,
+        free: free.len(),
+        shielded: free.len() < members.len(),
+    }
+}
+
 pub fn stop_in(dir: &Path, project_path: &str) -> Result<(), String> {
     let slug = slug(project_path);
     let file = read_file(dir, &slug).ok_or("dev server was never started")?;
     runtime().entry(slug.clone()).or_default().stopping = true;
     if let Some(job) = Job::open(&slug) {
         let mut seen: HashSet<(u32, u64)> = file.seen.iter().copied().collect();
-        for round in 0..STOP_ROUNDS {
-            let live = job.pids();
-            let table = processes::table();
-            let free = unguarded(&table, file.started_at, &live);
-            if free.is_empty() {
-                break;
-            }
-            let members: Vec<(u32, u64)> = live
-                .iter()
-                .filter_map(|pid| table.get(pid).map(|p| (p.pid, p.start_time)))
-                .collect();
-            seen.extend(members.iter().copied());
-            let mut targets = leftovers(&table, file.started_at, &seen);
-            for pid in &free {
-                if let Some(p) = table.get(pid) {
-                    if !targets.contains(&(p.pid, p.start_time)) {
-                        targets.push((p.pid, p.start_time));
+        let fail = |seen: &HashSet<(u32, u64)>, message: String| -> Result<(), String> {
+            runtime().entry(slug.clone()).or_default().stopping = false;
+            let _ = update_file(dir, &slug, |f| {
+                for pair in seen {
+                    if f.seen.len() < SEEN_MAX && !f.seen.contains(pair) {
+                        f.seen.push(*pair);
                     }
                 }
+            });
+            Err(message)
+        };
+        for round in 0..STOP_ROUNDS {
+            let before = job.pids();
+            let table = processes::table();
+            let live: Vec<u32> = job
+                .pids()
+                .into_iter()
+                .filter(|p| before.contains(p))
+                .collect();
+            let plan = plan_stop(&table, file.started_at, &live, &mut seen);
+            if plan.targets.is_empty() {
+                break;
             }
-            let shielded = free.len() < members.len();
-            if round == 0 && !shielded && !job.terminate() {
-                runtime().entry(slug.clone()).or_default().stopping = false;
-                let _ = update_file(dir, &slug, |f| {
-                    for pair in &members {
-                        if f.seen.len() < SEEN_MAX && !f.seen.contains(pair) {
-                            f.seen.push(*pair);
-                        }
-                    }
-                });
-                return Err(format!(
-                    "TerminateJobObject: {}",
-                    std::io::Error::last_os_error()
-                ));
+            if round == 0 && plan.free > 0 && !plan.shielded && !job.terminate() {
+                let error = std::io::Error::last_os_error();
+                return fail(&seen, format!("TerminateJobObject: {error}"));
             }
-            kill_exact(&targets);
+            kill_exact(&plan.targets);
             std::thread::sleep(STOP_SETTLE);
+        }
+        let live = job.pids();
+        let members = member_table(&live);
+        let left = unguarded(&members, file.started_at, &live);
+        if !left.is_empty() {
+            let names: Vec<String> = left
+                .iter()
+                .filter_map(|pid| members.get(pid).map(|p| p.name.clone()))
+                .collect();
+            return fail(
+                &seen,
+                format!("не все процессы dev остановлены: {}", names.join(", ")),
+            );
         }
     }
     update_file(dir, &slug, |f| {
@@ -1039,6 +1077,26 @@ mod tests {
             (112, 5_400),
         ];
         assert_eq!(swept(procs, &seen), vec![100, 101]);
+    }
+
+    #[test]
+    fn a_guarded_only_job_still_sweeps_seen_orphans() {
+        let table: HashMap<u32, Proc> = [
+            p(110, 6, "chrome.exe", r"C:\Users\me", 5_200),
+            p(200, 9, "node.exe", PROJECT, 5_300),
+            p(201, 200, "esbuild.exe", PROJECT, 5_400),
+        ]
+        .into_iter()
+        .map(|p| (p.pid, p))
+        .collect();
+        let mut seen = HashSet::from([(100, 5_000), (200, 5_300)]);
+        let plan = plan_stop(&table, 5_000, &[110], &mut seen);
+        let mut got: Vec<u32> = plan.targets.iter().map(|(pid, _)| *pid).collect();
+        got.sort_unstable();
+        assert_eq!(got, vec![200, 201]);
+        assert_eq!(plan.free, 0);
+        assert!(plan.shielded);
+        assert!(seen.contains(&(110, 5_200)));
     }
 
     #[test]
