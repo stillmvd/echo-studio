@@ -62,9 +62,15 @@ function setState(entry: Entry, state: TermState, error: string | null = null) {
   notify(entry);
 }
 
+const earlyExits = new Set<string>();
+
 void listen<{ terminalId: string; code: number }>('workbench://terminal-exit', (e) => {
   const entry = byTerminal.get(e.payload.terminalId);
-  if (!entry) return;
+  if (!entry) {
+    if (earlyExits.size > 64) earlyExits.clear();
+    earlyExits.add(e.payload.terminalId);
+    return;
+  }
   byTerminal.delete(e.payload.terminalId);
   entry.terminalId = null;
   setState(entry, 'ended');
@@ -227,8 +233,13 @@ export function connect(key: string, shortId: string) {
   };
   terminalAttach(shortId, entry.term.cols, entry.term.rows, channel as Channel<ArrayBuffer>)
     .then((id) => {
+      const exited = earlyExits.delete(id);
       if (entries.get(key) !== entry) {
-        void terminalDetach(id).catch(() => {});
+        if (!exited) void terminalDetach(id).catch(() => {});
+        return;
+      }
+      if (exited) {
+        setState(entry, 'ended');
         return;
       }
       entry.terminalId = id;

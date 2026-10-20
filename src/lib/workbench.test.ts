@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { ClaudeSession, ProjectTree, SessionStatus, WorkbenchProject } from './types';
+import type {
+  ClaudeSession,
+  DevServer,
+  ProjectTree,
+  SessionStatus,
+  WorkbenchProject,
+} from './types';
 import {
   arrangeCells,
   byUrgency,
@@ -7,6 +13,7 @@ import {
   HANDS_ON_MS,
   type KeyInput,
   projectOf,
+  runningItems,
   samePath,
   terminalKey,
   topStatus,
@@ -144,6 +151,26 @@ describe('urgency', () => {
     expect(effectiveStatus(done, { a: 999 })).toBe('done');
     expect(effectiveStatus(done, { a: 1_000 })).toBe('idle');
     expect(effectiveStatus(session('b', 'waiting', 1_000), { b: 2_000 })).toBe('waiting');
+  });
+
+  it('mixes dev servers into the running list by urgency, hides stopped ones', () => {
+    const dev = (projectPath: string, state: DevServer['state']): DevServer => ({
+      projectPath,
+      command: 'pnpm dev',
+      state,
+      ports: [],
+      startedAt: 0,
+      exitCode: null,
+      log: '',
+    });
+    const items = runningItems(
+      [session('a', 'idle', 1), session('b', 'waiting', 2)],
+      [dev('run', 'running'), dev('err', 'error'), dev('off', 'stopped')],
+      {},
+    );
+    expect(
+      items.map((i) => (i.kind === 'session' ? i.session.sessionId : i.server.projectPath)),
+    ).toEqual(['b', 'err', 'a', 'run']);
   });
 
   it('gives the most urgent status of a project or group', () => {

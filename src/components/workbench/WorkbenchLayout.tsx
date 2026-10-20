@@ -32,19 +32,23 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
           <div className="wb-ch">
             <b>Запущено</b>
           </div>
-          <RunningList sessions={sessions} projects={byPath} />
+          <RunningList sessions={sessions} devServers={devServers} projects={byPath} />
           <div className="wb-ch sub">
             <b>Проекты</b>
           </div>
           {tree && (
             <ProjectTree
               tree={tree}
-              tail={(paths) => (
-                <ProjectChips
-                  sessions={sessions.filter((s) => s.projectPath && paths.includes(s.projectPath))}
-                  seen={seen}
-                />
-              )}
+              tail={(paths) => {
+                const inside = (path: string | null) =>
+                  !!path && paths.some((p) => samePath(p, path));
+                const own = sessions.filter((s) => inside(s.projectPath));
+                const devs = devServers.filter(
+                  (d) => d.state !== 'stopped' && inside(d.projectPath),
+                );
+                if (own.length === 0 && devs.length === 0) return null;
+                return <ProjectChips sessions={own} devServers={devs} seen={seen} />;
+              }}
             />
           )}
           {error && <p className="wb-dim px-3 py-2 text-[12.5px]">{String(error)}</p>}
@@ -70,6 +74,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
                   <Cell
                     project={p}
                     sessions={sessions}
+                    server={devServers.find((d) => samePath(d.projectPath, p.path))}
                     visible={!hidden && isSelected}
                     busy={busy}
                     onStart={(resume) => void start(p.path, resume)}

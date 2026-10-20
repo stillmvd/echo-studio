@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { cn } from '@/lib/cn';
 import { forgetClaudeSession, stopClaudeSession } from '@/lib/ipc';
-import type { ClaudeSession, SessionStatus, WorkbenchProject } from '@/lib/types';
+import type { ClaudeSession, DevServer, SessionStatus, WorkbenchProject } from '@/lib/types';
 import { effectiveStatus } from '@/lib/workbench';
-import { isDevTab, useWorkbenchStore } from '@/state/workbench-store';
+import { devTabKey, isDevTab, useWorkbenchStore } from '@/state/workbench-store';
 import { ClaudeTerminal } from './ClaudeTerminal';
+import { DevDot } from './DevCapsule';
+import { LogTerminal } from './LogTerminal';
 import { ProjectIcon } from './ProjectIcon';
 import { StatusIcon } from './StatusIcon';
 import { dispose, isFresh, reattach, rememberShort, shortOf, useClaudeTerm } from './terminals';
@@ -29,12 +31,13 @@ function TabTitle({ info }: { info: TabInfo }) {
 interface Props {
   project: WorkbenchProject;
   sessions: ClaudeSession[];
+  server: DevServer | undefined;
   visible: boolean;
   onStart: (resumeSessionId?: string) => void;
   busy: boolean;
 }
 
-export function Cell({ project, sessions, visible, onStart, busy }: Props) {
+export function Cell({ project, sessions, server, visible, onStart, busy }: Props) {
   const qc = useQueryClient();
   const tabs = useWorkbenchStore((s) => s.tabs[project.path]) ?? [];
   const active = useWorkbenchStore((s) => s.activeTab[project.path]);
@@ -58,7 +61,10 @@ export function Cell({ project, sessions, visible, onStart, busy }: Props) {
         status: session ? effectiveStatus(session, seen) : live ? 'idle' : 'exited',
       };
     });
-  const current = infos.find((i) => i.key === active) ?? infos[0];
+  const devKey = devTabKey(project.path);
+  const hasDev = tabs.includes(devKey);
+  const devOn = hasDev && (active === devKey || infos.length === 0);
+  const current = devOn ? undefined : (infos.find((i) => i.key === active) ?? infos[0]);
 
   useEffect(() => {
     if (visible && current?.session?.status === 'done') markSeen(current.key);
@@ -70,7 +76,12 @@ export function Cell({ project, sessions, visible, onStart, busy }: Props) {
     closeTab(project.path, info.key);
   };
 
-  if (infos.length === 0) {
+  const closeDev = () => {
+    dispose(devKey);
+    closeTab(project.path, devKey);
+  };
+
+  if (infos.length === 0 && !hasDev) {
     return (
       <div className="wb-area">
         <div className="wb-empty">
@@ -95,6 +106,30 @@ export function Cell({ project, sessions, visible, onStart, busy }: Props) {
   return (
     <div className="wb-area">
       <div className="wb-tabs">
+        {hasDev && (
+          <div className={cn('wb-tab', devOn && 'on')}>
+            <button
+              type="button"
+              className="wb-tab-b"
+              aria-pressed={devOn}
+              onClick={() => activate(project.path, devKey)}
+            >
+              <DevDot server={server} />
+              <span title={project.dev?.command}>{project.dev?.command ?? 'dev'}</span>
+            </button>
+            <button
+              type="button"
+              className="wb-tx"
+              title="Закрыть лог (сервер продолжит работать)"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeDev();
+              }}
+            >
+              <X strokeWidth={2} />
+            </button>
+          </div>
+        )}
         {infos.map((info) => (
           <div key={info.key} className={cn('wb-tab', info.key === current?.key && 'on')}>
             <button
@@ -157,6 +192,9 @@ export function Cell({ project, sessions, visible, onStart, busy }: Props) {
           </>
         )}
       </div>
+      {hasDev && (
+        <LogTerminal tabKey={devKey} projectPath={project.path} visible={visible && devOn} />
+      )}
       {infos.map((info) => (
         <ClaudeTerminal
           key={info.key}

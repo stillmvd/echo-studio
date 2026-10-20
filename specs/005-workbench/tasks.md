@@ -103,7 +103,7 @@ contracts/ipc.md, quickstart.md. Форма — `.planning/WORKBENCH.md`, сте
 - [x] T036 [US3] Хвост лога в `src-tauri/src/workbench/dev.rs`: подписка → первые ≤ 2 МБ с конца, затем прирост (позиция + `notify`/опрос 200 мс) в `Channel<Vec<u8>>`; `untail_dev_log`
 - [x] T037 [US3] Команды `list_dev_servers`, `start_dev_server`, `stop_dev_server`, `tail_dev_log`, `untail_dev_log`, `open_dev_server` (`http://localhost:<первый порт>` через `tauri_plugin_shell` `open`) в `src-tauri/src/commands/workbench.rs`; guard `ensure_project`. Отступление: `open_dev_server` открывает через `explorer.exe <url>` — `ShellExt::open` в tauri-plugin-shell 2.3 deprecated; порт — из лога (`localhost:<порт>`), иначе наименьший
 - [X] T038 [US3] Капсула dev в `src/components/workbench/ProjectHeader.tsx` (Dev A со стенда 301): состояние, порты, «открыть», «стоп» (`ConfirmDialog`, FR-063), «запустить снова» при `error`; у проекта без `dev` — нет
-- [ ] T039 [US3] Вкладка лога рядом с Claude в `src/components/workbench/Cell.tsx`: `Terminal.tsx` в режиме `log` (`disableStdin`, `scrollback: 5000`, подписка `tail_dev_log`)
+- [X] T039 [US3] Вкладка лога рядом с Claude в `src/components/workbench/Cell.tsx`: `Terminal.tsx` в режиме `log` (`disableStdin`, `scrollback: 5000`, подписка `tail_dev_log`)
 
 **Checkpoint**: US3 по quickstart §4
 
@@ -218,9 +218,11 @@ T014–T019 (Rust: sessions.rs, terminal.rs, commands)  |  T020 (src/lib/workben
   `status` (мёртвая запись реестра) не считается живой.
 - T015: `claude --bg` печатает `backgrounded · <id8>` с именем или с «(idle — send a prompt to start)» — разбираются оба.
   `agents --json` читается только из stdout, битый вывод или ненулевой код — ошибка (хаб тогда не шлёт список, вкладки
-  не «завершаются»); у вызовов `claude` таймаут 20 с. Если `agents` не показал новую сессию за 3 с, `start` всё равно
+  не «завершаются»); Если `agents` не показал новую сессию за 3 с, `start` всё равно
   возвращает `shortId` без `sessionId` — фронт не открывает вкладку, а сообщает, что сессия появится в «Запущено».
   `stop`/`rm`/`attach` — только фоновая сессия из `agents` с `cwd` внутри известного проекта; `rm` живой — отказ.
+  Остановить (с подтверждением) и убрать можно любую `--bg`-сессию в проекте, не только запущенную из Echo. Таймаут
+  `claude --bg` — 60 с (холодный демон, доверие папки), остальных вызовов — 20 с.
 - T017: дебаунс хаба по хукам — 500 мс (в contracts/ipc.md — 300): как у наблюдателя проектов, разница не видна;
   нет папки `~/.claude/state/sessions` на старте — хаб пробует подписаться на каждом тике (15 с).
 - T021: авто-переподключение после конца attach — только если он прожил больше 3 с (иначе «Сессия завершена» без цикла
@@ -228,6 +230,11 @@ T014–T019 (Rust: sessions.rs, terminal.rs, commands)  |  T020 (src/lib/workben
 - T021: имя файла `ClaudeTerminal.tsx`, экземпляры xterm живут в реестре `terminals.ts` вне React (переживают смену
   проекта и вкладки); agent view (двойная «←») не распознаётся — в ячейке есть «Переподключить»; при старте фронта
   `terminal_detach_all` снимает attach от прошлой страницы.
+- T028: dev-серверы в «Запущено» — вместе с сессиями по срочности: ошибка = error, запускается = working, работает = idle;
+  сессия без проекта (`projectPath` нет) — строка неактивна, подсказка с папкой. T029: чип dev — точка состояния и порт
+  (несколько серверов в свёрнутой группе — число).
+- T039: лог — `LogTerminal.tsx` (отдельный компонент, не режим `Terminal.tsx`); закрытие вкладки снимает подписку
+  `tail_dev_log`, сервер не трогает.
 - T025: «папки нет» — в «Запущено» (T028); после перезагрузки ПК открытые вкладки хранит `workbench-store`, сессии
   без процесса показываются «Сессия завершена · Продолжить».
 - Живая проверка US1 (2026-10-20, dev + CDP): новая сессия — вкладка 1,6 с, экран 3,2 с на прогретом демоне; первый

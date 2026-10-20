@@ -1,4 +1,11 @@
-import type { ClaudeSession, ProjectTree, SessionStatus, WorkbenchProject } from './types';
+import type {
+  ClaudeSession,
+  DevServer,
+  DevState,
+  ProjectTree,
+  SessionStatus,
+  WorkbenchProject,
+} from './types';
 
 export const STATUS_LABEL: Record<SessionStatus, string> = {
   waiting: 'ждёт тебя',
@@ -106,6 +113,34 @@ export function byUrgency<S extends ClaudeSession>(
       cmp(sinceKey(a.since), sinceKey(b.since)) ||
       cmp(a.sessionId, b.sessionId),
   );
+}
+
+const DEV_STATUS: Record<DevState, SessionStatus> = {
+  error: 'error',
+  starting: 'working',
+  running: 'idle',
+  stopped: 'exited',
+};
+
+export type RunningItem =
+  | { kind: 'session'; session: ClaudeSession }
+  | { kind: 'dev'; server: DevServer };
+
+export function runningItems(
+  sessions: ClaudeSession[],
+  servers: DevServer[],
+  seen: Record<string, number>,
+): RunningItem[] {
+  const rank = (item: RunningItem) =>
+    urgency(
+      item.kind === 'session' ? effectiveStatus(item.session, seen) : DEV_STATUS[item.server.state],
+    );
+  return [
+    ...byUrgency(sessions, seen).map((session) => ({ kind: 'session' as const, session })),
+    ...servers
+      .filter((server) => server.state !== 'stopped')
+      .map((server) => ({ kind: 'dev' as const, server })),
+  ].sort((a, b) => rank(a) - rank(b));
 }
 
 export function topStatus(

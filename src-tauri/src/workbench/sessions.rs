@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
@@ -11,6 +11,7 @@ use serde_json::Value;
 use super::{child_command, projects, projects_root};
 
 const CLAUDE_TIMEOUT: Duration = Duration::from_secs(20);
+const START_TIMEOUT: Duration = Duration::from_secs(60);
 const PIPE_GRACE: Duration = Duration::from_millis(500);
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -129,19 +130,48 @@ struct Output {
     stderr: String,
 }
 
-fn pipe_text(pipe: Option<impl Read + Send + 'static>) -> mpsc::Receiver<String> {
-    let (tx, rx) = mpsc::channel();
-    if let Some(mut pipe) = pipe {
-        std::thread::spawn(move || {
-            let mut buf = Vec::new();
-            let _ = pipe.read_to_end(&mut buf);
-            let _ = tx.send(String::from_utf8_lossy(&buf).into_owned());
-        });
+struct Pipe {
+    buf: Arc<Mutex<Vec<u8>>>,
+    eof: mpsc::Receiver<()>,
+}
+
+impl Pipe {
+    fn read(pipe: Option<impl Read + Send + 'static>) -> Self {
+        let buf = Arc::new(Mutex::new(Vec::new()));
+        let (tx, eof) = mpsc::channel();
+        if let Some(mut pipe) = pipe {
+            let buf = buf.clone();
+            std::thread::spawn(move || {
+                let mut chunk = [0u8; 8192];
+                while let Ok(n) = pipe.read(&mut chunk) {
+                    if n == 0 {
+                        break;
+                    }
+                    if let Ok(mut b) = buf.lock() {
+                        b.extend_from_slice(&chunk[..n]);
+                    }
+                }
+                let _ = tx.send(());
+            });
+        }
+        Pipe { buf, eof }
     }
-    rx
+
+    fn text(self) -> String {
+        let _ = self.eof.recv_timeout(PIPE_GRACE);
+        self.buf
+            .lock()
+            .map(|b| String::from_utf8_lossy(&b).into_owned())
+            .unwrap_or_default()
+    }
 }
 
 fn claude(args: &[&str], cwd: Option<&Path>) -> Result<Output, String> {
+    let timeout = if args.contains(&"--bg") {
+        START_TIMEOUT
+    } else {
+        CLAUDE_TIMEOUT
+    };
     let what = format!("claude {}", args.join(" "));
     let mut cmd = child_command(&claude_exe().to_string_lossy());
     cmd.args(args)
@@ -152,30 +182,23 @@ fn claude(args: &[&str], cwd: Option<&Path>) -> Result<Output, String> {
         cmd.current_dir(dir);
     }
     let mut child = cmd.spawn().map_err(|e| format!("{what}: {e}"))?;
-    let stdout = pipe_text(child.stdout.take());
-    let stderr = pipe_text(child.stderr.take());
-    let deadline = Instant::now() + CLAUDE_TIMEOUT;
+    let stdout = Pipe::read(child.stdout.take());
+    let stderr = Pipe::read(child.stderr.take());
+    let deadline = Instant::now() + timeout;
     let status = loop {
         match child.try_wait().map_err(|e| format!("{what}: {e}"))? {
             Some(status) => break status,
             None if Instant::now() >= deadline => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err(format!(
-                    "{what}: no answer in {}s",
-                    CLAUDE_TIMEOUT.as_secs()
-                ));
+                return Err(format!("{what}: no answer in {}s", timeout.as_secs()));
             }
             None => std::thread::sleep(Duration::from_millis(50)),
         }
     };
-    let rest = |rx: mpsc::Receiver<String>| {
-        rx.recv_timeout(deadline.saturating_duration_since(Instant::now()) + PIPE_GRACE)
-            .unwrap_or_default()
-    };
     let out = Output {
-        stdout: rest(stdout),
-        stderr: rest(stderr),
+        stdout: stdout.text(),
+        stderr: stderr.text(),
     };
     if status.success() {
         Ok(out)

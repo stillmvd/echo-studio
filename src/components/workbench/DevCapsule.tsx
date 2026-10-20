@@ -32,7 +32,7 @@ export function DevCapsule({
   const qc = useQueryClient();
   const openTab = useWorkbenchStore((s) => s.openTab);
   const [confirmStop, setConfirmStop] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ title: string; text: string } | null>(null);
   if (!project.dev) return null;
   const state = devState(server);
   const key = devTabKey(project.path);
@@ -44,7 +44,7 @@ export function DevCapsule({
       startTail(key, project.path, true);
       openTab(project.path, key);
     } catch (e) {
-      setError(String(e));
+      setError({ title: 'dev-сервер не запустился', text: String(e) });
     } finally {
       void qc.invalidateQueries({ queryKey: ['workbench', 'dev'] });
     }
@@ -68,8 +68,8 @@ export function DevCapsule({
       />
       <ConfirmDialog
         open={error !== null}
-        title="dev-сервер не запустился"
-        description={error ?? ''}
+        title={error?.title ?? ''}
+        description={error?.text ?? ''}
         confirmLabel="Понятно"
         cancelLabel="Закрыть"
         onConfirm={() => setError(null)}
@@ -119,7 +119,11 @@ export function DevCapsule({
             className="wb-cap-i"
             title={ports[0] ? `Открыть localhost:${ports[0]}` : 'Порт ещё не открыт'}
             disabled={!ports[0]}
-            onClick={() => void openDevServer(project.path).catch((e) => setError(String(e)))}
+            onClick={() =>
+              void openDevServer(project.path).catch((e) =>
+                setError({ title: 'Адрес не открылся', text: String(e) }),
+              )
+            }
           >
             <Globe strokeWidth={2} />
           </button>
