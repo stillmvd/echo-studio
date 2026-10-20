@@ -106,14 +106,26 @@ export function DevCapsule({
       </button>
       <span>{DEV_LABEL[state] || ports.map((p) => `:${p}`).join(' ') || 'без порта'}</span>
       {state === 'error' ? (
-        <button
-          type="button"
-          className="wb-cap-i"
-          title="Запустить снова"
-          onClick={() => void start()}
-        >
-          <RotateCcw strokeWidth={2} />
-        </button>
+        <>
+          <button
+            type="button"
+            className="wb-cap-i"
+            title="Запустить снова"
+            onClick={() => void start()}
+          >
+            <RotateCcw strokeWidth={2} />
+          </button>
+          {!!server?.pids.length && (
+            <button
+              type="button"
+              className="wb-cap-i"
+              title="Остановить"
+              onClick={() => setConfirmStop(true)}
+            >
+              <Square strokeWidth={2} />
+            </button>
+          )}
+        </>
       ) : (
         <>
           <button

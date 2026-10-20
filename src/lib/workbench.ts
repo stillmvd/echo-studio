@@ -71,7 +71,7 @@ export type KeyAction =
 export function isPathTitle(title: string): boolean {
   return (
     /^[A-Za-z]:[\\/]/.test(title) ||
-    /^(\\\\|\/)[^\\/]*[\\/]/.test(title) ||
+    /^(\\\\|\/)[^\s\\/]*[\\/]\S*$/.test(title) ||
     /^\S+\.exe$/i.test(title)
   );
 }

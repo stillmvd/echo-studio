@@ -53,6 +53,9 @@ describe('isPathTitle', () => {
     expect(isPathTitle('Fix CI/CD pipeline')).toBe(false);
     expect(isPathTitle('Update src/lib')).toBe(false);
     expect(isPathTitle('Run setup.exe installer')).toBe(false);
+    expect(isPathTitle('/review src/x.ts')).toBe(false);
+    expect(isPathTitle('/add-dir foo/bar')).toBe(false);
+    expect(isPathTitle('/compact')).toBe(false);
   });
 });
 
@@ -186,6 +189,7 @@ describe('urgency', () => {
       startedAt: 0,
       exitCode: null,
       log: '',
+      pids: [],
     });
     const items = runningItems(
       [session('a', 'idle', 1), session('b', 'waiting', 2)],

@@ -354,4 +354,5 @@ export interface DevServer {
   startedAt: number;
   exitCode: number | null;
   log: string;
+  pids: number[];
 }

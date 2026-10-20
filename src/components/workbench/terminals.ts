@@ -255,6 +255,7 @@ export function fitTerm(entry: Entry) {
 }
 
 const inflight = new Map<string, Promise<unknown>>();
+const ATTACH_WAIT_MS = 15_000;
 
 export function connect(key: string, shortId: string) {
   const entry = claudeEntry(key);
@@ -275,13 +276,18 @@ export function connect(key: string, shortId: string) {
   channel.onmessage = (chunk) => {
     entry.term.write(chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : new Uint8Array(chunk));
   };
-  const call = (inflight.get(shortId) ?? Promise.resolve())
-    .catch(() => {})
-    .then(() =>
-      entries.get(key) === entry
-        ? terminalAttach(shortId, entry.term.cols, entry.term.rows, channel as Channel<ArrayBuffer>)
-        : null,
-    );
+  const previous = inflight.get(shortId);
+  const waited = previous
+    ? Promise.race([
+        previous.catch(() => {}),
+        new Promise((resolve) => setTimeout(resolve, ATTACH_WAIT_MS)),
+      ])
+    : Promise.resolve();
+  const call = waited.then(() =>
+    entries.get(key) === entry
+      ? terminalAttach(shortId, entry.term.cols, entry.term.rows, channel as Channel<ArrayBuffer>)
+      : null,
+  );
   inflight.set(shortId, call);
   void call
     .finally(() => {

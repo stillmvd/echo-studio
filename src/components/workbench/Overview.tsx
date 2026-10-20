@@ -32,7 +32,7 @@ function Meter({ label, limit, weekly }: { label: string; limit: Limit | null; w
 export function Overview() {
   const { data: tree } = useWorkbenchProjects();
   const limits = useRateLimits().data ?? null;
-  const { data: usage, isPending: usagePending } = useUsage();
+  const { data: usage, isLoading: usagePending } = useUsage();
   const rows = useProcesses().data ?? [];
 
   const projects = useMemo(() => new Map((tree ? all(tree) : []).map((p) => [p.path, p])), [tree]);

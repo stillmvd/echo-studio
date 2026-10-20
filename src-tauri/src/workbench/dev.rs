@@ -90,7 +90,6 @@ pub struct DevServer {
     pub started_at: u64,
     pub exit_code: Option<i32>,
     pub log: String,
-    #[serde(skip)]
     pub pids: Vec<u32>,
 }
 
@@ -347,7 +346,7 @@ fn server(dir: &Path, slug: &str, file: DevFile, table: &[(u32, u16)], now: u64)
     let ports = ports_for(&pids, table);
     let exit_code = file.exit_code;
     let state = match (pids.is_empty(), exit_code) {
-        (_, Some(code)) if code != 0 => DevState::Error,
+        (_, Some(code)) if code != 0 && ports.is_empty() => DevState::Error,
         (false, _) if ports.is_empty() && now.saturating_sub(file.started_at) < STARTING_FOR => {
             DevState::Starting
         }
@@ -430,11 +429,12 @@ pub fn start_in(
     let slug = slug(project_path);
     let previous = read_file(dir, &slug);
     let started_at = previous.as_ref().map_or(0, |f| f.started_at);
-    if !running_members(&slug, started_at).is_empty() {
-        if previous
+    let members = running_members(&slug, started_at);
+    if !members.is_empty() {
+        let failed = previous
             .and_then(|f| f.exit_code)
-            .is_none_or(|code| code == 0)
-        {
+            .is_some_and(|code| code != 0);
+        if !failed || !ports_for(&members, &listeners()).is_empty() {
             return Err("dev server is already running".into());
         }
         stop_in(dir, project_path)?;
@@ -983,6 +983,33 @@ mod tests {
         }
         assert_eq!(listed[0].state, DevState::Error);
         assert_eq!(listed[0].exit_code, Some(3));
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn a_failed_root_with_a_listening_child_keeps_running_and_refuses_restart() {
+        let base = std::env::temp_dir().join(format!("echo-dev-serving-{}", std::process::id()));
+        let project = base.join("project");
+        let dir = base.join("state");
+        fs::create_dir_all(&project).unwrap();
+        let project_path = project.to_string_lossy().into_owned();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let args = ["ping -n 2 127.0.0.1 > nul & start /b node -e \"require('net').createServer().listen(0, '127.0.0.1')\" & exit 3".to_owned()];
+        start_in(&dir, &project_path, &project, &args, move || {
+            let _ = tx.send(());
+        })
+        .unwrap();
+        rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        let mut listed = list_in(&dir);
+        while listed[0].ports.is_empty() && std::time::Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(100));
+            listed = list_in(&dir);
+        }
+        assert_eq!(listed[0].state, DevState::Running, "{listed:?}");
+        assert!(start_in(&dir, &project_path, &project, &["exit 0".to_owned()], || {}).is_err());
+        assert!(!list_in(&dir)[0].ports.is_empty());
+        stop_in(&dir, &project_path).unwrap();
         let _ = fs::remove_dir_all(&base);
     }
 
