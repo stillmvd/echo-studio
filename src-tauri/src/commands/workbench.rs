@@ -42,14 +42,18 @@ pub async fn read_git_states(
 pub async fn list_processes() -> Result<Vec<processes::ProcessRow>, String> {
     let root = projects_root().ok_or("cannot resolve Projects root")?;
     blocking(move || {
-        processes::list_processes(&projects::scan(&root), live_agents(), dev::jobs(), &root)
+        Ok(processes::list_processes(
+            &projects::scan(&root),
+            live_agents()?,
+            dev::jobs(),
+            &root,
+        ))
     })
-    .await
+    .await?
 }
 
-fn live_agents() -> Vec<processes::AgentRef> {
-    sessions::run_agents()
-        .unwrap_or_default()
+fn live_agents() -> Result<Vec<processes::AgentRef>, String> {
+    Ok(sessions::run_agents()?
         .into_iter()
         .filter(sessions::is_live)
         .map(|a| processes::AgentRef {
@@ -57,7 +61,7 @@ fn live_agents() -> Vec<processes::AgentRef> {
             session_id: a.session_id,
             cwd: a.cwd,
         })
-        .collect()
+        .collect())
 }
 
 #[tauri::command]
@@ -67,16 +71,16 @@ pub async fn kill_processes(
 ) -> Result<processes::KillResult, String> {
     let root = projects_root().ok_or("cannot resolve Projects root")?;
     blocking(move || {
-        processes::kill_processes(
+        Ok(processes::kill_processes(
             &targets,
             confirmed,
             &projects::scan(&root),
-            live_agents(),
+            live_agents()?,
             dev::jobs(),
             &root,
-        )
+        ))
     })
-    .await
+    .await?
 }
 
 #[tauri::command]
@@ -128,7 +132,7 @@ pub async fn forget_claude_session(
 }
 
 #[tauri::command]
-pub fn terminal_attach(
+pub async fn terminal_attach(
     app: AppHandle,
     terms: State<'_, Terminals>,
     short_id: String,
@@ -136,6 +140,8 @@ pub fn terminal_attach(
     rows: u16,
     on_data: Channel<Response>,
 ) -> Result<String, String> {
+    let id = short_id.clone();
+    blocking(move || sessions::ensure_attachable(&id)).await??;
     terms.attach(app, &short_id, cols, rows, on_data)
 }
 

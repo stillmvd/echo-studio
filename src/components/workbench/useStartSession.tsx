@@ -10,7 +10,7 @@ export function useStartSession() {
   const openTab = useWorkbenchStore((s) => s.openTab);
   const select = useWorkbenchStore((s) => s.select);
   const [untrusted, setUntrusted] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ title: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const start = useCallback(
@@ -18,13 +18,20 @@ export function useStartSession() {
       setBusy(true);
       try {
         const r = await startClaudeSession(projectPath, resumeSessionId);
-        rememberShort(r.sessionId, r.shortId, true);
-        openTab(projectPath, r.sessionId);
+        if (r.sessionId) {
+          rememberShort(r.sessionId, r.shortId, true);
+          openTab(projectPath, r.sessionId);
+        } else {
+          setNotice({
+            title: 'Сессия запущена',
+            text: `Сессия ${r.shortId} работает, но Claude ещё не отдал её в список. Она появится в «Запущено» — откройте её оттуда, новую не запускайте.`,
+          });
+        }
         select({ kind: 'project', path: projectPath });
         void qc.invalidateQueries({ queryKey: ['workbench', 'sessions'] });
       } catch (e) {
         if (String(e) === 'untrusted') setUntrusted(projectPath);
-        else setError(String(e));
+        else setNotice({ title: 'Сессия не запустилась', text: String(e) });
       } finally {
         setBusy(false);
       }
@@ -47,13 +54,13 @@ export function useStartSession() {
         onCancel={() => setUntrusted(null)}
       />
       <ConfirmDialog
-        open={error !== null}
-        title="Сессия не запустилась"
-        description={error ?? ''}
+        open={notice !== null}
+        title={notice?.title ?? ''}
+        description={notice?.text ?? ''}
         confirmLabel="Понятно"
         cancelLabel="Закрыть"
-        onConfirm={() => setError(null)}
-        onCancel={() => setError(null)}
+        onConfirm={() => setNotice(null)}
+        onCancel={() => setNotice(null)}
       />
     </>
   );

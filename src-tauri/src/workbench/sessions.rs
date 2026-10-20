@@ -1,11 +1,17 @@
 use std::collections::HashMap;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::mpsc;
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::child_command;
+use super::{child_command, projects, projects_root};
+
+const CLAUDE_TIMEOUT: Duration = Duration::from_secs(20);
+const PIPE_GRACE: Duration = Duration::from_millis(500);
 
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -68,7 +74,7 @@ pub struct ClaudeSession {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Started {
-    pub session_id: String,
+    pub session_id: Option<String>,
     pub short_id: String,
 }
 
@@ -109,34 +115,103 @@ pub fn is_session_id(id: &str) -> bool {
             .all(|(g, n)| g.len() == n && g.bytes().all(|b| b.is_ascii_hexdigit()))
 }
 
-pub fn parse_agents(text: &str) -> Vec<AgentEntry> {
-    serde_json::from_str::<Vec<Value>>(text)
-        .unwrap_or_default()
+pub fn parse_agents(text: &str) -> Result<Vec<AgentEntry>, String> {
+    let list = serde_json::from_str::<Vec<Value>>(text.trim())
+        .map_err(|e| format!("claude agents --json: {e}"))?;
+    Ok(list
         .into_iter()
         .filter_map(|v| serde_json::from_value(v).ok())
-        .collect()
+        .collect())
 }
 
-fn claude(args: &[&str], cwd: Option<&Path>) -> Result<String, String> {
+struct Output {
+    stdout: String,
+    stderr: String,
+}
+
+fn pipe_text(pipe: Option<impl Read + Send + 'static>) -> mpsc::Receiver<String> {
+    let (tx, rx) = mpsc::channel();
+    if let Some(mut pipe) = pipe {
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            let _ = pipe.read_to_end(&mut buf);
+            let _ = tx.send(String::from_utf8_lossy(&buf).into_owned());
+        });
+    }
+    rx
+}
+
+fn claude(args: &[&str], cwd: Option<&Path>) -> Result<Output, String> {
+    let what = format!("claude {}", args.join(" "));
     let mut cmd = child_command(&claude_exe().to_string_lossy());
-    cmd.args(args).stdin(Stdio::null());
+    cmd.args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     if let Some(dir) = cwd {
         cmd.current_dir(dir);
     }
-    let out = cmd
-        .output()
-        .map_err(|e| format!("claude {}: {e}", args.join(" ")))?;
-    let mut text = String::from_utf8_lossy(&out.stdout).into_owned();
-    text.push_str(&String::from_utf8_lossy(&out.stderr));
-    if out.status.success() {
-        Ok(text)
+    let mut child = cmd.spawn().map_err(|e| format!("{what}: {e}"))?;
+    let stdout = pipe_text(child.stdout.take());
+    let stderr = pipe_text(child.stderr.take());
+    let deadline = Instant::now() + CLAUDE_TIMEOUT;
+    let status = loop {
+        match child.try_wait().map_err(|e| format!("{what}: {e}"))? {
+            Some(status) => break status,
+            None if Instant::now() >= deadline => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!(
+                    "{what}: no answer in {}s",
+                    CLAUDE_TIMEOUT.as_secs()
+                ));
+            }
+            None => std::thread::sleep(Duration::from_millis(50)),
+        }
+    };
+    let rest = |rx: mpsc::Receiver<String>| {
+        rx.recv_timeout(deadline.saturating_duration_since(Instant::now()) + PIPE_GRACE)
+            .unwrap_or_default()
+    };
+    let out = Output {
+        stdout: rest(stdout),
+        stderr: rest(stderr),
+    };
+    if status.success() {
+        Ok(out)
     } else {
-        Err(text.trim().to_string())
+        let msg = format!("{}\n{}", out.stdout.trim(), out.stderr.trim());
+        Err(format!("{what}: {}", msg.trim()))
     }
 }
 
 pub fn run_agents() -> Result<Vec<AgentEntry>, String> {
-    claude(&["agents", "--json"], None).map(|t| parse_agents(&t))
+    parse_agents(&claude(&["agents", "--json"], None)?.stdout)
+}
+
+pub fn shell_agent(short_id: &str) -> Result<Option<AgentEntry>, String> {
+    if !is_short_id(short_id) {
+        return Err(format!("invalid short id: {short_id}"));
+    }
+    let Some(agent) = run_agents()?
+        .into_iter()
+        .find(|a| a.id.as_deref() == Some(short_id))
+    else {
+        return Ok(None);
+    };
+    if agent.kind.as_deref() != Some("background") {
+        return Err(format!("session {short_id} is not a background session"));
+    }
+    let root = projects_root().ok_or("cannot resolve Projects root")?;
+    let tree = projects::scan(&root);
+    let inside = agent
+        .cwd
+        .as_deref()
+        .is_some_and(|cwd| projects::project_for(&tree, cwd).is_some());
+    if !inside {
+        return Err(format!("session {short_id} is outside known projects"));
+    }
+    Ok(Some(agent))
 }
 
 pub fn read_hooks(dir: &Path) -> HashMap<String, HookState> {
@@ -225,7 +300,7 @@ pub fn start(project: &Path, resume: Option<&str>) -> Result<Started, String> {
         if let Some(agent) = live {
             return match agent.id.filter(|s| is_short_id(s)) {
                 Some(short_id) => Ok(Started {
-                    session_id: id.to_string(),
+                    session_id: Some(id.to_string()),
                     short_id,
                 }),
                 None => Err("the conversation is open outside the workbench".into()),
@@ -237,7 +312,7 @@ pub fn start(project: &Path, resume: Option<&str>) -> Result<Started, String> {
         args.extend(["--resume", id]);
     }
     let text = match claude(&args, Some(project)) {
-        Ok(t) => t,
+        Ok(out) => format!("{}\n{}", out.stdout, out.stderr),
         Err(e) if e.contains("Workspace not trusted") => return Err(UNTRUSTED.into()),
         Err(e) => return Err(e),
     };
@@ -247,35 +322,47 @@ pub fn start(project: &Path, resume: Option<&str>) -> Result<Started, String> {
     let short_id = parse_backgrounded(&text)
         .ok_or_else(|| format!("unexpected claude --bg output: {}", text.trim()))?;
     for _ in 0..10 {
-        let found = run_agents()?
-            .into_iter()
-            .find(|a| a.id.as_deref() == Some(&short_id))
+        let found = run_agents()
+            .ok()
+            .and_then(|list| {
+                list.into_iter()
+                    .find(|a| a.id.as_deref() == Some(&short_id))
+            })
             .and_then(|a| a.session_id);
-        if let Some(session_id) = found {
+        if found.is_some() {
             return Ok(Started {
-                session_id,
+                session_id: found,
                 short_id,
             });
         }
-        std::thread::sleep(std::time::Duration::from_millis(300));
+        std::thread::sleep(Duration::from_millis(300));
     }
-    Err(format!(
-        "session {short_id} did not appear in claude agents"
-    ))
+    Ok(Started {
+        session_id: None,
+        short_id,
+    })
 }
 
 pub fn stop(short_id: &str) -> Result<(), String> {
-    if !is_short_id(short_id) {
-        return Err(format!("invalid short id: {short_id}"));
+    match shell_agent(short_id)? {
+        None => Err(format!("no session {short_id}")),
+        Some(agent) if !is_live(&agent) => Ok(()),
+        Some(_) => claude(&["stop", short_id], None).map(|_| ()),
     }
-    claude(&["stop", short_id], None).map(|_| ())
 }
 
 pub fn forget(short_id: &str) -> Result<(), String> {
-    if !is_short_id(short_id) {
-        return Err(format!("invalid short id: {short_id}"));
+    match shell_agent(short_id)? {
+        None => Ok(()),
+        Some(agent) if is_live(&agent) => Err(format!("session {short_id} is still running")),
+        Some(_) => claude(&["rm", short_id], None).map(|_| ()),
     }
-    claude(&["rm", short_id], None).map(|_| ())
+}
+
+pub fn ensure_attachable(short_id: &str) -> Result<(), String> {
+    shell_agent(short_id)?
+        .map(|_| ())
+        .ok_or_else(|| format!("no session {short_id}"))
 }
 
 #[cfg(test)]
@@ -308,7 +395,7 @@ mod tests {
 
     #[test]
     fn merges_agents_and_hooks() {
-        let agents = parse_agents(AGENTS);
+        let agents = parse_agents(AGENTS).unwrap();
         assert_eq!(agents.len(), 5);
         let hooks: HashMap<_, _> = [
             hook("b4eda7ff-5f54-42a6-bd10-eada7ec3c0f4", "done"),
@@ -339,10 +426,18 @@ mod tests {
     }
 
     #[test]
+    fn broken_agents_output_is_an_error_not_an_empty_list() {
+        assert!(parse_agents("").is_err());
+        assert!(parse_agents("warning: update available\n[]").is_err());
+        assert!(parse_agents("[]\n").unwrap().is_empty());
+    }
+
+    #[test]
     fn fresh_session_is_idle_not_waiting() {
         let agents = parse_agents(
             r#"[{"pid":9,"id":"aaaaaaaa","kind":"background","sessionId":"aaaaaaaa-0000-0000-0000-000000000000","status":"idle","state":"blocked"}]"#,
-        );
+        )
+        .unwrap();
         assert_eq!(merge(&agents, &HashMap::new())[0].status, Status::Idle);
     }
 
@@ -350,7 +445,8 @@ mod tests {
     fn hook_error_wins_when_idle() {
         let agents = parse_agents(
             r#"[{"pid":9,"id":"aaaaaaaa","kind":"background","sessionId":"aaaaaaaa-0000-0000-0000-000000000000","status":"idle"}]"#,
-        );
+        )
+        .unwrap();
         let hooks: HashMap<_, _> = [hook("aaaaaaaa-0000-0000-0000-000000000000", "error")].into();
         assert_eq!(merge(&agents, &hooks)[0].status, Status::Error);
     }

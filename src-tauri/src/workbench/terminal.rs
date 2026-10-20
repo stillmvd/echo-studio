@@ -14,6 +14,7 @@ use super::sessions::{claude_exe, is_short_id};
 
 pub const EVENT_EXIT: &str = "workbench://terminal-exit";
 const FLUSH: Duration = Duration::from_millis(16);
+const PENDING_CAP: usize = 4 << 20;
 
 struct Term {
     master: Box<dyn MasterPty + Send>,
@@ -99,6 +100,10 @@ impl Terminals {
                     }
                     if let Ok(mut p) = pending.lock() {
                         p.extend_from_slice(&buf[..n]);
+                        if p.len() > PENDING_CAP {
+                            let excess = p.len() - PENDING_CAP;
+                            p.drain(..excess);
+                        }
                     }
                 }
                 done.store(true, Ordering::Release);
@@ -119,6 +124,17 @@ impl Terminals {
                 break;
             }
         });
+        self.map
+            .lock()
+            .map_err(|_| "terminal registry poisoned")?
+            .insert(
+                id.clone(),
+                Term {
+                    master: pair.master,
+                    writer,
+                    killer,
+                },
+            );
         {
             let id = id.clone();
             let app = app.clone();
@@ -138,18 +154,6 @@ impl Terminals {
                 );
             });
         }
-
-        self.map
-            .lock()
-            .map_err(|_| "terminal registry poisoned")?
-            .insert(
-                id.clone(),
-                Term {
-                    master: pair.master,
-                    writer,
-                    killer,
-                },
-            );
         Ok(id)
     }
 

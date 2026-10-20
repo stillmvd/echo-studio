@@ -158,7 +158,8 @@ export function logEntry(key: string): Entry {
   return entry;
 }
 
-const tails = new Map<string, number | null>();
+const tails = new Map<string, { token: number; id: number | null }>();
+let tailSeq = 0;
 
 export function startTail(key: string, projectPath: string, fresh = false) {
   const entry = logEntry(key);
@@ -167,23 +168,26 @@ export function startTail(key: string, projectPath: string, fresh = false) {
     entry.term.reset();
   }
   if (tails.has(key)) return;
-  tails.set(key, null);
+  const tail = { token: ++tailSeq, id: null as number | null };
+  tails.set(key, tail);
   const channel = new Channel<number[]>();
   channel.onmessage = (chunk) => {
-    if (chunk.length) entry.term.write(new Uint8Array(chunk));
+    if (chunk.length && tails.get(key) === tail) entry.term.write(new Uint8Array(chunk));
   };
   tailDevLog(projectPath, channel)
     .then((r) => {
-      if (tails.has(key)) tails.set(key, r.subscriptionId);
+      if (tails.get(key) === tail) tail.id = r.subscriptionId;
       else void untailDevLog(r.subscriptionId).catch(() => {});
     })
-    .catch(() => tails.delete(key));
+    .catch(() => {
+      if (tails.get(key) === tail) tails.delete(key);
+    });
 }
 
-function stopTail(key: string) {
-  const id = tails.get(key);
+export function stopTail(key: string) {
+  const tail = tails.get(key);
   tails.delete(key);
-  if (typeof id === 'number') void untailDevLog(id).catch(() => {});
+  if (tail?.id != null) void untailDevLog(tail.id).catch(() => {});
 }
 
 export function mount(entry: Entry, container: HTMLElement) {
@@ -223,6 +227,10 @@ export function connect(key: string, shortId: string) {
   };
   terminalAttach(shortId, entry.term.cols, entry.term.rows, channel as Channel<ArrayBuffer>)
     .then((id) => {
+      if (entries.get(key) !== entry) {
+        void terminalDetach(id).catch(() => {});
+        return;
+      }
       entry.terminalId = id;
       byTerminal.set(id, entry);
       setState(entry, 'live');

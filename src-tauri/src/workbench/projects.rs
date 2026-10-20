@@ -414,5 +414,8 @@ mod tests {
             "C:/Users/a/Projects/X/",
             "c:\\users\\a\\projects\\x"
         ));
+        assert!(is_within("C:\\P\\X\\src", "c:/p/x"));
+        assert!(is_within("C:\\P\\X", "C:\\P\\X\\"));
+        assert!(!is_within("C:\\P\\Xy", "C:\\P\\X"));
     }
 }

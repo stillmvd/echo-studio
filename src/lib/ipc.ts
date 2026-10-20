@@ -202,7 +202,7 @@ export async function setWorkbenchActive(active: boolean): Promise<void> {
 export async function startClaudeSession(
   projectPath: string,
   resumeSessionId?: string,
-): Promise<{ sessionId: string; shortId: string }> {
+): Promise<{ sessionId: string | null; shortId: string }> {
   return invoke('start_claude_session', { projectPath, resumeSessionId });
 }
 

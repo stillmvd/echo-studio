@@ -39,13 +39,15 @@ pub fn start_sessions(app: AppHandle) -> SessionsHub {
                 }
             },
         );
-        let _debouncer = debouncer.ok().and_then(|mut d| {
-            let dir = sessions::hooks_dir()?;
-            d.watcher().watch(&dir, RecursiveMode::NonRecursive).ok()?;
-            Some(d)
-        });
+        let mut debouncer = debouncer.ok();
+        let mut watching = false;
         let mut last: Option<Instant> = None;
         loop {
+            if !watching {
+                if let (Some(d), Some(dir)) = (debouncer.as_mut(), sessions::hooks_dir()) {
+                    watching = d.watcher().watch(&dir, RecursiveMode::NonRecursive).is_ok();
+                }
+            }
             match rx.recv_timeout(SESSIONS_TICK) {
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,
                 Ok(()) | Err(mpsc::RecvTimeoutError::Timeout) => {}
