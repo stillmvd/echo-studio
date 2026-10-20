@@ -6,6 +6,9 @@ import { defineConfig } from 'vite';
 import { configDefaults } from 'vitest/config';
 
 const host = process.env.TAURI_DEV_HOST;
+const ownClaudeDir = path.join(import.meta.dirname, '.claude').toLowerCase();
+const inOwnClaudeDir = (file: string) =>
+  path.normalize(file).toLowerCase().startsWith(ownClaudeDir);
 
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
@@ -27,7 +30,7 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
-      ignored: ['**/src-tauri/**', '**/.claude/**'],
+      ignored: ['**/src-tauri/**', inOwnClaudeDir],
     },
   },
   test: {
