@@ -549,7 +549,8 @@ impl<'a> Classifier<'a> {
         }
         let pids: Vec<u32> = self.rows.keys().copied().collect();
         for pid in pids {
-            if roots.contains_key(&pid) || self.rows[&pid].session.is_some() {
+            let row = &self.rows[&pid];
+            if roots.contains_key(&pid) || row.session.is_some() || row.guard.is_some() {
                 continue;
             }
             if let Some(root) = self
@@ -1041,6 +1042,33 @@ mod tests {
             assert_eq!(c.orphan, None, "{pid}: {c:?}");
             assert_eq!(c.project_path.as_deref(), Some(r"C:\P\AM"));
         }
+    }
+
+    #[test]
+    fn guarded_descendant_of_duplicate_keeps_its_guard() {
+        let snap = Snapshot {
+            processes: vec![
+                proc(20, 1, "node.exe", "node --watch a.ts", r"C:\P\AM"),
+                proc(21, 1, "node.exe", "node --watch a.ts", r"C:\P\AM"),
+                proc(22, 20, "node.exe", "node vite.js", r"C:\P\AM"),
+            ],
+            dev_jobs: vec![DevJob {
+                project_path: r"C:\P\AM".into(),
+                pids: vec![22],
+            }],
+            ..Snapshot::default()
+        };
+        let projects = [ProjectRef {
+            path: r"C:\P\AM".into(),
+            profile: None,
+        }];
+        let classes = classify(&snap, &projects, r"C:\P");
+        assert_eq!(
+            classes[&20].orphan.as_ref().map(|o| o.reason),
+            Some(OrphanReason::Duplicate)
+        );
+        assert_eq!(classes[&22].guard, Some(Guard::RunningDev));
+        assert_eq!(classes[&22].orphan, None);
     }
 
     #[test]

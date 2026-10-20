@@ -52,7 +52,7 @@ export function args(commandLine: string): string {
   const rest = tokens
     .slice(1)
     .map((t) => t.replace(/^"|"$/g, ''))
-    .map((t) => (/^[A-Za-z]:[\\/]|^[\\/]/.test(t) ? (t.split(/[\\/]+/).pop() ?? t) : t))
+    .map((t) => (/^[A-Za-z]:[\\/]|[\\/].*[\\/]/.test(t) ? (t.split(/[\\/]+/).pop() ?? t) : t))
     .join(' ');
   return rest || commandLine;
 }

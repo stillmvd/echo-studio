@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use serde::Serialize;
 use serde_json::Value;
 
-use super::projects::{project_for, ProjectTree};
+use super::projects::{all_projects, project_for, ProjectTree};
 use crate::conversations::reader::jsonl_lines;
 
 const WINDOW: Duration = Duration::from_secs(7 * 86_400);
@@ -163,7 +163,17 @@ pub fn read_usage(tree: &ProjectTree) -> HashMap<String, Usage> {
         cache.insert(path.clone(), (*stamp, usage));
     }
     let raw = aggregate(cache.values().map(|(_, f)| f), &since, &today);
-    by_project(raw, |cwd| project_for(tree, cwd).map(|p| p.path.clone()))
+    by_project(raw, |cwd| {
+        project_for(tree, cwd)
+            .or_else(|| all_projects(tree).find(|p| claude_slug(&p.path) == cwd))
+            .map(|p| p.path.clone())
+    })
+}
+
+pub fn claude_slug(path: &str) -> String {
+    path.chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect()
 }
 
 #[cfg(test)]
@@ -180,6 +190,15 @@ mod tests {
 not json
 {"type":"assistant","timestamp":"2026-10-19T09:00:00.000Z","message":{"id":"m2","usage":{"input_tokens":1,"output_tokens":2}}}
 {"type":"assistant","timestamp":"2026-10-01T09:00:00.000Z","message":{"id":"m3","usage":{"input_tokens":1000}}}"#;
+
+    #[test]
+    fn claude_slug_matches_project_folder_names() {
+        assert_eq!(
+            claude_slug(r"C:\Users\stillmvd\Projects\Windows Apps\Echo Studio"),
+            "C--Users-stillmvd-Projects-Windows-Apps-Echo-Studio"
+        );
+        assert_eq!(claude_slug(r"C:\P\AM 2.0"), "C--P-AM-2-0");
+    }
 
     #[test]
     fn transcript_without_cwd_falls_back_to_its_slug() {

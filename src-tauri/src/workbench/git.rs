@@ -77,13 +77,17 @@ fn status_output(path: &Path) -> Result<Vec<u8>, String> {
     let stderr = child.stderr.take().map(read_all);
     let started = Instant::now();
     let status = loop {
-        if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
+        let polled = child.try_wait();
+        if let Ok(Some(status)) = polled {
             break status;
         }
-        if started.elapsed() > TIMEOUT {
+        if polled.is_err() || started.elapsed() > TIMEOUT {
             let _ = child.kill();
             let _ = child.wait();
-            return Err("git status timed out".into());
+            return Err(match polled {
+                Err(e) => e.to_string(),
+                Ok(_) => "git status timed out".into(),
+            });
         }
         std::thread::sleep(POLL);
     };
