@@ -65,6 +65,7 @@ pub fn run() {
             }
             workbench::limits::start_limits(app.handle().clone());
             app.manage(workbench::watch::start_sessions(app.handle().clone()));
+            workbench::dev::start_monitor(app.handle().clone());
             if let Some(home) = dirs::home_dir() {
                 memory::watch::start(app.handle().clone(), memory::projects_root(&home));
                 let handle = app.handle().clone();
@@ -124,6 +125,12 @@ pub fn run() {
             commands::workbench::terminal_resize,
             commands::workbench::terminal_detach,
             commands::workbench::terminal_detach_all,
+            commands::workbench::list_dev_servers,
+            commands::workbench::start_dev_server,
+            commands::workbench::stop_dev_server,
+            commands::workbench::tail_dev_log,
+            commands::workbench::untail_dev_log,
+            commands::workbench::open_dev_server,
             app_ready,
         ])
         .run(context)

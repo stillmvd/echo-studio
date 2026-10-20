@@ -100,6 +100,9 @@ breakaway), stdin — null, stdout+stderr → `%LOCALAPPDATA%\com.stillmvd.echo-
 `Local\EchoStudio.dev.<slug>`; состояние — `<slug>.json` рядом (`projectPath`, `command`, `pid`, `startedAt`).
 
 - Окно закрыто или обновляется → сервер работает (процессы не потомки job окна, job живёт, пока в нём есть процессы).
+  Проверено 2026-10-20 (`dev.rs` `named_job_outlives_its_handle`): имя job пропадает вместе с последним handle, даже
+  если процессы в job ещё живы. Поэтому job создаётся **с наследуемым handle до запуска** `cmd.exe` — handle держат
+  сами процессы дерева dev, и после перезапуска Echo `OpenJobObjectW` по имени находит работающий сервер.
 - При старте Echo — `OpenJobObjectW` по имени из каждого файла состояния: открылся и в нём есть процессы → «работает»,
   иначе «остановлен» с последним логом.
 - «Стоп» — `TerminateJobObject`: гасит всё дерево, включая сирот (`pnpm -r --parallel` → vite + 2× `node --watch` в AM 2.0),
