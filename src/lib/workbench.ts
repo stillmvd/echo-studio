@@ -239,3 +239,63 @@ export function arrangeCells<C extends WallCell>(
     pendingCount: offGrid.filter((r) => r.waiting).length,
   };
 }
+
+export type WallLayout = '1x1' | '2x1' | '2x2';
+
+export const CELL_COUNT: Record<WallLayout, number> = { '1x1': 1, '2x1': 2, '2x2': 4 };
+
+export function emptyCells(): WallCell[] {
+  return ['c1', 'c2', 'c3', 'c4'].map((id) => ({
+    id,
+    projectPath: null,
+    pinned: false,
+    manual: false,
+    lastInputAt: 0,
+  }));
+}
+
+export function placeProject(
+  cells: WallCell[],
+  layout: WallLayout,
+  focus: string | null,
+  path: string,
+): { cells: WallCell[]; focus: string } {
+  const shown = cells.slice(0, CELL_COUNT[layout]);
+  const already = shown.find((c) => c.projectPath !== null && samePath(c.projectPath, path));
+  if (already) return { cells, focus: already.id };
+  const target =
+    shown.find((c) => c.id === focus && !c.pinned) ??
+    shown.find((c) => c.projectPath === null) ??
+    shown.find((c) => !c.pinned && !c.manual) ??
+    shown.find((c) => !c.pinned) ??
+    shown[0];
+  if (!target) return { cells, focus: focus ?? '' };
+  return {
+    cells: cells.map((c) => (c.id === target.id ? { ...c, projectPath: path, manual: true } : c)),
+    focus: target.id,
+  };
+}
+
+export function byRecency<S extends ClaudeSession>(
+  sessions: S[],
+  recency: string[],
+  seen: Record<string, number>,
+): S[] {
+  const at = (s: S) => {
+    const i = recency.indexOf(s.sessionId);
+    return i < 0 ? recency.length : i;
+  };
+  const urgent = byUrgency(sessions, seen);
+  return [...urgent].sort((a, b) => at(a) - at(b) || urgent.indexOf(a) - urgent.indexOf(b));
+}
+
+export function nextInRecency(
+  order: string[],
+  current: string | null,
+  back = false,
+): string | null {
+  if (order.length === 0) return null;
+  const i = current === null ? 0 : order.indexOf(current);
+  const step = back ? -1 : 1;
+  return order[(Math.max(i, 0) + step + order.length) % order.length] ?? null;
+}

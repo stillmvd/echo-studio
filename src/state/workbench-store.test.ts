@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { emptyCells } from '@/lib/workbench';
 import { devTabKey, isDevTab, useWorkbenchStore } from './workbench-store';
 
 const P = 'C:\\P\\A';
@@ -42,5 +43,23 @@ describe('workbench store', () => {
     const st = useWorkbenchStore.getState();
     expect(st.view).toEqual({ kind: 'overview' });
     expect(st.layout).toBe('1x1');
+  });
+
+  it('places selected projects in wall cells, pins and touches cells', () => {
+    useWorkbenchStore.setState({ layout: '2x2', cells: emptyCells(), focusCell: null });
+    const st = useWorkbenchStore.getState();
+    st.select({ kind: 'project', path: P });
+    st.touchCell('c2');
+    st.select({ kind: 'project', path: 'C:\\P\\B' });
+    let s = useWorkbenchStore.getState();
+    expect(s.cells.map((c) => c.projectPath)).toEqual([P, 'C:\\P\\B', null, null]);
+    expect(s.cells[1]?.manual).toBe(true);
+    s.touchCell('c1');
+    s = useWorkbenchStore.getState();
+    expect(s.view).toEqual({ kind: 'project', path: P });
+    expect(s.cells[0]?.lastInputAt).toBeGreaterThan(0);
+    s.pinCell('c1');
+    s.pinCell('c1');
+    expect(useWorkbenchStore.getState().cells[0]).toMatchObject({ pinned: false, manual: false });
   });
 });

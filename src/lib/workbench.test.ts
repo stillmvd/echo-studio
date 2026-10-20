@@ -8,10 +8,14 @@ import type {
 } from './types';
 import {
   arrangeCells,
+  byRecency,
   byUrgency,
   effectiveStatus,
+  emptyCells,
   HANDS_ON_MS,
   type KeyInput,
+  nextInRecency,
+  placeProject,
   projectOf,
   runningItems,
   samePath,
@@ -301,5 +305,59 @@ describe('arrangeCells', () => {
     const r = arrangeCells(cells, sessions, now, null);
     expect(placed(r.cells)).toEqual(['A']);
     expect(r.offGrid).toEqual(['B']);
+  });
+});
+
+describe('placeProject', () => {
+  const cells = () => emptyCells();
+
+  it('puts a manually opened project into the focused cell and marks it manual', () => {
+    const r = placeProject(cells(), '2x2', 'c3', 'P');
+    expect(r.focus).toBe('c3');
+    expect(r.cells[2]).toMatchObject({ projectPath: 'P', manual: true });
+  });
+
+  it('focuses the cell that already shows the project', () => {
+    const start = cells().map((c) => (c.id === 'c2' ? { ...c, projectPath: 'c:\\p\\' } : c));
+    const r = placeProject(start, '2x2', 'c1', 'C:\\P');
+    expect(r.focus).toBe('c2');
+    expect(r.cells).toBe(start);
+  });
+
+  it('skips a pinned focus and cells beyond the layout', () => {
+    const start = cells().map((c) =>
+      c.id === 'c1' ? { ...c, projectPath: 'A', pinned: true } : { ...c, projectPath: c.id },
+    );
+    const r = placeProject(start, '2x1', 'c1', 'P');
+    expect(r.focus).toBe('c2');
+    expect(r.cells.map((c) => c.projectPath)).toEqual(['A', 'P', 'c3', 'c4']);
+  });
+});
+
+describe('Ctrl+Tab order', () => {
+  it('puts recently focused sessions first, the rest by urgency', () => {
+    const sessions = [
+      session('A', 'idle', 1),
+      session('B', 'waiting', 2),
+      session('C', 'working', 3),
+      session('D', 'error', 4),
+    ];
+    const ids = byRecency(sessions, ['C', 'X', 'A'], {}).map((s) => s.sessionId);
+    expect(ids).toEqual(['C', 'A', 'B', 'D']);
+  });
+
+  it('steps forward and back with wrap-around', () => {
+    const order = ['C', 'A', 'B'];
+    expect(nextInRecency(order, 'C')).toBe('A');
+    expect(nextInRecency(order, 'B')).toBe('C');
+    expect(nextInRecency(order, 'C', true)).toBe('B');
+    expect(nextInRecency(order, 'A', true)).toBe('C');
+  });
+
+  it('handles empty, single and unknown current', () => {
+    expect(nextInRecency([], 'A')).toBeNull();
+    expect(nextInRecency(['A'], 'A')).toBe('A');
+    expect(nextInRecency(['A', 'B'], null)).toBe('B');
+    expect(nextInRecency(['A', 'B'], 'gone')).toBe('B');
   });
 });

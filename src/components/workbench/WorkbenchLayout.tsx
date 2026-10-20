@@ -7,9 +7,12 @@ import { Overview } from './Overview';
 import { ProjectChips } from './ProjectChips';
 import { ProjectHeader } from './ProjectHeader';
 import { ProjectTree } from './ProjectTree';
+import { QuickSwitch } from './QuickSwitch';
 import { RunningList } from './RunningList';
+import { SessionStrip } from './SessionStrip';
 import { pruneMissing } from './terminals';
 import { useStartSession } from './useStartSession';
+import { LayoutPicker, Wall } from './Wall';
 
 export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   const { data: tree, error } = useWorkbenchProjects();
@@ -27,7 +30,11 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   }, [tree, projects, tabs]);
   const selected =
     view.kind === 'project' ? projects.find((p) => samePath(p.path, view.path)) : undefined;
-  const opened = projects.filter((p) => (tabs[p.path]?.length ?? 0) > 0 || p === selected);
+  const layout = useWorkbenchStore((s) => s.layout);
+  const wall = layout !== '1x1' && !!selected;
+  const opened = wall
+    ? []
+    : projects.filter((p) => (tabs[p.path]?.length ?? 0) > 0 || p === selected);
 
   return (
     <div className="wb-root" hidden={hidden}>
@@ -59,6 +66,16 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
         </div>
         <div className="wb-card wb-pv">
           {!selected && <Overview />}
+          {wall && (
+            <Wall
+              hidden={hidden}
+              sessions={sessions}
+              projects={byPath}
+              busy={busy}
+              devServers={devServers}
+              onStart={(path, resume) => void start(path, resume)}
+            />
+          )}
           {opened.map((p) => {
             const isSelected = p === selected;
             return (
@@ -69,6 +86,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
                     server={devServers.find((d) => samePath(d.projectPath, p.path))}
                     busy={busy}
                     onClaude={() => void start(p.path)}
+                    extra={<LayoutPicker />}
                   />
                 )}
                 <div
@@ -89,6 +107,8 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
           })}
         </div>
       </div>
+      <SessionStrip sessions={sessions} projects={byPath} wall={wall} />
+      <QuickSwitch enabled={!hidden} sessions={sessions} projects={byPath} />
       {dialogs}
     </div>
   );
