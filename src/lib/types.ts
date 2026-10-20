@@ -281,3 +281,58 @@ export interface ClaudeSession {
   pid: number | null;
   transcript: string | null;
 }
+
+export interface Limit {
+  usedPercentage: number;
+  resetsAt: number;
+  reset: boolean;
+}
+
+export interface RateLimits {
+  fiveHour: Limit | null;
+  sevenDay: Limit | null;
+  updatedAt: number;
+}
+
+export interface Usage {
+  week: number;
+  today: number;
+  sessions: number;
+  days: Record<string, number>;
+}
+
+export interface GitStatus {
+  branch: string;
+  dirty: number;
+  ahead: number;
+  behind: number;
+  upstream: boolean;
+}
+
+export type GitState = GitStatus | { error: string };
+
+export type OrphanReason = 'session-closed' | 'duplicate' | 'no-project';
+
+export interface Orphan {
+  reason: OrphanReason;
+  since?: number;
+  of?: number;
+}
+
+export type ProcessGuard = 'live-session' | 'running-dev';
+
+export interface ProcessRow {
+  pid: number;
+  name: string;
+  memory: number;
+  commandLine: string;
+  projectPath: string | null;
+  session: string | null;
+  orphan: Orphan | null;
+  guard: ProcessGuard | null;
+}
+
+export interface KillResult {
+  killed: number[];
+  failed: { pid: number; error: string }[];
+}

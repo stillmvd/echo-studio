@@ -4,11 +4,15 @@ import type {
   ConversationProject,
   DisplayItem,
   DuplicatePair,
+  GitState,
+  KillResult,
   MemoryHit,
   MemoryListing,
   MemoryProject,
   MemoryRecord,
+  ProcessRow,
   ProjectTree,
+  RateLimits,
   RecordPatch,
   ScanResult,
   ScopeKind,
@@ -20,6 +24,7 @@ import type {
   ToolCopy,
   ToolFile,
   ToolItem,
+  Usage,
 } from './types';
 
 export async function listToolScopes(): Promise<ScopeRef[]> {
@@ -156,4 +161,24 @@ export async function mergeMemoryRecords(
 
 export async function listWorkbenchProjects(): Promise<ProjectTree> {
   return invoke<ProjectTree>('list_workbench_projects');
+}
+
+export async function readRateLimits(): Promise<RateLimits | null> {
+  return invoke<RateLimits | null>('read_rate_limits');
+}
+
+export async function readUsage(): Promise<Record<string, Usage>> {
+  return invoke<Record<string, Usage>>('read_usage');
+}
+
+export async function readGitStates(paths: string[]): Promise<Record<string, GitState | null>> {
+  return invoke<Record<string, GitState | null>>('read_git_states', { paths });
+}
+
+export async function listProcesses(): Promise<ProcessRow[]> {
+  return invoke<ProcessRow[]>('list_processes');
+}
+
+export async function killProcesses(pids: number[], confirmed: boolean): Promise<KillResult> {
+  return invoke<KillResult>('kill_processes', { pids, confirmed });
 }
