@@ -3,11 +3,12 @@ import { listen } from '@tauri-apps/api/event';
 import { useEffect, useMemo, useRef } from 'react';
 import {
   listClaudeSessions,
+  listDevServers,
   listWorkbenchProjects,
   type RawClaudeSession,
   setWorkbenchActive,
 } from '@/lib/ipc';
-import type { ClaudeSession } from '@/lib/types';
+import type { ClaudeSession, DevServer } from '@/lib/types';
 import { withProjects } from '@/lib/workbench';
 
 export function useTauriEvent<T>(event: string, handler: (payload: T) => void) {
@@ -46,6 +47,17 @@ export function useClaudeSessions(active?: boolean): ClaudeSession[] {
     retry: false,
   });
   return useMemo(() => withProjects(data ?? [], tree), [data, tree]);
+}
+
+export function useDevServers(): DevServer[] {
+  const qc = useQueryClient();
+  useTauriEvent('workbench://dev', () => {
+    void qc.invalidateQueries({ queryKey: ['workbench', 'dev'] });
+  });
+  return (
+    useQuery({ queryKey: ['workbench', 'dev'], queryFn: listDevServers, staleTime: 10_000 }).data ??
+    []
+  );
 }
 
 export function useWorkbenchProjects() {

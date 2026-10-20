@@ -343,3 +343,15 @@ export interface KillResult {
   killed: number[];
   failed: { pid: number; error: string }[];
 }
+
+export type DevState = 'starting' | 'running' | 'stopped' | 'error';
+
+export interface DevServer {
+  projectPath: string;
+  command: string;
+  state: DevState;
+  ports: number[];
+  startedAt: number;
+  exitCode: number | null;
+  log: string;
+}

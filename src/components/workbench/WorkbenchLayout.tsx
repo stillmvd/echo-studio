@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useClaudeSessions, useWorkbenchProjects } from '@/hooks/use-workbench';
+import { useClaudeSessions, useDevServers, useWorkbenchProjects } from '@/hooks/use-workbench';
 import { all, samePath } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { Cell } from './Cell';
@@ -13,6 +13,7 @@ import { useStartSession } from './useStartSession';
 export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   const { data: tree, error } = useWorkbenchProjects();
   const sessions = useClaudeSessions(!hidden);
+  const devServers = useDevServers();
   const view = useWorkbenchStore((s) => s.view);
   const tabs = useWorkbenchStore((s) => s.tabs);
   const { start, busy, dialogs } = useStartSession();
@@ -55,7 +56,12 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
             return (
               <div key={p.path} className="contents">
                 {isSelected && (
-                  <ProjectHeader project={p} busy={busy} onClaude={() => void start(p.path)} />
+                  <ProjectHeader
+                    project={p}
+                    server={devServers.find((d) => samePath(d.projectPath, p.path))}
+                    busy={busy}
+                    onClaude={() => void start(p.path)}
+                  />
                 )}
                 <div
                   className="min-h-0 flex-1 flex-col"

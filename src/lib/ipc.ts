@@ -3,6 +3,7 @@ import type {
   ClaudeSession,
   ConfigBackup,
   ConversationProject,
+  DevServer,
   DisplayItem,
   DuplicatePair,
   GitState,
@@ -240,4 +241,31 @@ export async function terminalDetach(terminalId: string): Promise<void> {
 
 export async function terminalDetachAll(): Promise<void> {
   return invoke('terminal_detach_all');
+}
+
+export async function listDevServers(): Promise<DevServer[]> {
+  return invoke<DevServer[]>('list_dev_servers');
+}
+
+export async function startDevServer(projectPath: string): Promise<DevServer> {
+  return invoke<DevServer>('start_dev_server', { projectPath });
+}
+
+export async function stopDevServer(projectPath: string): Promise<void> {
+  return invoke('stop_dev_server', { projectPath });
+}
+
+export async function tailDevLog(
+  projectPath: string,
+  onData: Channel<number[]>,
+): Promise<{ subscriptionId: number }> {
+  return invoke('tail_dev_log', { projectPath, onData });
+}
+
+export async function untailDevLog(subscriptionId: number): Promise<void> {
+  return invoke('untail_dev_log', { subscriptionId });
+}
+
+export async function openDevServer(projectPath: string): Promise<void> {
+  return invoke('open_dev_server', { projectPath });
 }

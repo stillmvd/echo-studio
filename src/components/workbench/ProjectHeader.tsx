@@ -1,17 +1,19 @@
 import { ArrowUp, GitBranch, Globe, Plus } from 'lucide-react';
 import { useGitStates } from '@/hooks/use-workbench-overview';
 import { isStatus } from '@/lib/overview';
-import type { WorkbenchProject } from '@/lib/types';
+import type { DevServer, WorkbenchProject } from '@/lib/types';
 import { shortPath } from '@/lib/workbench';
+import { DevCapsule } from './DevCapsule';
 import { ProjectIcon } from './ProjectIcon';
 
 interface Props {
   project: WorkbenchProject;
+  server: DevServer | undefined;
   busy: boolean;
   onClaude: () => void;
 }
 
-export function ProjectHeader({ project, busy, onClaude }: Props) {
+export function ProjectHeader({ project, server, busy, onClaude }: Props) {
   const git = useGitStates([project.path]).data?.[project.path];
   return (
     <div className="wb-ph">
@@ -45,6 +47,7 @@ export function ProjectHeader({ project, busy, onClaude }: Props) {
           </span>
         )}
       </span>
+      <DevCapsule project={project} server={server} />
       <button type="button" className="wb-btn p" disabled={busy} onClick={onClaude}>
         <Plus strokeWidth={2} />
         Claude

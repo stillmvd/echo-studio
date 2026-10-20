@@ -6,11 +6,13 @@ import { type ITerminalOptions, Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import { useSyncExternalStore } from 'react';
 import {
+  tailDevLog,
   terminalAttach,
   terminalDetach,
   terminalDetachAll,
   terminalResize,
   terminalWrite,
+  untailDevLog,
 } from '@/lib/ipc';
 import { terminalKey } from '@/lib/workbench';
 
@@ -145,9 +147,43 @@ function claudeEntry(key: string): Entry {
 export function logEntry(key: string): Entry {
   const existing = entries.get(key);
   if (existing) return existing;
-  const entry = create({ disableStdin: true, scrollback: 5000, cursorBlink: false });
+  const entry = create({
+    disableStdin: true,
+    scrollback: 5000,
+    cursorBlink: false,
+    cursorStyle: 'underline',
+    convertEol: true,
+  });
   entries.set(key, entry);
   return entry;
+}
+
+const tails = new Map<string, number | null>();
+
+export function startTail(key: string, projectPath: string, fresh = false) {
+  const entry = logEntry(key);
+  if (fresh) {
+    stopTail(key);
+    entry.term.reset();
+  }
+  if (tails.has(key)) return;
+  tails.set(key, null);
+  const channel = new Channel<number[]>();
+  channel.onmessage = (chunk) => {
+    if (chunk.length) entry.term.write(new Uint8Array(chunk));
+  };
+  tailDevLog(projectPath, channel)
+    .then((r) => {
+      if (tails.has(key)) tails.set(key, r.subscriptionId);
+      else void untailDevLog(r.subscriptionId).catch(() => {});
+    })
+    .catch(() => tails.delete(key));
+}
+
+function stopTail(key: string) {
+  const id = tails.get(key);
+  tails.delete(key);
+  if (typeof id === 'number') void untailDevLog(id).catch(() => {});
 }
 
 export function mount(entry: Entry, container: HTMLElement) {
@@ -210,6 +246,7 @@ export function dispose(key: string) {
   const entry = entries.get(key);
   if (!entry) return;
   entries.delete(key);
+  stopTail(key);
   if (entry.terminalId) {
     byTerminal.delete(entry.terminalId);
     void terminalDetach(entry.terminalId).catch(() => {});
