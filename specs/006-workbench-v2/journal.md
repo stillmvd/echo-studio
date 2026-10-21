@@ -10,3 +10,4 @@
 - Контракт IPC R1 (c602ebb) → workbench-v2 как 75e0940 (cherry-pick); F1/F2 уведомлены.
 - F2 (v2-front-controls) принята после ревью (регресс kill-all исправлен d42f414) → merge 08ba01a.
 - F1 (v2-front-sessions) принята после ревью (автоподключение при смене shortId, live-фильтр exited в WorkbenchLayout, поповер) → merge ea9fbc9.
+- Фронт после F1+F2 на 1e46396: biome, typecheck, vitest 166/166, build — зелёные. F2 (6db6b32f) остановлен (принят). Пачка 2: worktree v2-wall от 1e46396, исполнитель v2-wall запущен.
