@@ -36,6 +36,7 @@ interface Entry {
   shortId: string | null;
   attachedAt: number;
   agentCheck: ReturnType<typeof setTimeout> | undefined;
+  feed: Channel<ArrayBuffer | number[]> | null;
   version: number;
   listeners: Set<() => void>;
   pasteImage: (() => void) | null;
@@ -178,6 +179,7 @@ function create(options: Partial<ITerminalOptions>): Entry {
     shortId: null,
     attachedAt: 0,
     agentCheck: undefined,
+    feed: null,
     version: 0,
     listeners: new Set(),
     pasteImage: null,
@@ -375,7 +377,9 @@ export function connect(key: string, shortId: string) {
   entry.resetCaret();
   fitTerm(entry);
   const channel = new Channel<ArrayBuffer | number[]>();
+  entry.feed = channel;
   channel.onmessage = (chunk) => {
+    if (entry.feed !== channel || entry.state === 'detached') return;
     entry.term.write(
       chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : new Uint8Array(chunk),
       () => watchAgentView(entry),
