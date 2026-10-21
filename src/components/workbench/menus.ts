@@ -18,6 +18,7 @@ import {
 import { createElement, type ElementType } from 'react';
 import type { ContextMenuAction, MenuItem } from '@/components/ui/ContextMenu';
 import type { ClaudeSession, DevServer, ProcessRow, WorkbenchProject } from '@/lib/types';
+import { devHealth } from '@/lib/workbench';
 
 const icon = (Icon: ElementType) => createElement(Icon, { strokeWidth: 2 });
 
@@ -191,10 +192,14 @@ export function runningDevMenu({
   actions,
 }: {
   server: DevServer;
-  actions: { go: () => void; copyUrl: () => void; stop: () => void };
+  actions: { go: () => void; restart: () => void; copyUrl: () => void; stop: () => void };
 }): MenuItem[] {
+  const health = devHealth(server);
   return [
     action('Перейти', ArrowRight, actions.go),
+    ...(health === 'crashed' || health === 'errors'
+      ? [action('Перезапустить', RotateCcw, actions.restart)]
+      : []),
     action('Копировать адрес', Link, actions.copyUrl, { disabled: !devUrl(server) }),
     ...(devRuns(server) ? danger('Остановить', Square, actions.stop) : []),
   ];

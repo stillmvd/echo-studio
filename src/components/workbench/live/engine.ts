@@ -265,6 +265,7 @@ function sceneOf(look: LiveLook) {
 interface Slot {
   look: LiveLook;
   clips: HTMLElement[];
+  cut: Element | null;
 }
 
 const slots = new Map<Element, Slot>();
@@ -324,6 +325,10 @@ function draw(t: number) {
     if (covers.length > 0 && !el.closest('[data-live-top]') && underCover(r, covers)) continue;
     const box = clipBox(r, slot.clips.map(boxOf), w, h);
     if (!box) continue;
+    if (slot.cut?.parentElement?.matches(':hover, :focus-visible')) {
+      box.bottom = Math.min(box.bottom, slot.cut.getBoundingClientRect().top);
+      if (box.bottom <= box.top) continue;
+    }
     const s = sceneOf(slot.look);
     if (!ticked.has(slot.look)) {
       s.tick(t);
@@ -356,13 +361,16 @@ function wake() {
 
 document.addEventListener('visibilitychange', wake);
 window.addEventListener('focus', wake);
-document.addEventListener('scroll', () => reduce.matches && wake(), {
-  capture: true,
-  passive: true,
-});
+for (const type of ['scroll', 'pointerover', 'pointerout', 'focusin', 'focusout']) {
+  document.addEventListener(type, () => reduce.matches && wake(), { capture: true, passive: true });
+}
 
 export function register(el: HTMLElement, look: LiveLook): () => void {
-  slots.set(el, { look, clips: clipsOf(el) });
+  slots.set(el, {
+    look,
+    clips: clipsOf(el),
+    cut: el.parentElement?.querySelector(':scope > [data-live-cut]') ?? null,
+  });
   visible.add(el);
   io.observe(el);
   wake();

@@ -112,7 +112,7 @@ export function LiveIcon({
   className,
 }: {
   look: LiveLook;
-  size: number;
+  size?: number;
   title?: string;
   className?: string;
 }) {
@@ -140,7 +140,7 @@ export function LiveIcon({
     <span
       ref={ref}
       className={cn('live-ico', className)}
-      style={{ width: size, height: size }}
+      style={size ? { width: size, height: size } : undefined}
       title={title}
       data-look={look}
     >

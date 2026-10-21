@@ -1,11 +1,19 @@
+import type { CSSProperties } from 'react';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
+import {
+  cardGlow,
+  devLook,
+  LIVE_COLOR,
+  type LiveLook,
+  sessionLook,
+  sweepDelay,
+} from '@/lib/live-status';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import {
   devHealth,
   devStatusLabel,
   EXTERNAL_LABEL,
-  type RunningItem,
   runningGroups,
   STATUS_LABEL,
   statusTitle,
@@ -13,13 +21,12 @@ import {
 } from '@/lib/workbench';
 import { devTabKey, useWorkbenchStore } from '@/state/workbench-store';
 import { useStopSession } from './Cell';
-import { DevDot, RestartDev } from './DevCapsule';
+import { restartDev } from './DevCapsule';
 import { externalTitle, useExternalSession } from './externalSession';
+import { LiveIcon } from './live/LiveIcon';
 import { canStopSession, copyText, devUrl, runningDevMenu, runningMenu } from './menus';
-import { ProjectIcon } from './ProjectIcon';
 import { useProjectMenu } from './ProjectTree';
 import { openSession } from './SessionStrip';
-import { StatusIcon } from './StatusIcon';
 import { focusSoon } from './terminals';
 
 interface Props {
@@ -66,14 +73,14 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
     openSession(s);
   };
 
-  const topLabel = (item: RunningItem) =>
-    item.kind === 'dev'
-      ? devHealth(item.server) === 'running'
-        ? 'dev работает'
-        : `dev · ${devStatusLabel(item.server)}`
-      : STATUS_LABEL[statusView(item.session, seen)];
+  const tileStyle = (look: LiveLook, key: string) =>
+    ({
+      '--c': LIVE_COLOR[look],
+      '--dl': `-${sweepDelay(key)}s`,
+      ...(look === 'waiting' && { '--spd': '3s' }),
+    }) as CSSProperties;
 
-  const devRow = (d: DevServer) => {
+  const devTile = (d: DevServer) => {
     const key = devTabKey(d.projectPath);
     const project = { path: d.projectPath, dev: { command: d.command } };
     const go = () => {
@@ -84,49 +91,59 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
     const url = devUrl(d);
     const health = devHealth(d);
     const broken = health === 'crashed' || health === 'errors';
+    const look = devLook(d);
     return (
-      <div key={key} className={cn('wb-rw', broken && 'fix')}>
-        <button
-          type="button"
-          className={cn('wb-run', isOn(d.projectPath, key) && 'on')}
-          title={`dev · ${devStatusLabel(d)} — ${d.command}`}
-          onClick={go}
-          onContextMenu={(e) =>
-            openMenu(
-              e,
-              runningDevMenu({
-                server: d,
-                actions: {
-                  go,
-                  copyUrl: () => url && copyText(url),
-                  stop: () => dev.askStop(project),
-                },
-              }),
-            )
-          }
-        >
-          <DevDot server={d} />
-          <span className="wb-run-n">{d.command}</span>
-          <span className="wb-run-s">{devStatusLabel(d)}</span>
-        </button>
-        <RestartDev project={project} server={d} dev={dev} className="wb-run-r" />
-      </div>
+      <button
+        key={key}
+        type="button"
+        className={cn('wb-rt', isOn(d.projectPath, key) && 'on')}
+        style={tileStyle(look, key)}
+        title={[
+          `dev · ${devStatusLabel(d)} — ${d.command}`,
+          broken && 'Перезапустить — в меню правой кнопкой',
+        ]
+          .filter(Boolean)
+          .join('\n')}
+        onClick={go}
+        onContextMenu={(e) =>
+          openMenu(
+            e,
+            runningDevMenu({
+              server: d,
+              actions: {
+                go,
+                restart: () => restartDev(dev, project, d),
+                copyUrl: () => url && copyText(url),
+                stop: () => dev.askStop(project),
+              },
+            }),
+          )
+        }
+      >
+        <LiveIcon look={look} />
+        <span className="wb-rt-l" data-live-cut>
+          <span>{d.command}</span>
+          <small>{devStatusLabel(d)}</small>
+        </span>
+      </button>
     );
   };
 
-  const sessionRow = (s: ClaudeSession) => {
+  const sessionTile = (s: ClaudeSession) => {
     const status = statusView(s, seen);
     const external = s.kind === 'external';
     const label = [STATUS_LABEL[status], external && EXTERNAL_LABEL].filter(Boolean).join(' · ');
+    const look = sessionLook({ status, phase: s.phase });
     return (
       <button
         key={s.sessionId}
         type="button"
         className={cn(
-          'wb-run',
+          'wb-rt',
           isOn(s.projectPath, s.sessionId) && 'on',
           external && status === 'exited' && 'ext',
         )}
+        style={tileStyle(look, s.sessionId)}
         title={[
           statusTitle(status, external),
           external
@@ -154,11 +171,11 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
           );
         }}
       >
-        <StatusIcon small session={{ status, phase: s.phase }} />
-        <span className="wb-run-n">
-          {s.name || (external ? folderName(s.cwd) : null) || 'Claude'}
+        <LiveIcon look={look} />
+        <span className="wb-rt-l" data-live-cut>
+          <span>{s.name || (external ? folderName(s.cwd) : null) || 'Claude'}</span>
+          <small>{label}</small>
         </span>
-        <span className="wb-run-s">{label}</span>
       </button>
     );
   };
@@ -167,35 +184,37 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
     <div className="wb-runs">
       {groups.map((g) => {
         const project = g.path ? projects.get(g.path) : undefined;
-        const head = (
-          <>
-            <ProjectIcon svg={project?.icon ?? null} />
-            <b className="wb-run-n">
-              {project?.name ?? (g.path ? folderName(g.path) : 'Projects')}
-            </b>
-            <span className="wb-run-s">{topLabel(g.top)}</span>
-          </>
-        );
+        const name = project?.name ?? (g.path ? folderName(g.path) : 'Projects');
+        const looks = [
+          ...g.sessions.map((s) => sessionLook({ status: statusView(s, seen), phase: s.phase })),
+          ...g.devs.map(devLook),
+        ];
         return (
-          <div key={g.path ?? ''} className="wb-rg">
+          <article
+            key={g.path ?? ''}
+            className="wb-pc"
+            style={{ '--card-bg': cardGlow(looks.map((l) => LIVE_COLOR[l])) } as CSSProperties}
+          >
             {project ? (
               <button
                 type="button"
-                className="wb-run head"
+                className="wb-pc-h"
                 title={project.path}
                 onClick={() => select({ kind: 'project', path: project.path })}
                 onContextMenu={(e) => projectMenu(e, project)}
               >
-                {head}
+                {name}
               </button>
             ) : (
-              <div className="wb-run head" title={g.path ?? ROOT_HINT}>
-                {head}
+              <div className="wb-pc-h" title={g.path ?? ROOT_HINT}>
+                {name}
               </div>
             )}
-            {g.sessions.map(sessionRow)}
-            {g.devs.map(devRow)}
-          </div>
+            <div className="wb-rts">
+              {g.sessions.map(sessionTile)}
+              {g.devs.map(devTile)}
+            </div>
+          </article>
         );
       })}
       {layer}

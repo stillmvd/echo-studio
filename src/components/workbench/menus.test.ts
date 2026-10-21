@@ -220,9 +220,20 @@ describe('runningMenu', () => {
       labels(
         runningDevMenu({
           server: server('running'),
-          actions: { go: noop, copyUrl: noop, stop: noop },
+          actions: { go: noop, restart: noop, copyUrl: noop, stop: noop },
         }),
       ),
     ).toEqual(['Перейти', 'Копировать адрес (x)', '—', 'Остановить']);
+  });
+
+  it('a crashed dev server can be restarted from the menu', () => {
+    expect(
+      labels(
+        runningDevMenu({
+          server: server('error'),
+          actions: { go: noop, restart: noop, copyUrl: noop, stop: noop },
+        }),
+      ),
+    ).toEqual(['Перейти', 'Перезапустить', 'Копировать адрес (x)', '—', 'Остановить']);
   });
 });

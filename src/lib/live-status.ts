@@ -84,6 +84,35 @@ export function devLook(server: DevServer | undefined): LiveLook {
   }
 }
 
+const GLOW_SPOTS = [
+  [20, 30],
+  [80, 70],
+  [75, 20],
+  [25, 80],
+  [50, 50],
+  [50, 12],
+  [12, 55],
+  [88, 45],
+] as const;
+
+export function sweepDelay(key: string): string {
+  let h = 0;
+  for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return ((h % 500) / 100).toFixed(2);
+}
+
+export function cardGlow(colors: string[]): string {
+  const unique = [...new Set(colors)];
+  if (unique.length === 1)
+    return `radial-gradient(60% 70% at 50% 60%, ${unique[0]}, transparent 75%)`;
+  return unique
+    .map((c, i) => {
+      const [x, y] = GLOW_SPOTS[i % GLOW_SPOTS.length] ?? [50, 50];
+      return `radial-gradient(45% 55% at ${x}% ${y}%, ${c}, transparent 72%)`;
+    })
+    .join(',');
+}
+
 export interface Box {
   left: number;
   top: number;
