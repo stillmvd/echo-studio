@@ -15,6 +15,16 @@
 3. Память проекта: `C:\Users\stillmvd\.claude\projects\C--Users-stillmvd-Projects\memory\desktop-app-peeves.md`
    (что бесит пользователя в UI) и `ui-newbie-and-better-ui.md` — применять.
 
+## Нагрузка на ПК (жёстко, после перегрузки 21.10)
+
+- Rust собирает одновременно одна сессия (R1 или координатор): всегда `CARGO_BUILD_JOBS=4` и общий
+  `CARGO_TARGET_DIR=C:\Users\stillmvd\.cache\echo-v2-target` (переменные в каждой cargo-команде).
+- Фронт-исполнители cargo, clippy и `pnpm tauri dev` не запускают — только `pnpm biome check .`, `pnpm typecheck`,
+  `pnpm test`, `pnpm build`. Rust-проверки их веток делает координатор.
+- Живой `tauri dev` — один экземпляр за раз, только у координатора (или назначенного проверяющего), после проверки
+  закрыть. Живые проверки quickstart — координатор после переноса; исполнитель пишет в отчёте «не проверено вживую: …».
+- После правок Rust — `~/.claude/tools/cleanup/kill-rust-analyzer.ps1`; rust-analyzer не держать.
+
 ## Правила
 
 - Правь только файлы из своей колонки таблицы владения в `plan.md`. Нужен чужой файл — напиши координатору, не
