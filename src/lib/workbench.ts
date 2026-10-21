@@ -526,6 +526,26 @@ export function cellOfTab(layout: ProjectLayout, key: string): number {
   return layout.cells.findIndex((c) => c.tabs.includes(key));
 }
 
+export function insertTab(list: string[], key: string, index?: number): string[] {
+  const at = list.indexOf(key);
+  const rest = list.filter((k) => k !== key);
+  let pos = index ?? rest.length;
+  if (at >= 0 && index !== undefined && at < index) pos -= 1;
+  pos = Math.min(Math.max(pos, 0), rest.length);
+  return [...rest.slice(0, pos), key, ...rest.slice(pos)];
+}
+
+export function showTabInLayout(layout: ProjectLayout, key: string): ProjectLayout {
+  const i = cellOfTab(layout, key);
+  if (i < 0) return layout;
+  if (layout.focus === i && layout.cells[i]?.active === key) return layout;
+  return {
+    ...layout,
+    focus: i,
+    cells: layout.cells.map((c, j) => (j === i ? { ...c, active: key } : c)),
+  };
+}
+
 export function moveTabInLayout(
   layout: ProjectLayout,
   key: string,
@@ -535,19 +555,13 @@ export function moveTabInLayout(
   const from = cellOfTab(layout, key);
   const to = Math.min(Math.max(toCell, 0), CELL_COUNT[layout.layout] - 1);
   if (from < 0) return layout;
-  const source = layout.cells[from]?.tabs ?? [];
-  const at = source.indexOf(key);
   const cells = layout.cells.map((c, i) => {
-    if (i !== from) return c;
+    if (i !== from || i === to) return c;
     const tabs = c.tabs.filter((k) => k !== key);
     const active = c.active === key ? tabs[tabs.length - 1] : c.active;
     return active ? { tabs, active } : { tabs };
   });
-  const target = cells[to]?.tabs ?? [];
-  let pos = index ?? target.length;
-  if (from === to && index !== undefined && at < index) pos -= 1;
-  pos = Math.min(Math.max(pos, 0), target.length);
-  cells[to] = { tabs: [...target.slice(0, pos), key, ...target.slice(pos)], active: key };
+  cells[to] = { tabs: insertTab(cells[to]?.tabs ?? [], key, index), active: key };
   return { ...layout, cells, focus: to };
 }
 

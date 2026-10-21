@@ -11,6 +11,11 @@ describe('workbench store', () => {
       activeTab: {},
       recency: [],
       view: { kind: 'overview' },
+      mode: 'project',
+      projectLayouts: {},
+      layout: '1x1',
+      cells: emptyCells(),
+      focusCell: null,
     });
   });
 
@@ -46,7 +51,12 @@ describe('workbench store', () => {
   });
 
   it('places selected projects in wall cells, pins and touches cells', () => {
-    useWorkbenchStore.setState({ layout: '2x2', cells: emptyCells(), focusCell: null });
+    useWorkbenchStore.setState({
+      mode: 'wall',
+      layout: '2x2',
+      cells: emptyCells(),
+      focusCell: null,
+    });
     const st = useWorkbenchStore.getState();
     st.select({ kind: 'project', path: P });
     st.touchCell('c2');
@@ -78,6 +88,7 @@ describe('workbench store', () => {
 
   it('shows a session opened from outside in the cell that holds the project', () => {
     useWorkbenchStore.setState({
+      mode: 'wall',
       layout: '2x2',
       cells: emptyCells().map((c) => (c.id === 'c3' ? { ...c, projectPath: P } : c)),
       focusCell: 'c1',
@@ -96,6 +107,7 @@ describe('workbench store', () => {
 
   it('moves a project out of a hidden cell with the tab picked last', () => {
     useWorkbenchStore.setState({
+      mode: 'wall',
       layout: '1x1',
       view: { kind: 'overview' },
       cells: emptyCells().map((c) =>
@@ -154,12 +166,125 @@ describe('workbench store', () => {
   });
 
   it('migrates v1 with a wall layout and a selected project into the first cell', () => {
-    const state = migrateWorkbench({ layout: '2x2', view: { kind: 'project', path: P } });
+    const state = migrateWorkbench({
+      mode: 'wall',
+      layout: '2x2',
+      view: { kind: 'project', path: P },
+    });
     expect(state.cells?.map((c) => c.projectPath)).toEqual([P, null, null, null]);
     expect(state.cells?.[0]?.manual).toBe(true);
     expect(state.focusCell).toBe('c1');
     const broken = migrateWorkbench({ layout: '2x1', cells: 'x', view: { kind: 'overview' } });
     expect(broken.cells).toHaveLength(4);
     expect(broken.focusCell).toBeNull();
+  });
+
+  it('migrates v2 tabs into the first cell of each project layout, wall cells kept', () => {
+    const B = 'C:\\P\\B';
+    const cells = emptyCells().map((c) =>
+      c.id === 'c2' ? { ...c, projectPath: B, pinned: true } : c,
+    );
+    const state = migrateWorkbench({
+      layout: '2x1',
+      cells,
+      focusCell: 'c2',
+      view: { kind: 'project', path: P },
+      tabs: { [P]: ['a', 'b', 3], [B]: [] },
+      activeTab: { [P]: 'a' },
+    });
+    expect(state.mode).toBe('project');
+    expect(state.layout).toBe('2x1');
+    expect(state.cells?.map((c) => c.projectPath)).toEqual([null, B, null, null]);
+    expect(state.cells?.[1]?.pinned).toBe(true);
+    expect(state.focusCell).toBe('c2');
+    expect(state.tabs?.[P]).toEqual(['a', 'b']);
+    expect(state.projectLayouts?.[B]).toBeUndefined();
+    expect(state.projectLayouts?.[P]).toEqual({
+      layout: '1x1',
+      focus: 0,
+      cells: [{ tabs: ['a', 'b'], active: 'a' }, { tabs: [] }, { tabs: [] }, { tabs: [] }],
+    });
+    const again = migrateWorkbench(state);
+    expect(again.projectLayouts).toEqual(state.projectLayouts);
+  });
+
+  it('keeps each project layout and puts new tabs into the focused cell', () => {
+    const B = 'C:\\P\\B';
+    const st = useWorkbenchStore.getState();
+    st.openTab(P, 'claude');
+    st.openTab(P, devTabKey(P));
+    st.setProjectLayout(P, '2x1');
+    st.moveTab(P, devTabKey(P), 1);
+    let s = useWorkbenchStore.getState();
+    expect(s.projectLayouts[P]?.cells.map((c) => c.tabs)).toEqual([
+      ['claude'],
+      [devTabKey(P)],
+      [],
+      [],
+    ]);
+    expect(s.projectLayouts[P]?.focus).toBe(1);
+    expect(s.layout).toBe('1x1');
+
+    st.select({ kind: 'project', path: B });
+    st.openTab(B, 'other');
+    st.select({ kind: 'project', path: P });
+    s = useWorkbenchStore.getState();
+    expect(s.projectLayouts[B]?.layout).toBe('1x1');
+    expect(s.projectLayouts[P]?.layout).toBe('2x1');
+    expect(s.cells.every((c) => c.projectPath === null)).toBe(true);
+
+    st.openTab(P, 'second');
+    expect(useWorkbenchStore.getState().projectLayouts[P]?.cells[1]?.tabs).toEqual([
+      devTabKey(P),
+      'second',
+    ]);
+    st.activate(P, 'claude');
+    s = useWorkbenchStore.getState();
+    expect(s.projectLayouts[P]?.focus).toBe(0);
+    expect(s.activeTab[P]).toBe('claude');
+
+    st.closeTab(P, 'claude');
+    s = useWorkbenchStore.getState();
+    expect(s.projectLayouts[P]?.layout).toBe('2x1');
+    expect(s.projectLayouts[P]?.cells[0]?.tabs).toEqual([]);
+
+    st.focusProjectCell(P, 3);
+    expect(useWorkbenchStore.getState().projectLayouts[P]?.focus).toBe(0);
+    st.focusProjectCell(P, 1);
+    st.activateInCell(P, 1, 'second');
+    s = useWorkbenchStore.getState();
+    expect(s.projectLayouts[P]?.cells[1]?.active).toBe('second');
+    expect(s.projectLayouts[P]?.focus).toBe(1);
+
+    st.setProjectLayout(P, '1x1');
+    expect(useWorkbenchStore.getState().projectLayouts[P]?.cells[0]?.tabs).toEqual([
+      devTabKey(P),
+      'second',
+    ]);
+  });
+
+  it('places the project in the wall on switching modes and drops tabs into wall cells', () => {
+    const B = 'C:\\P\\B';
+    useWorkbenchStore.setState({
+      layout: '2x1',
+      cells: emptyCells(),
+      focusCell: null,
+      view: { kind: 'project', path: P },
+      tabs: { [P]: ['a', 'b'], [B]: ['x'] },
+    });
+    const st = useWorkbenchStore.getState();
+    st.setMode('wall');
+    let s = useWorkbenchStore.getState();
+    expect(s.mode).toBe('wall');
+    expect(s.cells[0]?.projectPath).toBe(P);
+    st.moveTabToWallCell('c2', B, 'x');
+    s = useWorkbenchStore.getState();
+    expect(s.cells[1]).toMatchObject({ projectPath: B, manual: true, activeTab: 'x' });
+    expect(s.focusCell).toBe('c2');
+    expect(s.view).toEqual({ kind: 'project', path: B });
+    st.moveTabToWallCell('c1', P, 'b', 0);
+    expect(useWorkbenchStore.getState().tabs[P]).toEqual(['b', 'a']);
+    st.setMode('project');
+    expect(useWorkbenchStore.getState().cells[1]?.projectPath).toBe(B);
   });
 });

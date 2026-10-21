@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
@@ -6,23 +7,31 @@ import {
   cellShowing,
   emptyCells,
   HANDS_ON_MS,
+  insertTab,
+  isLayout,
+  moveTabInLayout,
   normalizeCells,
+  normalizeLayout,
+  type ProjectLayout,
   placeProject,
   pruneCells,
   samePath,
+  showTabInLayout,
   type WallCell,
   type WallLayout,
 } from '@/lib/workbench';
 
-export type { WallLayout };
+export type { ProjectLayout, WallLayout };
 
 export type WorkbenchView = { kind: 'overview' } | { kind: 'project'; path: string };
+export type WorkbenchMode = 'project' | 'wall';
 
 export const devTabKey = (path: string) => `dev:${path}`;
 export const isDevTab = (key: string) => key.startsWith('dev:');
 
 interface WorkbenchState {
   view: WorkbenchView;
+  mode: WorkbenchMode;
   openGroups: string[];
   tabs: Record<string, string[]>;
   activeTab: Record<string, string>;
@@ -32,8 +41,15 @@ interface WorkbenchState {
   cells: WallCell[];
   focusCell: string | null;
   hiddenProjects: string[];
+  projectLayouts: Record<string, ProjectLayout>;
 
   select: (view: WorkbenchView) => void;
+  setMode: (mode: WorkbenchMode) => void;
+  setProjectLayout: (path: string, layout: WallLayout) => void;
+  moveTab: (path: string, key: string, toCell: number, index?: number) => void;
+  moveTabToWallCell: (id: string, path: string, key: string, index?: number) => void;
+  focusProjectCell: (path: string, index: number) => void;
+  activateInCell: (path: string, cell: number, key: string) => void;
   toggleGroup: (name: string) => void;
   openTab: (path: string, key: string) => void;
   closeTab: (path: string, key: string) => void;
@@ -61,15 +77,64 @@ function showInCell(s: WorkbenchState, path: string, key: string): WallCell[] {
   );
 }
 
+const NO_TABS: string[] = [];
+
+type LayoutSource = Pick<WorkbenchState, 'projectLayouts' | 'tabs'>;
+
+export function layoutOf(s: LayoutSource, path: string, tabs?: string[]): ProjectLayout {
+  return normalizeLayout(s.projectLayouts[path], tabs ?? s.tabs[path] ?? NO_TABS);
+}
+
+export function useProjectLayout(path: string): ProjectLayout {
+  const raw = useWorkbenchStore((s) => s.projectLayouts[path]);
+  const tabs = useWorkbenchStore((s) => s.tabs[path]) ?? NO_TABS;
+  return useMemo(() => normalizeLayout(raw, tabs), [raw, tabs]);
+}
+
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === 'object' && !Array.isArray(v);
+
+const strings = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+
+function migrateLayouts(
+  raw: unknown,
+  tabs: Record<string, string[]>,
+  activeTab: Record<string, string>,
+): Record<string, ProjectLayout> {
+  const out: Record<string, ProjectLayout> = {};
+  if (isObject(raw)) {
+    for (const [path, l] of Object.entries(raw)) out[path] = normalizeLayout(l, tabs[path] ?? []);
+    return out;
+  }
+  for (const [path, list] of Object.entries(tabs)) {
+    if (list.length === 0) continue;
+    out[path] = normalizeLayout(
+      { layout: '1x1', focus: 0, cells: [{ tabs: list, active: activeTab[path] }] },
+      list,
+    );
+  }
+  return out;
+}
+
 export function migrateWorkbench(persisted: unknown): Partial<WorkbenchState> {
   const state = (persisted && typeof persisted === 'object' ? persisted : {}) as Partial<
     Omit<WorkbenchState, 'view'>
   > & { view?: unknown };
   const cells = normalizeCells(state.cells);
-  const layout =
-    typeof state.layout === 'string' && Object.hasOwn(CELL_COUNT, state.layout)
-      ? state.layout
-      : '1x1';
+  const layout = isLayout(state.layout) ? state.layout : '1x1';
+  const mode: WorkbenchMode = state.mode === 'wall' ? 'wall' : 'project';
+  const tabs: Record<string, string[]> = {};
+  if (isObject(state.tabs)) {
+    for (const [path, list] of Object.entries(state.tabs)) tabs[path] = strings(list);
+  }
+  const activeTab: Record<string, string> = {};
+  if (isObject(state.activeTab)) {
+    for (const [path, key] of Object.entries(state.activeTab)) {
+      if (typeof key === 'string') activeTab[path] = key;
+    }
+  }
+  const projectLayouts = migrateLayouts(state.projectLayouts, tabs, activeTab);
   const raw = state.view as { kind?: unknown; path?: unknown } | undefined;
   const view: WorkbenchView =
     raw?.kind === 'project' && typeof raw.path === 'string'
@@ -82,8 +147,19 @@ export function migrateWorkbench(persisted: unknown): Partial<WorkbenchState> {
   const hiddenProjects = Array.isArray(state.hiddenProjects)
     ? state.hiddenProjects.filter((p): p is string => typeof p === 'string')
     : [];
-  const base = { ...state, layout, view, cells, focusCell, hiddenProjects };
-  if (view.kind === 'project' && !cells.some((c) => c.projectPath)) {
+  const base = {
+    ...state,
+    mode,
+    tabs,
+    activeTab,
+    projectLayouts,
+    layout,
+    view,
+    cells,
+    focusCell,
+    hiddenProjects,
+  };
+  if (mode === 'wall' && view.kind === 'project' && !cells.some((c) => c.projectPath)) {
     const placed = placeProject(cells, layout, null, view.path);
     return { ...base, cells: placed.cells, focusCell: placed.focus };
   }
@@ -105,12 +181,75 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       cells: emptyCells(),
       focusCell: null,
       hiddenProjects: [],
+      mode: 'project',
+      projectLayouts: {},
 
       select: (view) =>
         set((s) => {
-          if (view.kind !== 'project') return { view };
+          if (view.kind !== 'project' || s.mode !== 'wall') return { view };
           const placed = placeProject(s.cells, s.layout, s.focusCell, view.path);
           return { view, cells: placed.cells, focusCell: placed.focus };
+        }),
+      setMode: (mode) =>
+        set((s) => {
+          if (mode !== 'wall' || s.view.kind !== 'project') return { mode };
+          const placed = placeProject(s.cells, s.layout, s.focusCell, s.view.path);
+          return { mode, cells: placed.cells, focusCell: placed.focus };
+        }),
+      setProjectLayout: (path, layout) =>
+        set((s) => ({
+          projectLayouts: {
+            ...s.projectLayouts,
+            [path]: normalizeLayout({ ...layoutOf(s, path), layout }, s.tabs[path] ?? NO_TABS),
+          },
+        })),
+      moveTab: (path, key, toCell, index) =>
+        set((s) => {
+          const current = layoutOf(s, path);
+          const next = moveTabInLayout(current, key, toCell, index);
+          if (next === current) return {};
+          return {
+            projectLayouts: { ...s.projectLayouts, [path]: next },
+            activeTab: { ...s.activeTab, [path]: key },
+            recency: bump(s.recency, key),
+          };
+        }),
+      moveTabToWallCell: (id, path, key, index) =>
+        set((s) => {
+          const list = s.tabs[path] ?? [];
+          const target = s.cells.find((c) => c.id === id);
+          if (!target || !list.includes(key)) return {};
+          const same = target.projectPath !== null && samePath(target.projectPath, path);
+          return {
+            tabs: index === undefined ? s.tabs : { ...s.tabs, [path]: insertTab(list, key, index) },
+            cells: s.cells.map((c) =>
+              c.id === id
+                ? { ...c, projectPath: path, manual: same ? c.manual : !c.pinned, activeTab: key }
+                : c.activeTab === key
+                  ? { ...c, activeTab: undefined }
+                  : c,
+            ),
+            focusCell: id,
+            view: { kind: 'project', path },
+            activeTab: { ...s.activeTab, [path]: key },
+            recency: bump(s.recency, key),
+          };
+        }),
+      focusProjectCell: (path, index) =>
+        set((s) => {
+          const current = layoutOf(s, path);
+          if (index === current.focus || index >= CELL_COUNT[current.layout]) return {};
+          return { projectLayouts: { ...s.projectLayouts, [path]: { ...current, focus: index } } };
+        }),
+      activateInCell: (path, cell, key) =>
+        set((s) => {
+          const current = layoutOf(s, path);
+          if (!current.cells[cell]?.tabs.includes(key)) return {};
+          return {
+            projectLayouts: { ...s.projectLayouts, [path]: showTabInLayout(current, key) },
+            activeTab: { ...s.activeTab, [path]: key },
+            recency: bump(s.recency, key),
+          };
         }),
       toggleGroup: (name) =>
         set((s) => ({
@@ -121,24 +260,35 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       openTab: (path, key) =>
         set((s) => {
           const list = s.tabs[path] ?? [];
+          const tabs = list.includes(key) ? list : [...list, key];
+          const placed = layoutOf(s, path, tabs);
           return {
-            tabs: { ...s.tabs, [path]: list.includes(key) ? list : [...list, key] },
+            tabs: { ...s.tabs, [path]: tabs },
             activeTab: { ...s.activeTab, [path]: key },
             recency: bump(s.recency, key),
-            cells: showInCell(s, path, key),
+            cells: s.mode === 'wall' ? showInCell(s, path, key) : s.cells,
+            projectLayouts: {
+              ...s.projectLayouts,
+              [path]: s.mode === 'project' ? showTabInLayout(placed, key) : placed,
+            },
           };
         }),
       closeTab: (path, key) =>
         set((s) => {
           const list = (s.tabs[path] ?? []).filter((k) => k !== key);
+          const placed = layoutOf(s, path, list);
           const activeTab = { ...s.activeTab };
           if (activeTab[path] === key) {
-            const next = list[list.length - 1];
+            const next =
+              s.mode === 'project'
+                ? (placed.cells[placed.focus]?.active ?? list[list.length - 1])
+                : list[list.length - 1];
             if (next) activeTab[path] = next;
             else delete activeTab[path];
           }
           return {
             tabs: { ...s.tabs, [path]: list },
+            projectLayouts: { ...s.projectLayouts, [path]: placed },
             activeTab,
             recency: s.recency.filter((k) => k !== key),
             cells: s.cells.some((c) => c.activeTab === key)
@@ -147,11 +297,20 @@ export const useWorkbenchStore = create<WorkbenchState>()(
           };
         }),
       activate: (path, key) =>
-        set((s) => ({
-          activeTab: { ...s.activeTab, [path]: key },
-          recency: bump(s.recency, key),
-          cells: showInCell(s, path, key),
-        })),
+        set((s) => {
+          const base = {
+            activeTab: { ...s.activeTab, [path]: key },
+            recency: bump(s.recency, key),
+          };
+          if (s.mode === 'wall') return { ...base, cells: showInCell(s, path, key) };
+          return {
+            ...base,
+            projectLayouts: {
+              ...s.projectLayouts,
+              [path]: showTabInLayout(layoutOf(s, path), key),
+            },
+          };
+        }),
       markSeen: (sessionId) => set((s) => ({ seen: { ...s.seen, [sessionId]: Date.now() } })),
       setLayout: (layout) =>
         set((s) => {
@@ -223,11 +382,13 @@ export const useWorkbenchStore = create<WorkbenchState>()(
     }),
     {
       name: 'echo-workbench',
-      version: 2,
+      version: 3,
       migrate: (persisted) => migrateWorkbench(persisted) as WorkbenchState,
       merge: (persisted, current) => ({ ...current, ...migrateWorkbench(persisted) }),
       partialize: (s) => ({
         view: s.view,
+        mode: s.mode,
+        projectLayouts: s.projectLayouts,
         openGroups: s.openGroups,
         tabs: s.tabs,
         activeTab: s.activeTab,
