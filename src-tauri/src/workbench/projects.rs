@@ -20,6 +20,7 @@ const EXCLUDE: [&str; 3] = ["Breeze-main", "Smart Control-main", "node_modules"]
 pub struct ProjectTree {
     pub groups: Vec<ProjectGroup>,
     pub roots: Vec<Project>,
+    pub root: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -73,7 +74,10 @@ fn visible_dirs(dir: &Path) -> Vec<PathBuf> {
         .map(|e| e.path())
         .filter(|p| {
             let name = file_name(p);
-            !name.starts_with('.') && !name.starts_with('_') && !EXCLUDE.contains(&name.as_str())
+            !name.starts_with('.')
+                && !name.starts_with('_')
+                && !EXCLUDE.contains(&name.as_str())
+                && !p.join(".git").is_file()
         })
         .collect();
     dirs.sort_by_key(|p| file_name(p).to_lowercase());
@@ -110,7 +114,11 @@ pub fn scan(root: &Path) -> ProjectTree {
             projects,
         });
     }
-    ProjectTree { groups, roots }
+    ProjectTree {
+        groups,
+        roots,
+        root: root.to_string_lossy().into_owned(),
+    }
 }
 
 fn project(dir: &Path, group: Option<String>, icons: &Path) -> Project {
@@ -272,6 +280,7 @@ mod tests {
         mk(root, ".hidden");
 
         let tree = scan(root);
+        assert_eq!(tree.root, root.to_string_lossy());
         assert_eq!(tree.roots.len(), 1);
         assert_eq!(tree.roots[0].name, "Solo");
         assert!(tree.roots[0].has_claude_md);
@@ -288,6 +297,28 @@ mod tests {
             tree.groups[1].projects[0].group.as_deref(),
             Some("Windows Apps")
         );
+    }
+
+    #[test]
+    fn worktree_folder_is_skipped() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        mk(root, "Apps/Echo/.git");
+        let wt = mk(root, "Apps/Echo-wt");
+        fs::write(wt.join(".git"), "gitdir: C:/x/.git/worktrees/wt").unwrap();
+        let top = mk(root, "Top-wt");
+        fs::write(top.join(".git"), "gitdir: C:/x").unwrap();
+        mk(root, "Solo/.git");
+
+        let tree = scan(root);
+        let roots: Vec<_> = tree.roots.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(roots, ["Solo"]);
+        let apps: Vec<_> = tree.groups[0]
+            .projects
+            .iter()
+            .map(|p| p.name.as_str())
+            .collect();
+        assert_eq!(apps, ["Echo"]);
     }
 
     #[test]
