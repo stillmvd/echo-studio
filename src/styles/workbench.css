@@ -280,3 +280,10 @@ fieldset.wl-seg { margin: 0; border: 0; min-width: 0; }
 .wb-pop-b { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .wb-pop-b .wb-btn { background: var(--cosmic); }
 .wb-pop-b .wb-btn:hover { background: var(--hover-strong); }
+.wb-stop svg { color: var(--danger); }
+.wb-stop:hover { background: var(--color-danger-soft); }
+.wb-term-note.dt { top: 50%; bottom: auto; translate: -50% -50%; padding-left: 18px; }
+.wb-term-note.dt .wb-dim { font-size: 12.5px; }
+.wb-term-note .wb-stop { background: var(--cosmic); }
+.wb-term-note .wb-stop:hover { background: var(--color-danger-soft); }
+.wb-tabs > .wb-btn { align-self: center; }

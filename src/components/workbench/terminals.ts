@@ -14,9 +14,9 @@ import {
   terminalWrite,
   untailDevLog,
 } from '@/lib/ipc';
-import { isPathTitle, terminalKey } from '@/lib/workbench';
+import { detectAgentView, isPathTitle, terminalKey } from '@/lib/workbench';
 
-export type TermState = 'idle' | 'attaching' | 'live' | 'ended' | 'error';
+export type TermState = 'idle' | 'attaching' | 'live' | 'ended' | 'detached' | 'error';
 
 interface Entry {
   term: Terminal;
@@ -29,6 +29,7 @@ interface Entry {
   title: string | null;
   shortId: string | null;
   attachedAt: number;
+  agentCheck: ReturnType<typeof setTimeout> | undefined;
   version: number;
   listeners: Set<() => void>;
 }
@@ -104,8 +105,32 @@ void listen<{ terminalId: string; code: number }>('workbench://terminal-exit', (
   }
   byTerminal.delete(e.payload.terminalId);
   entry.terminalId = null;
-  setState(entry, 'ended');
+  setState(entry, 'detached');
 }).catch(() => {});
+
+const AGENT_VIEW_DEBOUNCE_MS = 200;
+const AGENT_VIEW_LINES = 30;
+
+function tailLines(term: Terminal): string[] {
+  const buf = term.buffer.active;
+  const lines: string[] = [];
+  for (let i = Math.max(0, buf.length - AGENT_VIEW_LINES); i < buf.length; i++) {
+    lines.push(buf.getLine(i)?.translateToString(true) ?? '');
+  }
+  return lines;
+}
+
+function watchAgentView(entry: Entry) {
+  clearTimeout(entry.agentCheck);
+  entry.agentCheck = setTimeout(() => {
+    const id = entry.terminalId;
+    if (!id || entry.state !== 'live' || !detectAgentView(tailLines(entry.term))) return;
+    detach(id);
+    entry.terminalId = null;
+    entry.term.reset();
+    setState(entry, 'detached');
+  }, AGENT_VIEW_DEBOUNCE_MS);
+}
 
 function theme(): ITerminalOptions['theme'] {
   const css = getComputedStyle(document.documentElement);
@@ -144,6 +169,7 @@ function create(options: Partial<ITerminalOptions>): Entry {
     title: null,
     shortId: null,
     attachedAt: 0,
+    agentCheck: undefined,
     version: 0,
     listeners: new Set(),
   };
@@ -274,7 +300,10 @@ export function connect(key: string, shortId: string) {
   fitTerm(entry);
   const channel = new Channel<ArrayBuffer | number[]>();
   channel.onmessage = (chunk) => {
-    entry.term.write(chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : new Uint8Array(chunk));
+    entry.term.write(
+      chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : new Uint8Array(chunk),
+      () => watchAgentView(entry),
+    );
   };
   const previous = inflight.get(shortId);
   const waited = previous
@@ -328,6 +357,7 @@ export function dispose(key: string) {
   const entry = entries.get(key);
   if (!entry) return;
   entries.delete(key);
+  clearTimeout(entry.agentCheck);
   stopTail(key);
   if (entry.terminalId) detach(entry.terminalId);
   if (busy(entry.state)) wakeTwins(entry.shortId);
