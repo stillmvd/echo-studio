@@ -219,6 +219,10 @@ export async function stopClaudeSession(shortId: string): Promise<void> {
   return invoke('stop_claude_session', { shortId });
 }
 
+export async function emptyClaudeSessions(sessionIds: string[]): Promise<string[]> {
+  return invoke('empty_claude_sessions', { sessionIds });
+}
+
 export async function forgetClaudeSession(shortId: string): Promise<void> {
   return invoke('forget_claude_session', { shortId });
 }

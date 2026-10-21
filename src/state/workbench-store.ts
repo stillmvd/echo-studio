@@ -43,6 +43,7 @@ interface WorkbenchState {
   focusCell: string | null;
   hiddenProjects: string[];
   projectLayouts: Record<string, ProjectLayout>;
+  autoTabs: string[];
 
   select: (view: WorkbenchView) => void;
   setMode: (mode: WorkbenchMode) => void;
@@ -167,6 +168,7 @@ export function migrateWorkbench(persisted: unknown): Partial<WorkbenchState> {
     cells,
     focusCell,
     hiddenProjects,
+    autoTabs: strings(state.autoTabs),
   };
   if (mode === 'wall' && view.kind === 'project' && !cells.some((c) => c.projectPath)) {
     const placed = placeProject(cells, layout, null, view.path);
@@ -192,6 +194,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       hiddenProjects: [],
       mode: 'project',
       projectLayouts: {},
+      autoTabs: [],
 
       select: (view) =>
         set((s) => {
@@ -273,6 +276,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
           const placed = layoutOf(s, path, tabs);
           return {
             tabs: { ...s.tabs, [path]: tabs },
+            autoTabs: s.autoTabs.filter((k) => k !== key),
             activeTab: { ...s.activeTab, [path]: key },
             recency: bump(s.recency, key),
             ...(s.mode === 'wall' ? showInCell(s, path, key) : {}),
@@ -301,6 +305,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
           }
           return {
             tabs: { ...s.tabs, [path]: list },
+            autoTabs: s.autoTabs.filter((k) => k !== key),
             projectLayouts: { ...s.projectLayouts, [path]: placed },
             activeTab,
             recency: s.recency.filter((k) => k !== key),
@@ -314,6 +319,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
           const base = {
             activeTab: { ...s.activeTab, [path]: key },
             recency: bump(s.recency, key),
+            autoTabs: s.autoTabs.filter((k) => k !== key),
           };
           if (s.mode === 'wall') return { ...base, ...showInCell(s, path, key) };
           return {
@@ -361,6 +367,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
             focusCell: id,
             view: cell.projectPath ? { kind: 'project', path: cell.projectPath } : s.view,
             seen: key && !isDevTab(key) ? { ...s.seen, [key]: now } : s.seen,
+            autoTabs: key ? s.autoTabs.filter((k) => k !== key) : s.autoTabs,
             cells: fresh
               ? s.cells
               : s.cells.map((c) => (c.id === id ? { ...c, lastInputAt: now } : c)),
@@ -398,6 +405,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
         cells: s.cells,
         focusCell: s.focusCell,
         hiddenProjects: s.hiddenProjects,
+        autoTabs: s.autoTabs,
       }),
     },
   ),

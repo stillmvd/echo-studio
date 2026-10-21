@@ -89,12 +89,14 @@ function showUrgent(moved: WallCell[], sessions: ClaudeSession[], seen: Record<s
     const tabs = { ...s.tabs };
     const activeTab = { ...s.activeTab };
     const picked = new Map<string, string>();
+    const autoTabs = [...s.autoTabs];
     for (const c of moved) {
       if (!c.projectPath) continue;
       const path = c.projectPath;
       const key = c.activeTab ?? urgentTab(sessions, path, seen);
       if (!key) continue;
       const list = tabs[path] ?? [];
+      if (!list.includes(key)) autoTabs.push(key);
       tabs[path] = list.includes(key) ? list : [...list, key];
       activeTab[path] = key;
       picked.set(c.id, key);
@@ -102,7 +104,7 @@ function showUrgent(moved: WallCell[], sessions: ClaudeSession[], seen: Record<s
     const cells = s.cells.map((c) =>
       moved.some((m) => m.id === c.id) ? { ...c, activeTab: picked.get(c.id) ?? c.activeTab } : c,
     );
-    return { tabs, activeTab, cells };
+    return { tabs, activeTab, cells, autoTabs };
   });
 }
 

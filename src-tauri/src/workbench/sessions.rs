@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-use std::io::Read;
+use std::collections::{HashMap, HashSet};
+use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::{mpsc, Arc, Mutex};
@@ -15,6 +15,7 @@ const EXITED_WINDOW_MS: u64 = 3_600_000;
 const CLAUDE_TIMEOUT: Duration = Duration::from_secs(20);
 const START_TIMEOUT: Duration = Duration::from_secs(60);
 const PIPE_GRACE: Duration = Duration::from_millis(500);
+const DAEMON_LOG_TAIL: u64 = 256 * 1024;
 
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -414,10 +415,66 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
+pub fn spare_ids(log: &str) -> HashSet<String> {
+    log.lines()
+        .filter_map(|line| {
+            let (id, rest) = line.split_once("bg spawned ")?.1.split_once(' ')?;
+            (rest.trim() == "(spare)" && is_short_id(id)).then(|| id.to_owned())
+        })
+        .collect()
+}
+
+fn daemon_spares() -> HashSet<String> {
+    let Some(path) = dirs::home_dir().map(|h| h.join(".claude").join("daemon.log")) else {
+        return HashSet::new();
+    };
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return HashSet::new();
+    };
+    let len = file.metadata().map(|m| m.len()).unwrap_or(0);
+    let mut buf = Vec::new();
+    if file
+        .seek(SeekFrom::Start(len.saturating_sub(DAEMON_LOG_TAIL)))
+        .and_then(|_| file.read_to_end(&mut buf))
+        .is_err()
+    {
+        return HashSet::new();
+    }
+    spare_ids(&String::from_utf8_lossy(&buf))
+}
+
+fn has_transcript(path: Option<&str>) -> bool {
+    path.is_some_and(|p| Path::new(p).is_file())
+}
+
+pub fn drop_spares(list: &mut Vec<ClaudeSession>, spares: &HashSet<String>) {
+    list.retain(|s| {
+        !s.short_id.as_ref().is_some_and(|id| spares.contains(id))
+            || has_transcript(s.transcript.as_deref())
+    });
+}
+
+pub fn empty_sessions(projects_dir: &Path, ids: &[String]) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(projects_dir) else {
+        return Vec::new();
+    };
+    let dirs: Vec<PathBuf> = entries
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .collect();
+    ids.iter()
+        .filter(|id| is_session_id(id))
+        .filter(|id| !dirs.iter().any(|d| d.join(format!("{id}.jsonl")).is_file()))
+        .cloned()
+        .collect()
+}
+
 pub fn list() -> Result<Vec<ClaudeSession>, String> {
     let agents = run_agents_cached(AGENTS_FRESH)?;
     let hooks = hooks_dir().map(|d| read_hooks(&d)).unwrap_or_default();
     let mut list = merge(&agents, &hooks);
+    drop_spares(&mut list, &daemon_spares());
     let now = now_ms();
     let candidates: HashMap<String, HookState> = hooks
         .into_iter()
@@ -425,6 +482,7 @@ pub fn list() -> Result<Vec<ClaudeSession>, String> {
             h.updated_at
                 .is_some_and(|t| t.saturating_add(EXITED_WINDOW_MS) >= now)
                 && !agents.iter().any(|a| a.session_id == h.session_id)
+                && has_transcript(h.transcript.as_deref())
         })
         .collect();
     if let (false, Some(root)) = (candidates.is_empty(), projects_root()) {
@@ -585,6 +643,64 @@ mod tests {
                 ..Default::default()
             },
         )
+    }
+
+    #[test]
+    fn spares_come_from_daemon_log_and_hide_until_they_get_a_transcript() {
+        let log = "[2026-10-21T10:22:08.206Z] [bg] bg spawned c99985cc (spare)\n\
+                   [2026-10-21T10:03:10.487Z] [bg] bg spawned 72940b83 (shell)\n\
+                   [2026-10-21T11:23:08.031Z] [bg] bg retire c99985cc: stale-spare, idle 61m\n\
+                   [bg] bg spawned XYZ (spare)\n";
+        let spares = spare_ids(log);
+        assert_eq!(spares, HashSet::from(["c99985cc".to_owned()]));
+
+        let tmp = tempfile::tempdir().unwrap();
+        let written = tmp.path().join("t.jsonl");
+        std::fs::write(&written, "{}").unwrap();
+        let session = |short: &str, transcript: Option<&Path>| ClaudeSession {
+            session_id: format!("{short}-0000-0000-0000-000000000000"),
+            short_id: Some(short.into()),
+            kind: Kind::Shell,
+            cwd: None,
+            name: None,
+            status: Status::Idle,
+            phase: None,
+            tool: None,
+            since: None,
+            pid: Some(1),
+            transcript: transcript.map(|p| p.to_string_lossy().into_owned()),
+            exited_at: None,
+        };
+        let mut list = vec![
+            session("c99985cc", Some(&tmp.path().join("missing.jsonl"))),
+            session("72940b83", None),
+        ];
+        drop_spares(&mut list, &spares);
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].short_id.as_deref(), Some("72940b83"));
+
+        let mut used = vec![session("c99985cc", Some(&written))];
+        drop_spares(&mut used, &spares);
+        assert_eq!(used.len(), 1);
+    }
+
+    #[test]
+    fn empty_sessions_are_those_without_a_transcript_in_any_project() {
+        let tmp = tempfile::tempdir().unwrap();
+        let used = "11111111-2222-3333-4444-555555555555";
+        let empty = "aaaaaaaa-2222-3333-4444-555555555555";
+        std::fs::create_dir_all(tmp.path().join("C--P-A")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("C--P-A-worktree")).unwrap();
+        std::fs::write(
+            tmp.path()
+                .join("C--P-A-worktree")
+                .join(format!("{used}.jsonl")),
+            "{}",
+        )
+        .unwrap();
+        let ids = vec![used.to_owned(), empty.to_owned(), "../evil".to_owned()];
+        assert_eq!(empty_sessions(tmp.path(), &ids), vec![empty.to_owned()]);
+        assert!(empty_sessions(&tmp.path().join("nope"), &ids).is_empty());
     }
 
     #[test]

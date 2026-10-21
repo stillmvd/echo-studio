@@ -295,12 +295,19 @@ describe('workbench store', () => {
 
     st.closeTab(P, 'claude');
     s = useWorkbenchStore.getState();
-    expect(s.projectLayouts[P]?.layout).toBe('2x1');
-    expect(s.projectLayouts[P]?.cells[0]?.tabs).toEqual([]);
+    expect(s.projectLayouts[P]?.layout).toBe('1x1');
+    expect(s.projectLayouts[P]?.cells[0]).toEqual({
+      tabs: [devTabKey(P), 'second'],
+      active: 'second',
+    });
+    expect(s.projectLayouts[P]?.focus).toBe(0);
+    expect(s.activeTab[P]).toBe('second');
 
+    st.setProjectLayout(P, '2x1');
+    st.moveTab(P, 'second', 1);
     st.focusProjectCell(P, 3);
-    expect(useWorkbenchStore.getState().projectLayouts[P]?.focus).toBe(0);
-    st.focusProjectCell(P, 1);
+    expect(useWorkbenchStore.getState().projectLayouts[P]?.focus).toBe(1);
+    st.focusProjectCell(P, 0);
     st.activateInCell(P, 1, 'second');
     s = useWorkbenchStore.getState();
     expect(s.projectLayouts[P]?.cells[1]?.active).toBe('second');
@@ -311,6 +318,38 @@ describe('workbench store', () => {
       devTabKey(P),
       'second',
     ]);
+  });
+
+  it('collapses to 1x1 only when closing leaves one filled cell out of several', () => {
+    const st = useWorkbenchStore.getState();
+    st.openTab(P, 'a');
+    st.openTab(P, devTabKey(P));
+    st.setProjectLayout(P, '2x1');
+    st.moveTab(P, devTabKey(P), 1);
+    st.closeTab(P, devTabKey(P));
+    let s = useWorkbenchStore.getState();
+    expect(s.projectLayouts[P]?.layout).toBe('1x1');
+    expect(s.projectLayouts[P]?.cells[0]).toEqual({ tabs: ['a'], active: 'a' });
+    expect(s.activeTab[P]).toBe('a');
+
+    st.openTab(P, 'b');
+    st.setProjectLayout(P, '2x2');
+    st.closeTab(P, 'b');
+    s = useWorkbenchStore.getState();
+    expect(s.projectLayouts[P]?.layout).toBe('2x2');
+
+    st.closeTab(P, 'a');
+    expect(useWorkbenchStore.getState().projectLayouts[P]?.layout).toBe('2x2');
+  });
+
+  it('forgets that the wall opened a tab once the user takes it', () => {
+    useWorkbenchStore.setState({ tabs: { [P]: ['a', 'b', 'c'] }, autoTabs: ['a', 'b', 'c'] });
+    const st = useWorkbenchStore.getState();
+    st.activate(P, 'a');
+    st.openTab(P, 'b');
+    expect(useWorkbenchStore.getState().autoTabs).toEqual(['c']);
+    st.closeTab(P, 'c');
+    expect(useWorkbenchStore.getState().autoTabs).toEqual([]);
   });
 
   it('empties a cell when its last tab moves away and keeps the layout', () => {

@@ -12,6 +12,7 @@ import { QuickSwitch } from './QuickSwitch';
 import { RunningList } from './RunningList';
 import { SessionStrip } from './SessionStrip';
 import { pruneMissing } from './terminals';
+import { useEndedTabs } from './useEndedTabs';
 import { useStartSession } from './useStartSession';
 import { LayoutPicker, Wall } from './Wall';
 
@@ -24,6 +25,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   const tabs = useWorkbenchStore((s) => s.tabs);
   const { start, busy, dialogs } = useStartSession();
   const menu = useContextMenu();
+  useEndedTabs(sessions);
 
   const projects = useMemo(() => (tree ? all(tree) : []), [tree]);
   const byPath = useMemo(() => new Map(projects.map((p) => [p.path, p])), [projects]);

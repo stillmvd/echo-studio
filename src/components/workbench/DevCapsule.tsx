@@ -86,6 +86,7 @@ export function useDevControl() {
           setStopping(null);
           refresh();
           if (stopping.restart) void start(stopping.path);
+          else closeDevLog(stopping.path);
         }}
         onCancel={() => setStopping(null)}
       />

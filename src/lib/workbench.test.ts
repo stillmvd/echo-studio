@@ -12,10 +12,12 @@ import {
   assignTabs,
   byUrgency,
   cellOfTab,
+  closeTabInLayout,
   detectAgentView,
   effectiveStatus,
   emptyCells,
   emptyLayout,
+  endedTabs,
   externalAction,
   HANDS_ON_MS,
   isPathTitle,
@@ -35,6 +37,7 @@ import {
   samePath,
   statusTitle,
   statusView,
+  tabsToClose,
   terminalKey,
   topStatus,
   URGENCY,
@@ -930,5 +933,36 @@ describe('project layout', () => {
     const l = normalizeLayout({ layout: '1x1' }, ['a']);
     expect(moveTabInLayout(l, 'nope', 0)).toBe(l);
     expect(cellOfTab(moveTabInLayout(l, 'a', 3), 'a')).toBe(0);
+  });
+});
+
+describe('ended tabs', () => {
+  it('closes ended tabs the wall opened itself and ended sessions that never got a prompt', () => {
+    const tabs = { A: ['live', 'auto', 'empty', 'used', 'fresh', 'dev:A'] };
+    const ended = endedTabs(tabs, new Set(['live']), (k) => k === 'fresh');
+    expect(ended.map((t) => t.key)).toEqual(['auto', 'empty', 'used']);
+    expect(tabsToClose(ended, ['auto', 'live'], ['empty'])).toEqual([
+      { path: 'A', key: 'auto' },
+      { path: 'A', key: 'empty' },
+    ]);
+  });
+
+  it('collapses only when closing leaves one filled cell', () => {
+    const l = normalizeLayout(
+      {
+        layout: '2x2',
+        focus: 0,
+        cells: [{ tabs: ['a'] }, { tabs: ['b'] }, { tabs: [] }, { tabs: [] }],
+      },
+      ['a', 'b'],
+    );
+    const one = closeTabInLayout(l, 'a', ['b']);
+    expect(one.layout).toBe('1x1');
+    expect(one.cells[0]).toEqual({ tabs: ['b'], active: 'b' });
+    const lone = normalizeLayout({ layout: '2x1', focus: 0, cells: [{ tabs: ['a', 'b'] }] }, [
+      'a',
+      'b',
+    ]);
+    expect(closeTabInLayout(lone, 'a', ['b']).layout).toBe('2x1');
   });
 });

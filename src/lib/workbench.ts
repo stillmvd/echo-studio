@@ -661,6 +661,30 @@ export function showTabInLayout(layout: ProjectLayout, key: string): ProjectLayo
   };
 }
 
+export function endedTabs(
+  tabs: Record<string, string[]>,
+  live: Set<string>,
+  fresh: (key: string) => boolean,
+): { path: string; key: string }[] {
+  return Object.entries(tabs).flatMap(([path, keys]) =>
+    keys
+      .filter((key) => !key.startsWith('dev:') && !live.has(key) && !fresh(key))
+      .map((key) => ({ path, key })),
+  );
+}
+
+export function tabsToClose(
+  ended: { path: string; key: string }[],
+  auto: string[],
+  empty: string[],
+): { path: string; key: string }[] {
+  return ended.filter((t) => auto.includes(t.key) || empty.includes(t.key));
+}
+
+function filledCells(layout: ProjectLayout): ProjectCell[] {
+  return layout.cells.slice(0, CELL_COUNT[layout.layout]).filter((c) => c.tabs.length > 0);
+}
+
 export function closeTabInLayout(
   layout: ProjectLayout,
   key: string,
@@ -668,13 +692,22 @@ export function closeTabInLayout(
 ): ProjectLayout {
   const from = cellOfTab(layout, key);
   const cell = layout.cells[from];
-  if (!cell || cell.active !== key) return normalizeLayout(layout, tabs);
-  const at = cell.tabs.indexOf(key);
-  const active = cell.tabs[at + 1] ?? cell.tabs[at - 1];
-  return normalizeLayout(
-    { ...layout, cells: layout.cells.map((c, i) => (i === from ? { ...c, active } : c)) },
-    tabs,
-  );
+  const at = cell?.tabs.indexOf(key) ?? -1;
+  const next =
+    !cell || cell.active !== key
+      ? normalizeLayout(layout, tabs)
+      : normalizeLayout(
+          {
+            ...layout,
+            cells: layout.cells.map((c, i) =>
+              i === from ? { ...c, active: cell.tabs[at + 1] ?? cell.tabs[at - 1] } : c,
+            ),
+          },
+          tabs,
+        );
+  const left = filledCells(next);
+  if (left.length !== 1 || filledCells(layout).length < 2) return next;
+  return normalizeLayout({ layout: '1x1', focus: 0, cells: left }, tabs);
 }
 
 export function moveTabInLayout(

@@ -90,6 +90,16 @@ pub async fn list_claude_sessions() -> Result<Vec<ClaudeSession>, String> {
 }
 
 #[tauri::command]
+pub async fn empty_claude_sessions(session_ids: Vec<String>) -> Result<Vec<String>, String> {
+    blocking(move || {
+        crate::conversations::paths::projects_root()
+            .map(|dir| sessions::empty_sessions(&dir, &session_ids))
+            .unwrap_or_default()
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn focus_session_window(pid: u32, session_id: String) -> Result<window::Focus, String> {
     blocking(move || {
         if sessions::session_pid(&session_id)? != pid {
