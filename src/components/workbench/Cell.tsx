@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Plus, RotateCcw, Square, X } from 'lucide-react';
-import { Fragment, type ReactNode, useEffect, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
@@ -230,8 +230,20 @@ function TabCapsule({
   onContextMenu: (e: React.MouseEvent) => void;
   children: ReactNode;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const tab = ref.current;
+    const strip = tab?.parentElement;
+    if (!on || !tab || !strip) return;
+    const reveal = () => tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    reveal();
+    const watch = new ResizeObserver(reveal);
+    watch.observe(strip);
+    return () => watch.disconnect();
+  }, [on]);
   return (
     <div
+      ref={ref}
       role="toolbar"
       aria-label={label}
       title={label}
