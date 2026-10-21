@@ -204,6 +204,10 @@ export async function openInVscode(path: string): Promise<void> {
   return invoke('open_in_vscode', { projectPath: path });
 }
 
+export async function toastsMuted(): Promise<boolean> {
+  return invoke('toasts_muted');
+}
+
 export async function setWorkbenchActive(active: boolean): Promise<void> {
   return invoke('set_workbench_active', { active });
 }

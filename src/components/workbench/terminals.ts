@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { type ITerminalOptions, Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import {
   tailDevLog,
   terminalAttach,
@@ -384,6 +384,44 @@ export function pruneMissing(
     misses.set(path, n);
     if (n >= 2) for (const key of keys) dispose(key);
   }
+}
+
+const shown = new Map<string, number>();
+
+export function useShown(key: string, visible: boolean) {
+  useEffect(() => {
+    if (!visible) return;
+    shown.set(key, (shown.get(key) ?? 0) + 1);
+    return () => {
+      const n = (shown.get(key) ?? 1) - 1;
+      if (n > 0) shown.set(key, n);
+      else shown.delete(key);
+    };
+  }, [key, visible]);
+}
+
+export function isShown(key: string): boolean {
+  return shown.has(key);
+}
+
+export function revealText(key: string, needle: string): boolean {
+  const term = entries.get(key)?.term;
+  if (!term) return false;
+  const buf = term.buffer.active;
+  const rows: { start: number; text: string }[] = [];
+  for (let i = 0; i < buf.length; i++) {
+    const line = buf.getLine(i);
+    const text = (line?.translateToString(true) ?? '').replaceAll('\\', '/');
+    const last = rows[rows.length - 1];
+    if (line?.isWrapped && last) last.text += text;
+    else rows.push({ start: i, text });
+  }
+  const last = (part: string) => [...rows].reverse().find((r) => r.text.includes(part));
+  const hit = last(needle) ?? last(needle.replace(/:\d+$/, ''));
+  if (!hit) return false;
+  term.scrollToLine(Math.max(0, hit.start - 3));
+  term.selectLines(hit.start, hit.start);
+  return true;
 }
 
 export function focus(key: string) {

@@ -16,7 +16,14 @@ import {
 import { withoutVisit } from '@/state/recent-store';
 import { devTabKey, isDevTab, useProjectLayout, useWorkbenchStore } from '@/state/workbench-store';
 import { ClaudeTerminal } from './ClaudeTerminal';
-import { closeDevLog, DevCapsule, DevDot, devActions, useDevControl } from './DevCapsule';
+import {
+  closeDevLog,
+  DevCapsule,
+  DevDot,
+  devActions,
+  restartDev,
+  useDevControl,
+} from './DevCapsule';
 import { EmptyProject } from './EmptyProject';
 import { LogTerminal } from './LogTerminal';
 import { copyText, devTabMenu, type MoveTargets, sessionTabMenu } from './menus';
@@ -472,7 +479,13 @@ export function Cell({
         )}
       </div>
       {hasDev && (!controlled || devOn) && (
-        <LogTerminal tabKey={devKey} projectPath={project.path} visible={visible && devOn} />
+        <LogTerminal
+          tabKey={devKey}
+          projectPath={project.path}
+          visible={visible && devOn}
+          server={server}
+          onRestart={() => restartDev(dev, project, server)}
+        />
       )}
       {(controlled ? infos.filter((i) => i.key === current?.key) : infos).map((info) => (
         <ClaudeTerminal

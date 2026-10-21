@@ -71,6 +71,8 @@
 .wb-dv i { width: 8px; height: 8px; border-radius: 999px; background: var(--ok); }
 .wb-dv.st-starting { background: color-mix(in srgb, var(--color-warning) 24%, transparent); }
 .wb-dv.st-starting i { background: var(--color-warning); }
+.wb-dv.st-warn { background: color-mix(in srgb, var(--color-warning) 24%, transparent); }
+.wb-dv.st-warn i { background: var(--color-warning); }
 .wb-dv.st-error { background: color-mix(in srgb, var(--danger) 24%, transparent); }
 .wb-dv.st-error i { background: var(--danger); }
 .wb-dv.st-stopped { background: var(--hover-strong); }
@@ -92,6 +94,12 @@ div.wb-run:hover { background: none; }
 .wb-run.ext { color: var(--dim); }
 .wb-run.on, .wb-run.on:hover { background: var(--fg); color: var(--ground); }
 .wb-run.on .wb-run-s { color: var(--on-dim); }
+.wb-rw { position: relative; flex: none; display: flex; }
+.wb-rw.fix > .wb-run { padding-right: 42px; }
+.wb-run-r { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; color: var(--fg); transition: background-color 200ms var(--ease-trail); }
+.wb-run-r:hover { background: var(--hover-strong); }
+.wb-run-r svg { width: 14px; height: 14px; }
+.wb-run.on + .wb-run-r { color: var(--ground); }
 .wb-runs-empty { flex: none; padding: 6px 14px; color: var(--dim); font-size: 13px; font-weight: 500; }
 
 .wb-pv { flex: 1; min-width: 0; container-type: inline-size; }
@@ -179,6 +187,13 @@ div.wb-run:hover { background: none; }
 .wb-tw { position: relative; flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 20px; background: var(--ground); overflow: hidden; }
 .wb-tw.on { box-shadow: inset 0 0 0 1.5px var(--gb); }
 .wb-tw[hidden] { display: none; }
+.wb-devbar { flex: none; display: flex; align-items: center; gap: 8px; height: 44px; margin: 8px 8px 0; padding: 0 6px 0 16px; border-radius: 999px; background: var(--color-danger-soft); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.wb-devbar.warn { background: color-mix(in srgb, var(--color-warning) 16%, transparent); }
+.wb-devbar > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.wb-devbar .wb-btn { flex: none; height: 32px; padding: 0 12px; gap: 6px; font-size: 13px; }
+@container (max-width: 520px) { .wb-devbar-l { display: none; } .wb-devbar .wb-btn { padding: 0 9px; } }
+.wb-devbar .wb-btn svg { width: 14px; height: 14px; }
+.wb-devbar .wb-btn:not(.p) { background: var(--cosmic); }
 .wb-term { position: relative; flex: 1; min-height: 0; min-width: 0; padding: 12px 4px 8px 16px; }
 .wb-term .xterm { height: 100%; }
 .wb-term .xterm-viewport { background: transparent !important; }

@@ -207,6 +207,8 @@ describe('urgency', () => {
     exitCode: null,
     log: '',
     pids: [],
+    errors: null,
+    restarted: false,
   });
   const top = (i: RunningItem) => (i.kind === 'session' ? i.session.sessionId : i.server.state);
 

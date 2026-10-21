@@ -359,4 +359,6 @@ export interface DevServer {
   exitCode: number | null;
   log: string;
   pids: number[];
+  errors: { count: number; at: string | null } | null;
+  restarted: boolean;
 }

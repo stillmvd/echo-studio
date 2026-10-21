@@ -13,6 +13,7 @@ pub const EVENT_PROJECTS: &str = "workbench://projects";
 pub const EVENT_SESSIONS: &str = "workbench://sessions";
 const SESSIONS_TICK: Duration = Duration::from_secs(15);
 const SESSIONS_MIN_GAP: Duration = Duration::from_secs(3);
+const SESSIONS_HIDDEN_GAP: Duration = Duration::from_secs(10);
 
 pub struct SessionsHub {
     pub active: AtomicBool,
@@ -48,22 +49,29 @@ pub fn start_sessions(app: AppHandle) -> SessionsHub {
                     watching = d.watcher().watch(&dir, RecursiveMode::NonRecursive).is_ok();
                 }
             }
-            match rx.recv_timeout(SESSIONS_TICK) {
+            let poked = match rx.recv_timeout(SESSIONS_TICK) {
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                Ok(()) | Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Ok(()) => true,
+                Err(mpsc::RecvTimeoutError::Timeout) => false,
+            };
+            let Some(hub) = tauri::Manager::try_state::<SessionsHub>(&app) else {
+                continue;
+            };
+            let active = hub.active.load(Ordering::Relaxed);
+            if !poked && !active {
+                continue;
             }
+            let gap = if active {
+                SESSIONS_MIN_GAP
+            } else {
+                SESSIONS_HIDDEN_GAP
+            };
             if let Some(t) = last {
-                if let Some(wait) = SESSIONS_MIN_GAP.checked_sub(t.elapsed()) {
+                if let Some(wait) = gap.checked_sub(t.elapsed()) {
                     std::thread::sleep(wait);
                 }
             }
             while rx.try_recv().is_ok() {}
-            let Some(hub) = tauri::Manager::try_state::<SessionsHub>(&app) else {
-                continue;
-            };
-            if !hub.active.load(Ordering::Relaxed) {
-                continue;
-            }
             last = Some(Instant::now());
             if let Ok(list) = sessions::list() {
                 let _ = app.emit(EVENT_SESSIONS, list);

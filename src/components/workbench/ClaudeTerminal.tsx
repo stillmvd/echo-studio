@@ -3,7 +3,16 @@ import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/cn';
 
 import { STATUS_LABEL, type StatusView, statusTitle } from '@/lib/workbench';
-import { connect, fitTerm, focus, mount, reattach, unmount, useClaudeTerm } from './terminals';
+import {
+  connect,
+  fitTerm,
+  focus,
+  mount,
+  reattach,
+  unmount,
+  useClaudeTerm,
+  useShown,
+} from './terminals';
 
 interface Props {
   sessionKey: string;
@@ -31,6 +40,7 @@ export function ClaudeTerminal({
   const ref = useRef<HTMLDivElement>(null);
   const entry = useClaudeTerm(sessionKey);
   const { state } = entry;
+  useShown(sessionKey, visible);
 
   useEffect(() => {
     const el = ref.current;

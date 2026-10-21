@@ -33,6 +33,8 @@ const project: WorkbenchProject = {
 const server = (state: DevServer['state'], ports: number[] = []): DevServer => ({
   projectPath: project.path,
   command: 'pnpm tauri dev',
+  errors: null,
+  restarted: false,
   state,
   ports,
   startedAt: 0,

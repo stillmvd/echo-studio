@@ -56,9 +56,11 @@ export function useDevServers(): DevServer[] {
   });
   return (
     useQuery({ queryKey: ['workbench', 'dev'], queryFn: listDevServers, staleTime: 10_000 }).data ??
-    []
+    NO_DEVS
   );
 }
+
+const NO_DEVS: DevServer[] = [];
 
 export function useWorkbenchProjects() {
   const qc = useQueryClient();

@@ -2,6 +2,8 @@ import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import {
+  devHealth,
+  devStatusLabel,
   EXTERNAL_LABEL,
   type RunningItem,
   runningGroups,
@@ -11,7 +13,7 @@ import {
 } from '@/lib/workbench';
 import { devTabKey, useWorkbenchStore } from '@/state/workbench-store';
 import { useStopSession } from './Cell';
-import { DevDot } from './DevCapsule';
+import { DevDot, RestartDev } from './DevCapsule';
 import { externalTitle, useExternalSession } from './externalSession';
 import { canStopSession, copyText, devUrl, runningDevMenu, runningMenu } from './menus';
 import { ProjectIcon } from './ProjectIcon';
@@ -27,13 +29,6 @@ interface Props {
 }
 
 const folderName = (path: string | null | undefined) => path?.split(/[\\/]/).filter(Boolean).pop();
-
-const DEV_LABEL = {
-  starting: 'dev запускается',
-  error: 'dev · ошибка',
-  running: 'dev работает',
-  stopped: 'dev остановлен',
-} as const;
 
 const ROOT_HINT = 'Сессии в корне Projects и в папках вне списка проектов';
 
@@ -73,44 +68,48 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
 
   const topLabel = (item: RunningItem) =>
     item.kind === 'dev'
-      ? DEV_LABEL[item.server.state]
+      ? devHealth(item.server) === 'running'
+        ? 'dev работает'
+        : `dev · ${devStatusLabel(item.server)}`
       : STATUS_LABEL[statusView(item.session, seen)];
 
   const devRow = (d: DevServer) => {
     const key = devTabKey(d.projectPath);
-    const ports = d.ports.map((p) => `:${p}`).join(' ');
+    const project = { path: d.projectPath, dev: { command: d.command } };
     const go = () => {
       openTab(d.projectPath, key);
       select({ kind: 'project', path: d.projectPath });
     };
     const url = devUrl(d);
+    const health = devHealth(d);
+    const broken = health === 'crashed' || health === 'errors';
     return (
-      <button
-        key={key}
-        type="button"
-        className={cn('wb-run', isOn(d.projectPath, key) && 'on')}
-        title={`${DEV_LABEL[d.state]} — ${d.command}`}
-        onClick={go}
-        onContextMenu={(e) =>
-          openMenu(
-            e,
-            runningDevMenu({
-              server: d,
-              actions: {
-                go,
-                copyUrl: () => url && copyText(url),
-                stop: () => dev.askStop({ path: d.projectPath, dev: { command: d.command } }),
-              },
-            }),
-          )
-        }
-      >
-        <DevDot server={d} />
-        <span className="wb-run-n">{d.command}</span>
-        <span className="wb-run-s">
-          {d.state === 'running' ? ports || 'без порта' : DEV_LABEL[d.state]}
-        </span>
-      </button>
+      <div key={key} className={cn('wb-rw', broken && 'fix')}>
+        <button
+          type="button"
+          className={cn('wb-run', isOn(d.projectPath, key) && 'on')}
+          title={`dev · ${devStatusLabel(d)} — ${d.command}`}
+          onClick={go}
+          onContextMenu={(e) =>
+            openMenu(
+              e,
+              runningDevMenu({
+                server: d,
+                actions: {
+                  go,
+                  copyUrl: () => url && copyText(url),
+                  stop: () => dev.askStop(project),
+                },
+              }),
+            )
+          }
+        >
+          <DevDot server={d} />
+          <span className="wb-run-n">{d.command}</span>
+          <span className="wb-run-s">{devStatusLabel(d)}</span>
+        </button>
+        <RestartDev project={project} server={d} dev={dev} className="wb-run-r" />
+      </div>
     );
   };
 

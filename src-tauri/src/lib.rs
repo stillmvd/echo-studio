@@ -8,6 +8,9 @@ mod workbench;
 use tauri::Manager;
 use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 
+#[cfg(not(debug_assertions))]
+const EVENT_ACTIVATED: &str = "echo://activated";
+
 fn window_flags() -> StateFlags {
     StateFlags::all() & !StateFlags::DECORATIONS & !StateFlags::VISIBLE
 }
@@ -20,11 +23,27 @@ fn app_ready(window: tauri::WebviewWindow, splash: tauri::State<Option<splash::S
     }
 }
 
+#[tauri::command]
+fn toasts_muted() -> bool {
+    splash::background()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let context = tauri::generate_context!();
     let splash = splash::show(&context.config().identifier);
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(not(debug_assertions))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _, _| {
+        if let Some(window) = app.get_webview_window("main") {
+            if window.is_visible().unwrap_or(false) {
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }
+        let _ = tauri::Emitter::emit(app, EVENT_ACTIVATED, ());
+    }));
+    builder
         .plugin(
             tauri_plugin_window_state::Builder::new()
                 .with_state_flags(window_flags())
@@ -44,6 +63,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_ship::init(|app| {
             let _ = app.save_window_state(window_flags());
@@ -135,6 +155,7 @@ pub fn run() {
             commands::workbench::untail_dev_log,
             commands::workbench::open_dev_server,
             app_ready,
+            toasts_muted,
         ])
         .run(context)
         .expect("error while running tauri application");

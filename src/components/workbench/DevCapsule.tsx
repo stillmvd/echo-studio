@@ -6,6 +6,7 @@ import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
 import { openDevServer, startDevServer, stopDevServer } from '@/lib/ipc';
 import type { DevServer, WorkbenchProject } from '@/lib/types';
+import { devHealth, devStatusLabel } from '@/lib/workbench';
 import { devTabKey, useWorkbenchStore } from '@/state/workbench-store';
 import { copyText, devRuns, devTabMenu, devUrl } from './menus';
 import { dispose, startTail } from './terminals';
@@ -31,18 +32,56 @@ export function devActions(
   };
 }
 
-const DEV_LABEL = { starting: 'запускается', running: '', stopped: '', error: 'ошибка' } as const;
-
 export function devState(server: DevServer | undefined) {
   return server?.state ?? 'stopped';
 }
 
+const DOT = { crashed: 'error', errors: 'warn' } as const;
+
 export function DevDot({ server }: { server: DevServer | undefined }) {
+  const health = devHealth(server);
   return (
-    <span className={cn('wb-dv', `st-${devState(server)}`)}>
+    <span className={cn('wb-dv', `st-${health in DOT ? DOT[health as keyof typeof DOT] : health}`)}>
       <i />
     </span>
   );
+}
+
+export function RestartDev({
+  project,
+  server,
+  dev,
+  className,
+}: {
+  project: Pick<WorkbenchProject, 'path'> & { dev: { command: string } | null };
+  server: DevServer | undefined;
+  dev: ReturnType<typeof useDevControl>;
+  className: string;
+}) {
+  const health = devHealth(server);
+  if (health !== 'crashed' && health !== 'errors') return null;
+  return (
+    <button
+      type="button"
+      className={className}
+      title="Перезапустить dev-сервер"
+      onClick={(e) => {
+        e.stopPropagation();
+        restartDev(dev, project, server);
+      }}
+    >
+      <RotateCcw strokeWidth={2} />
+    </button>
+  );
+}
+
+export function restartDev(
+  dev: ReturnType<typeof useDevControl>,
+  project: Pick<WorkbenchProject, 'path'> & { dev: { command: string } | null },
+  server: DevServer | undefined,
+) {
+  if (devHealth(server) !== 'crashed' && devRuns(server)) dev.askStop(project, true);
+  else dev.start(project.path);
 }
 
 export function useDevControl() {
@@ -164,12 +203,10 @@ export function DevCapsule({
       <button type="button" onClick={() => openTab(project.path, key)}>
         <b>dev</b>
       </button>
-      <span>{DEV_LABEL[state] || ports.map((p) => `:${p}`).join(' ') || 'без порта'}</span>
+      <span>{server ? devStatusLabel(server) : ''}</span>
       {state === 'error' ? (
         <>
-          <button type="button" className="wb-cap-i" title="Запустить снова" onClick={start}>
-            <RotateCcw strokeWidth={2} />
-          </button>
+          <RestartDev project={project} server={server} dev={dev} className="wb-cap-i" />
           {!!server?.pids.length && (
             <button
               type="button"
@@ -192,6 +229,7 @@ export function DevCapsule({
           >
             <Globe strokeWidth={2} />
           </button>
+          <RestartDev project={project} server={server} dev={dev} className="wb-cap-i" />
           <button
             type="button"
             className="wb-cap-i wb-stop"

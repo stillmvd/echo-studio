@@ -1,3 +1,4 @@
+import { plural } from './memory';
 import type {
   ClaudeSession,
   DevServer,
@@ -8,6 +9,32 @@ import type {
 } from './types';
 
 export type StatusView = SessionStatus | 'new';
+
+export type DevHealth = DevState | 'crashed' | 'errors';
+
+export function devHealth(server: DevServer | undefined): DevHealth {
+  if (!server) return 'stopped';
+  if (server.state === 'error') return 'crashed';
+  if (server.errors && server.state !== 'stopped') return 'errors';
+  return server.state;
+}
+
+export function errorsLabel(count: number): string {
+  return `${count} ${plural(count, 'ошибка', 'ошибки', 'ошибок')}`;
+}
+
+export function crashLabel(server: Pick<DevServer, 'exitCode' | 'restarted'>): string {
+  return `${server.restarted ? 'упал снова' : 'упал'} · код ${server.exitCode ?? '?'}`;
+}
+
+export function devStatusLabel(server: DevServer): string {
+  const health = devHealth(server);
+  if (health === 'crashed') return crashLabel(server);
+  if (health === 'errors') return errorsLabel(server.errors?.count ?? 1);
+  if (health === 'starting') return 'запускается';
+  if (health === 'running') return server.ports.map((p) => `:${p}`).join(' ') || 'без порта';
+  return 'остановлен';
+}
 
 export const STATUS_LABEL: Record<StatusView, string> = {
   waiting: 'ждёт тебя',
@@ -181,7 +208,11 @@ export function runningGroups(
 ): RunningGroup[] {
   const rank = (item: RunningItem) =>
     urgency(
-      item.kind === 'session' ? effectiveStatus(item.session, seen) : DEV_STATUS[item.server.state],
+      item.kind === 'session'
+        ? effectiveStatus(item.session, seen)
+        : devHealth(item.server) === 'errors'
+          ? 'error'
+          : DEV_STATUS[item.server.state],
     );
   const groups = new Map<string, Omit<RunningGroup, 'top'>>();
   const group = (path: string | null) => {

@@ -18,7 +18,7 @@ impl Splash {
     }
 }
 
-fn background() -> bool {
+pub fn background() -> bool {
     cfg!(debug_assertions) && std::env::var_os("ECHO_BACKGROUND_DEV").is_some()
 }
 
@@ -216,8 +216,9 @@ mod imp {
     }
 
     pub fn already_running(identifier: &str) -> bool {
-        let class = class_name(identifier);
-        unsafe { !FindWindowW(class.as_ptr(), null()).is_null() }
+        let found = |class: Vec<u16>| unsafe { !FindWindowW(class.as_ptr(), null()).is_null() };
+        found(class_name(identifier))
+            || (cfg!(not(debug_assertions)) && found(wide(&format!("{identifier}-sic"))))
     }
 
     unsafe fn primary_monitor() -> ((i32, i32), f64) {

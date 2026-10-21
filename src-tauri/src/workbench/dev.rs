@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::windows::io::AsRawHandle;
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
@@ -54,6 +54,25 @@ const TAIL_MAX: u64 = 2 * 1024 * 1024;
 const TAIL_POLL: Duration = Duration::from_millis(200);
 const FAST_POLL: Duration = Duration::from_secs(2);
 const SLOW_POLL: Duration = Duration::from_secs(10);
+const RESTART_AFTER: u64 = 60_000;
+const RESTART_MARK: &str = "--- dev упал (код";
+const BUILD_FAILED: [&str; 6] = [
+    "[vite] Internal server error",
+    "Pre-transform error",
+    "Failed to compile",
+    "✘ [ERROR]",
+    "error during build",
+    "could not compile",
+];
+const BUILD_OK: [&str; 7] = [
+    "hmr update",
+    "page reload",
+    "ready in",
+    "built in",
+    "ompiled successfully",
+    "Finished `",
+    "Compiled with warnings",
+];
 const MAX_JOB_PIDS: usize = 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -69,6 +88,15 @@ struct DevFile {
     exit_code: Option<i32>,
     #[serde(default)]
     stopped: bool,
+    #[serde(default)]
+    restarted: bool,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct BuildErrors {
+    pub count: u32,
+    pub at: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -91,6 +119,8 @@ pub struct DevServer {
     pub exit_code: Option<i32>,
     pub log: String,
     pub pids: Vec<u32>,
+    pub errors: Option<BuildErrors>,
+    pub restarted: bool,
 }
 
 #[derive(Default)]
@@ -353,6 +383,11 @@ fn server(dir: &Path, slug: &str, file: DevFile, table: &[(u32, u16)], now: u64)
         (false, _) => DevState::Running,
         (true, _) => DevState::Stopped,
     };
+    let log = dir.join(format!("{slug}.log"));
+    let errors = matches!(state, DevState::Starting | DevState::Running)
+        .then(|| log_tail(&log))
+        .flatten()
+        .and_then(|text| build_errors(&text, &file.project_path));
     DevServer {
         project_path: file.project_path,
         command: file.command,
@@ -360,12 +395,173 @@ fn server(dir: &Path, slug: &str, file: DevFile, table: &[(u32, u16)], now: u64)
         ports,
         started_at: file.started_at,
         exit_code,
-        log: dir
-            .join(format!("{slug}.log"))
-            .to_string_lossy()
-            .into_owned(),
+        log: log.to_string_lossy().into_owned(),
         pids,
+        errors,
+        restarted: file.restarted,
     }
+}
+
+fn log_tail(path: &Path) -> Option<String> {
+    let mut file = File::open(path).ok()?;
+    let len = file.metadata().ok()?.len();
+    file.seek(SeekFrom::Start(len.saturating_sub(LOG_PORT_SCAN)))
+        .ok()?;
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes).ok()?;
+    Some(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+fn strip_ansi(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c != '\u{1b}' {
+            out.push(c);
+            continue;
+        }
+        match chars.next() {
+            Some('[') => {
+                for c in chars.by_ref() {
+                    if ('@'..='~').contains(&c) {
+                        break;
+                    }
+                }
+            }
+            Some(']') => {
+                while let Some(c) = chars.next() {
+                    if c == '\u{7}' || (c == '\u{1b}' && chars.next_if_eq(&'\\').is_some()) {
+                        break;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+fn without_root(line: &str, project: &str) -> String {
+    let line = line.replace('\\', "/");
+    let root = format!("{}/", project.replace('\\', "/").trim_end_matches('/'));
+    let (lower, low_root) = (line.to_lowercase(), root.to_lowercase());
+    match lower.find(&low_root) {
+        Some(i) if lower.len() == line.len() && low_root.len() == root.len() => {
+            format!("{}{}", &line[..i], &line[i + root.len()..])
+        }
+        _ => line,
+    }
+}
+
+fn location(line: &str, project: &str) -> Option<String> {
+    without_root(line, project)
+        .split_whitespace()
+        .find_map(|raw| {
+            let token = raw.trim_matches(|c: char| "\"'`,;[]".contains(c));
+            let (cut, _) = token.char_indices().find(|&(i, c)| {
+                (c == ':' || c == '(')
+                    && i > 0
+                    && token[i + 1..].starts_with(|d: char| d.is_ascii_digit())
+            })?;
+            let path = &token[..cut];
+            let name = path.rsplit('/').next().unwrap_or(path);
+            let (stem, ext) = name.rsplit_once('.')?;
+            if stem.is_empty()
+                || !ext.starts_with(|c: char| c.is_ascii_alphabetic())
+                || !ext.chars().all(|c| c.is_ascii_alphanumeric())
+            {
+                return None;
+            }
+            let line_no: String = token[cut + 1..]
+                .chars()
+                .take_while(char::is_ascii_digit)
+                .collect();
+            Some(format!("{}:{line_no}", path.trim_start_matches('/')))
+        })
+}
+
+fn number_before(text: &str, word: &str) -> Option<u32> {
+    let end = text.find(word)?;
+    let digits: String = text[..end]
+        .trim_end()
+        .chars()
+        .rev()
+        .take_while(char::is_ascii_digit)
+        .collect();
+    digits.chars().rev().collect::<String>().parse().ok()
+}
+
+fn checker_name(line: &str, found: usize) -> Option<String> {
+    let named = line[..found]
+        .trim_end()
+        .strip_suffix(']')
+        .and_then(|head| head.rsplit_once('['))
+        .map(|(_, name)| name)
+        .filter(|name| !name.starts_with(|c: char| c.is_ascii_digit()));
+    match named {
+        Some(name) => Some(name.to_owned()),
+        None => line
+            .contains("Watching for file changes")
+            .then(|| "tsc".to_owned()),
+    }
+}
+
+pub fn build_errors(text: &str, project: &str) -> Option<BuildErrors> {
+    let text = strip_ansi(text);
+    let text = text.rsplit(RESTART_MARK).next().unwrap_or_default();
+    let mut checkers: Vec<(String, u32, Option<String>)> = Vec::new();
+    let mut bundler: Option<(u32, Option<String>)> = None;
+    let mut pending: Option<String> = None;
+    for line in text.lines() {
+        let trimmed = line.trim();
+        let summary = line.find("Found ").and_then(|found| {
+            let count = number_before(&line[found..], " error")?;
+            Some((checker_name(line, found)?, count))
+        });
+        if let Some((name, count)) = summary {
+            let at = if count > 0 { pending.take() } else { None };
+            checkers.retain(|(n, ..)| *n != name);
+            checkers.push((name, count, at));
+            pending = None;
+            continue;
+        }
+        if BUILD_OK.iter().any(|m| line.contains(m)) {
+            bundler = None;
+            continue;
+        }
+        if let Some(marker) = BUILD_FAILED.iter().find(|m| line.contains(*m)) {
+            let count = number_before(line, " previous error")
+                .or_else(|| number_before(line, " error"))
+                .filter(|_| *marker == "could not compile" || *marker == "Failed to compile")
+                .unwrap_or(1)
+                .max(1);
+            let at = location(line, project).or_else(|| pending.take());
+            bundler = Some((count, at));
+            continue;
+        }
+        let pointer = trimmed.starts_with("FILE ")
+            || trimmed.starts_with("File:")
+            || trimmed.starts_with("--> ")
+            || line.contains("error TS");
+        if !pointer {
+            continue;
+        }
+        let Some(at) = location(trimmed, project) else {
+            continue;
+        };
+        match &mut bundler {
+            Some((_, slot @ None)) if !line.contains("error TS") => *slot = Some(at),
+            _ => {
+                pending.get_or_insert(at);
+            }
+        }
+    }
+    let count =
+        checkers.iter().map(|(_, n, _)| n).sum::<u32>() + bundler.as_ref().map_or(0, |b| b.0);
+    let at = bundler
+        .and_then(|b| b.1)
+        .or_else(|| checkers.into_iter().find(|c| c.1 > 0).and_then(|c| c.2));
+    (count > 0).then_some(BuildErrors { count, at })
 }
 
 pub fn list_in(dir: &Path) -> Vec<DevServer> {
@@ -418,12 +614,53 @@ fn spawn(cwd: &Path, line: &str, log: &File, breakaway: bool) -> std::io::Result
         .spawn()
 }
 
+type OnExit = Arc<dyn Fn() + Send + Sync>;
+
 pub fn start_in(
     dir: &Path,
     project_path: &str,
     cwd: &Path,
     args: &[String],
-    on_exit: impl FnOnce() + Send + 'static,
+    on_exit: impl Fn() + Send + Sync + 'static,
+) -> Result<DevServer, String> {
+    launch(
+        dir,
+        project_path,
+        cwd,
+        args,
+        Arc::new(on_exit),
+        None,
+        RESTART_AFTER,
+    )
+}
+
+fn restart_due(code: Option<i32>, file: &DevFile, now: u64, after: u64) -> bool {
+    code.is_some_and(|c| c != 0) && !file.restarted && now.saturating_sub(file.started_at) >= after
+}
+
+fn open_log(path: &Path, after_crash: Option<i32>) -> std::io::Result<File> {
+    let Some(code) = after_crash else {
+        return File::create(path);
+    };
+    let mut log = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?;
+    writeln!(
+        log,
+        "\n{RESTART_MARK} {code}), Echo запускает его снова ---\n"
+    )?;
+    Ok(log)
+}
+
+fn launch(
+    dir: &Path,
+    project_path: &str,
+    cwd: &Path,
+    args: &[String],
+    on_exit: OnExit,
+    after_crash: Option<i32>,
+    restart_after: u64,
 ) -> Result<DevServer, String> {
     fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let slug = slug(project_path);
@@ -440,7 +677,7 @@ pub fn start_in(
         stop_in(dir, project_path)?;
     }
     let line = args.join(" ");
-    let log = File::create(dir.join(format!("{slug}.log"))).map_err(|e| e.to_string())?;
+    let log = open_log(&dir.join(format!("{slug}.log")), after_crash).map_err(|e| e.to_string())?;
     let job = Job::create(&slug)?;
     let mut child = match spawn(cwd, &line, &log, true) {
         Err(e) if e.raw_os_error() == Some(ERROR_ACCESS_DENIED) => spawn(cwd, &line, &log, false),
@@ -459,6 +696,7 @@ pub fn start_in(
         seen: start_times(&[child.id()]),
         exit_code: None,
         stopped: false,
+        restarted: after_crash.is_some(),
     };
     let written = {
         let _lock = files();
@@ -472,12 +710,28 @@ pub fn start_in(
     runtime().insert(slug.clone(), Runtime::default());
     let watched = slug.clone();
     let state = dir.to_path_buf();
+    let (project, cwd, args) = (project_path.to_owned(), cwd.to_path_buf(), args.to_vec());
     std::thread::spawn(move || {
         let _job = job;
         let code = child.wait().ok().and_then(|s| s.code());
         let stopping = runtime().entry(watched.clone()).or_default().stopping;
         if !stopping {
             let _ = update_file(&state, &watched, |f| f.exit_code = code);
+            let again = read_file(&state, &watched).is_some_and(|f| {
+                restart_due(code, &f, now_ms(), restart_after)
+                    && ports_for(&running_members(&watched, f.started_at), &listeners()).is_empty()
+            });
+            if again && !runtime().entry(watched.clone()).or_default().stopping {
+                let _ = launch(
+                    &state,
+                    &project,
+                    &cwd,
+                    &args,
+                    on_exit.clone(),
+                    code,
+                    restart_after,
+                );
+            }
         }
         on_exit();
     });
@@ -486,7 +740,7 @@ pub fn start_in(
 
 pub fn start(
     project_path: &str,
-    on_exit: impl FnOnce() + Send + 'static,
+    on_exit: impl Fn() + Send + Sync + 'static,
 ) -> Result<DevServer, String> {
     let project = super::projects::ensure_project(project_path)?;
     let cwd = PathBuf::from(&project.path);
@@ -729,11 +983,8 @@ pub fn first_port(project_path: &str) -> Option<u16> {
     let server = list()
         .into_iter()
         .find(|s| slug == self::slug(&s.project_path))?;
-    let log = fs::read(&server.log).ok().map(|bytes| {
-        let from = bytes.len().saturating_sub(LOG_PORT_SCAN as usize);
-        String::from_utf8_lossy(&bytes[from..]).into_owned()
-    });
-    log.and_then(|text| port_from_log(&text, &server.ports))
+    log_tail(Path::new(&server.log))
+        .and_then(|text| port_from_log(&text, &server.ports))
         .or_else(|| server.ports.first().copied())
 }
 
@@ -795,12 +1046,21 @@ pub fn untail(id: u32) {
 
 pub fn start_monitor(app: AppHandle) {
     std::thread::spawn(move || {
-        let mut last: Vec<(String, DevState, Vec<u16>)> = Vec::new();
+        type Seen = (String, DevState, Vec<u16>, Option<BuildErrors>, u64);
+        let mut last: Vec<Seen> = Vec::new();
         loop {
             let servers = list();
-            let now: Vec<_> = servers
+            let now: Vec<Seen> = servers
                 .iter()
-                .map(|s| (s.project_path.clone(), s.state, s.ports.clone()))
+                .map(|s| {
+                    (
+                        s.project_path.clone(),
+                        s.state,
+                        s.ports.clone(),
+                        s.errors.clone(),
+                        s.started_at,
+                    )
+                })
                 .collect();
             if now != last {
                 let _ = app.emit(EVENT_DEV, ());
@@ -1199,6 +1459,7 @@ mod tests {
             seen: vec![(7, 1_000), (8, 2_000)],
             exit_code: Some(1),
             stopped: false,
+            restarted: true,
         };
         let text = serde_json::to_string(&file).unwrap();
         assert!(text.contains(r#""seen":[[7,1000],[8,2000]]"#), "{text}");
@@ -1223,5 +1484,113 @@ mod tests {
             Some(3001)
         );
         assert_eq!(port_from_log("http://localhost:5173", &[1420]), None);
+    }
+
+    const BREEZE: &str = r"C:\Users\Me\Projects\Breeze";
+
+    fn errors(log: &str) -> Option<(u32, Option<String>)> {
+        build_errors(log, BREEZE).map(|e| (e.count, e.at))
+    }
+
+    #[test]
+    fn vue_tsc_checker_errors_point_at_the_file_and_clear_on_zero() {
+        let failed = "\u{1b}[31m ERROR(vue-tsc)\u{1b}[39m  Type 'x' is not assignable\n FILE  C:/Users/Me/Projects/Breeze/src/boot/i18n.ts:33:3\n\n    31 |   locale,\n  > 33 |   messages,\n\n[vue-tsc] Found 1 error. Watching for file changes.\n";
+        assert_eq!(
+            errors(failed),
+            Some((1, Some("src/boot/i18n.ts:33".into())))
+        );
+        let fixed = format!("{failed}[vue-tsc] Found 0 errors. Watching for file changes.\n");
+        assert_eq!(errors(&fixed), None);
+        let eslint = format!("{failed}[ESLint] Found 0 error and 2 warning\n");
+        assert_eq!(
+            errors(&eslint),
+            Some((1, Some("src/boot/i18n.ts:33".into())))
+        );
+    }
+
+    #[test]
+    fn tsc_watch_summaries_replace_each_other() {
+        let log = "src/a.ts(4,7): error TS2322: no\nsrc/b.ts:9:1 - error TS1005: ';' expected\n[12:00:01 PM] Found 2 errors. Watching for file changes.\n";
+        assert_eq!(errors(log), Some((2, Some("src/a.ts:4".into()))));
+        let again = format!("{log}[12:00:09 PM] Found 0 errors. Watching for file changes.\n");
+        assert_eq!(errors(&again), None);
+    }
+
+    #[test]
+    fn vite_errors_clear_on_hmr_and_cargo_errors_on_finish() {
+        let vite = "12:01:02 [vite] Internal server error: Failed to resolve import \"./x\" from \"src/App.vue\".\n  Plugin: vite:import-analysis\n  File: C:/Users/Me/Projects/Breeze/src/App.vue:3:20\n";
+        assert_eq!(errors(vite), Some((1, Some("src/App.vue:3".into()))));
+        assert_eq!(
+            errors(&format!(
+                "{vite}12:01:09 [vite] (client) hmr update /src/App.vue\n"
+            )),
+            None
+        );
+        let cargo = "error[E0425]: cannot find value `x`\n --> src\\lib.rs:3:5\nerror: could not compile `app` (lib) due to 2 previous errors\n";
+        assert_eq!(errors(cargo), Some((2, Some("src/lib.rs:3".into()))));
+        assert_eq!(
+            errors(&format!("{cargo}    Finished `dev` profile in 3.1s\n")),
+            None
+        );
+    }
+
+    #[test]
+    fn plain_output_has_no_build_errors() {
+        let log = " App URL... http://localhost:9000/\nlistening on 127.0.0.1:5173\nGET /api 404 Not Found\nERROR in some app log line\n[Nest] 500 Internal server error\nFound 3 errors in payload\n";
+        assert_eq!(errors(log), None);
+    }
+
+    #[test]
+    fn a_project_path_with_spaces_is_cut_off_whole() {
+        let log = " FILE  C:/Users/Me/Projects/Windows Apps/Echo Studio/src/x.ts:7:1\n[vue-tsc] Found 1 error. Watching for file changes.\n";
+        let found = build_errors(log, r"C:\Users\Me\Projects\Windows Apps\Echo Studio");
+        assert_eq!(found.and_then(|e| e.at), Some("src/x.ts:7".into()));
+    }
+
+    #[test]
+    fn errors_before_an_automatic_restart_are_forgotten() {
+        let log = format!(
+            "[vue-tsc] Found 1 error. Watching for file changes.\n\n{RESTART_MARK} 1), Echo запускает его снова ---\n\nVITE ready\n"
+        );
+        assert_eq!(errors(&log), None);
+    }
+
+    #[test]
+    fn restart_is_due_once_after_a_long_run() {
+        let mut file: DevFile = serde_json::from_str(
+            r#"{"projectPath":"C:\\P","command":"pnpm dev","pid":7,"startedAt":1000}"#,
+        )
+        .unwrap();
+        assert!(restart_due(Some(1), &file, 61_000, RESTART_AFTER));
+        assert!(!restart_due(Some(1), &file, 30_000, RESTART_AFTER));
+        assert!(!restart_due(Some(0), &file, 61_000, RESTART_AFTER));
+        file.restarted = true;
+        assert!(!restart_due(Some(1), &file, 61_000, RESTART_AFTER));
+    }
+
+    #[test]
+    fn a_crash_restarts_once_and_then_stays_red() {
+        let base = std::env::temp_dir().join(format!("echo-dev-restart-{}", std::process::id()));
+        let project = base.join("project");
+        let dir = base.join("state");
+        fs::create_dir_all(&project).unwrap();
+        let project_path = project.to_string_lossy().into_owned();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let args = ["echo run & exit 3".to_owned()];
+        let on_exit: OnExit = Arc::new(move || {
+            let _ = tx.send(());
+        });
+        launch(&dir, &project_path, &project, &args, on_exit, None, 0).unwrap();
+        rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert!(rx.recv_timeout(Duration::from_secs(2)).is_err());
+        let file = read_file(&dir, &slug(&project_path)).unwrap();
+        assert!(file.restarted);
+        assert_eq!(file.exit_code, Some(3));
+        let log = fs::read_to_string(dir.join(format!("{}.log", slug(&project_path)))).unwrap();
+        assert_eq!(log.matches("run").count(), 2, "{log}");
+        assert_eq!(log.matches("код 3").count(), 1, "{log}");
+        assert_eq!(list_in(&dir)[0].state, DevState::Error);
+        let _ = fs::remove_dir_all(&base);
     }
 }

@@ -14,6 +14,7 @@ import { SessionStrip } from './SessionStrip';
 import { pruneMissing } from './terminals';
 import { useEndedTabs } from './useEndedTabs';
 import { useStartSession } from './useStartSession';
+import { useToasts } from './useToasts';
 import { LayoutPicker, Wall } from './Wall';
 
 export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
@@ -29,6 +30,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
 
   const projects = useMemo(() => (tree ? all(tree) : []), [tree]);
   const byPath = useMemo(() => new Map(projects.map((p) => [p.path, p])), [projects]);
+  useToasts(sessions, devServers, byPath);
   useEffect(() => {
     if (tree)
       pruneMissing(dataUpdatedAt, tabs, (path) => projects.some((p) => samePath(p.path, path)));
