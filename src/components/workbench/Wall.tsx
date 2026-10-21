@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Columns2, Grid2x2, Pin, Plus, Square } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { type HTMLAttributes, type ReactNode, useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { listWorkbenchProjects } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
@@ -18,8 +18,32 @@ import {
 } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { Cell } from './Cell';
+import { ModeSwitch } from './ModeSwitch';
 import { ProjectIcon } from './ProjectIcon';
 import { StatusIcon } from './StatusIcon';
+import { type DraggedTab, useTabDrop } from './useTabDrag';
+
+interface ZoneProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
+  cell: WallCell;
+  keys: string[];
+  onDropTab: (tab: DraggedTab, at: number | undefined) => void;
+  children: (insertAt: number | null) => ReactNode;
+}
+
+function WallCellZone({ cell, keys, onDropTab, className, children, ...rest }: ZoneProps) {
+  const drop = useTabDrop({
+    path: cell.projectPath,
+    cell: cell.id,
+    keys,
+    accept: () => true,
+    onDrop: onDropTab,
+  });
+  return (
+    <div {...rest} className={cn(className, drop.over && 'drop')} {...drop.props}>
+      {children(drop.insert)}
+    </div>
+  );
+}
 
 const LAYOUTS: { key: WallLayout; label: string; Icon: typeof Square }[] = [
   { key: '1x1', label: '1×1', Icon: Square },
@@ -27,9 +51,17 @@ const LAYOUTS: { key: WallLayout; label: string; Icon: typeof Square }[] = [
   { key: '2x2', label: '2×2', Icon: Grid2x2 },
 ];
 
-export function LayoutPicker() {
-  const layout = useWorkbenchStore((s) => s.layout);
-  const setLayout = useWorkbenchStore((s) => s.setLayout);
+export function LayoutPicker({
+  value,
+  onChange,
+}: {
+  value?: WallLayout;
+  onChange?: (layout: WallLayout) => void;
+}) {
+  const wallLayout = useWorkbenchStore((s) => s.layout);
+  const setWallLayout = useWorkbenchStore((s) => s.setLayout);
+  const layout = value ?? wallLayout;
+  const setLayout = onChange ?? setWallLayout;
   return (
     <fieldset className="wl-seg" aria-label="Раскладка проекта">
       {LAYOUTS.map(({ key, label, Icon }) => (
@@ -115,6 +147,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
   const pinCell = useWorkbenchStore((s) => s.pinCell);
   const touchCell = useWorkbenchStore((s) => s.touchCell);
   const activateCell = useWorkbenchStore((s) => s.activateCell);
+  const moveTabToWallCell = useWorkbenchStore((s) => s.moveTabToWallCell);
   const tabs = useWorkbenchStore((s) => s.tabs);
   const activeTab = useWorkbenchStore((s) => s.activeTab);
   const [tick, setTick] = useState(0);
@@ -161,6 +194,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
           ячейку
         </span>
         <span className="wb-gap" />
+        <ModeSwitch />
         <LayoutPicker />
         <button
           type="button"
@@ -185,76 +219,89 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
           };
           const lock = c.pinned ? 'pinned' : c.manual ? 'manual' : 'auto';
           return (
-            <div
+            <WallCellZone
               key={c.id}
+              cell={c}
+              keys={tabs[c.projectPath ?? ''] ?? []}
+              onDropTab={(tab, at) => moveTabToWallCell(c.id, tab.path, tab.key, at)}
               className={cn('wl-cell', status === 'waiting' && 'wait')}
               onPointerDownCapture={touch}
               onKeyDownCapture={touch}
               onWheelCapture={touch}
             >
-              <div className="wl-ch">
-                {project ? (
-                  <span className="wl-cp" title={project.path}>
-                    <ProjectIcon svg={project.icon} />
-                    <b>{project.name}</b>
-                  </span>
-                ) : (
-                  <span className="wb-dim">Свободная ячейка</span>
-                )}
-                {status === 'waiting' && (
-                  <span className="wl-wait">
-                    <StatusIcon small session={{ status, phase: null, tool: null }} />
-                    {STATUS_LABEL.waiting}
-                  </span>
-                )}
-                <span className="wb-gap" />
-                <button
-                  type="button"
-                  className={cn('wl-pin', lock === 'pinned' && 'on', lock === 'manual' && 'half')}
-                  aria-pressed={lock !== 'auto'}
-                  title={
-                    lock === 'pinned'
-                      ? 'Открепить ячейку'
-                      : lock === 'manual'
-                        ? 'Открыта вручную — вернуть авто-порядок'
-                        : 'Закрепить ячейку'
-                  }
-                  onClick={() => pinCell(c.id)}
-                >
-                  <Pin strokeWidth={2} />
-                </button>
-              </div>
-              <div className="wl-cb">
-                {project && !twin && (
-                  <Cell
-                    key={project.path}
-                    project={project}
-                    sessions={sessions}
-                    server={devServers.find((d) => samePath(d.projectPath, project.path))}
-                    visible={!hidden}
-                    focused={c.id === focusCell}
-                    activeKey={keys[i] ?? undefined}
-                    onActivate={(key) => activateCell(c.id, key)}
-                    busy={busy}
-                    onStart={(resume) => onStart(project.path, resume)}
-                  />
-                )}
-                {project && twin && (
-                  <div className="wl-twin">
-                    <span className="wb-dim">Все вкладки проекта уже на экране</span>
+              {(insertAt) => (
+                <>
+                  <div className="wl-ch">
+                    {project ? (
+                      <span className="wl-cp" title={project.path}>
+                        <ProjectIcon svg={project.icon} />
+                        <b>{project.name}</b>
+                      </span>
+                    ) : (
+                      <span className="wb-dim">Свободная ячейка</span>
+                    )}
+                    {status === 'waiting' && (
+                      <span className="wl-wait">
+                        <StatusIcon small session={{ status, phase: null, tool: null }} />
+                        {STATUS_LABEL.waiting}
+                      </span>
+                    )}
+                    <span className="wb-gap" />
                     <button
                       type="button"
-                      className="wb-btn"
-                      disabled={busy}
-                      onClick={() => startIn(c.id, project.path)}
+                      className={cn(
+                        'wl-pin',
+                        lock === 'pinned' && 'on',
+                        lock === 'manual' && 'half',
+                      )}
+                      aria-pressed={lock !== 'auto'}
+                      title={
+                        lock === 'pinned'
+                          ? 'Открепить ячейку'
+                          : lock === 'manual'
+                            ? 'Открыта вручную — вернуть авто-порядок'
+                            : 'Закрепить ячейку'
+                      }
+                      onClick={() => pinCell(c.id)}
                     >
-                      <Plus strokeWidth={2} />
-                      Ещё сессия
+                      <Pin strokeWidth={2} />
                     </button>
                   </div>
-                )}
-              </div>
-            </div>
+                  <div className="wl-cb">
+                    {project && !twin && (
+                      <Cell
+                        key={project.path}
+                        project={project}
+                        sessions={sessions}
+                        server={devServers.find((d) => samePath(d.projectPath, project.path))}
+                        visible={!hidden}
+                        focused={c.id === focusCell}
+                        activeKey={keys[i] ?? undefined}
+                        onActivate={(key) => activateCell(c.id, key)}
+                        busy={busy}
+                        onStart={(resume) => onStart(project.path, resume)}
+                        cellId={c.id}
+                        insertAt={insertAt}
+                      />
+                    )}
+                    {project && twin && (
+                      <div className="wl-twin">
+                        <span className="wb-dim">Все вкладки проекта уже на экране</span>
+                        <button
+                          type="button"
+                          className="wb-btn"
+                          disabled={busy}
+                          onClick={() => startIn(c.id, project.path)}
+                        >
+                          <Plus strokeWidth={2} />
+                          Ещё сессия
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </WallCellZone>
           );
         })}
       </div>

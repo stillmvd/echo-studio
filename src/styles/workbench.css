@@ -235,7 +235,7 @@
 .wl-seg { flex: none; display: inline-flex; gap: 2px; padding: 4px; border-radius: 999px; background: var(--raised); }
 .wl-seg button { display: grid; place-items: center; width: 36px; height: 32px; border-radius: 999px; color: var(--dim); transition: background-color 200ms var(--ease-trail), color 200ms var(--ease-trail); }
 .wl-seg button:hover { color: var(--fg); }
-.wl-seg button.on { background: var(--cosmic); color: var(--fg); box-shadow: 0 1px 2px var(--press-shade); }
+.wl-seg button.on { background: var(--cosmic); color: var(--fg); box-shadow: 0 1px 2px var(--color-press-shade); }
 .wl-seg svg { width: 18px; height: 18px; }
 .wl-grid { flex: 1; min-height: 0; display: grid; gap: 8px; padding: 0 12px 12px; }
 .wl-grid.l-1x1 { grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
@@ -290,3 +290,19 @@ fieldset.wl-seg { margin: 0; border: 0; min-width: 0; }
 .wb-swap { display: grid; }
 .wb-swap > span { grid-area: 1 / 1; }
 .wb-swap > span[hidden] { display: block; visibility: hidden; }
+
+.wl-seg.txt label { position: relative; display: grid; place-items: center; height: 28px; padding: 0 12px; border-radius: 999px; color: var(--dim); font-size: 12.5px; font-weight: 600; white-space: nowrap; transition: background-color 200ms var(--ease-trail), color 200ms var(--ease-trail); }
+.wl-seg.txt label:hover { color: var(--fg); }
+.wl-seg.txt label + label::before { content: ""; position: absolute; left: 0; top: 7px; width: 1px; height: 14px; background: var(--color-border); transition: opacity 200ms var(--ease-trail); }
+.wl-seg.txt label.on::before, .wl-seg.txt label.on + label::before { opacity: 0; }
+.wl-seg.txt label.on { background: var(--color-bg-primary); color: var(--fg); box-shadow: 0 0 0 1px var(--color-border), 0 1px 2px var(--color-press-shade); }
+.wl-seg.txt label:has(:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+:root:not([data-keys]) .wl-seg.txt label:has(:focus-visible) { outline: none; }
+.wl-grid.pg > .wl-cell > .wb-area { padding: 8px; }
+.wl-cell.fx { box-shadow: inset 0 0 0 1.5px var(--color-border); }
+.wl-cell.drop { box-shadow: inset 0 0 0 2px var(--color-accent); }
+.wl-free { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; font-size: 13px; text-align: center; overflow: hidden; }
+.wl-free > div { display: flex; align-items: center; gap: 8px; }
+.wb-tab[draggable="true"] { cursor: grab; }
+.wb-tab[draggable="true"] .wb-tab-b { cursor: inherit; }
+.wb-tab-ins { flex: none; align-self: center; width: 2px; height: 24px; margin: 0 -3px; border-radius: 1px; background: var(--color-accent); pointer-events: none; }

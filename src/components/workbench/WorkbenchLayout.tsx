@@ -2,7 +2,8 @@ import { useEffect, useMemo } from 'react';
 import { useClaudeSessions, useDevServers, useWorkbenchProjects } from '@/hooks/use-workbench';
 import { all, samePath } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
-import { Cell } from './Cell';
+import { ProjectGrid } from './Cell';
+import { ModeSwitch } from './ModeSwitch';
 import { Overview } from './Overview';
 import { ProjectChips } from './ProjectChips';
 import { ProjectHeader } from './ProjectHeader';
@@ -32,8 +33,10 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   }, [tree, dataUpdatedAt, projects, tabs]);
   const selected =
     view.kind === 'project' ? projects.find((p) => samePath(p.path, view.path)) : undefined;
-  const layout = useWorkbenchStore((s) => s.layout);
-  const wall = layout !== '1x1' && !!selected;
+  const mode = useWorkbenchStore((s) => s.mode);
+  const projectLayouts = useWorkbenchStore((s) => s.projectLayouts);
+  const setProjectLayout = useWorkbenchStore((s) => s.setProjectLayout);
+  const wall = mode === 'wall' && !!selected;
   const opened = wall
     ? []
     : projects.filter((p) => (tabs[p.path]?.length ?? 0) > 0 || p === selected);
@@ -88,14 +91,22 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
                     server={devServers.find((d) => samePath(d.projectPath, p.path))}
                     busy={busy}
                     onClaude={() => void start(p.path)}
-                    extra={<LayoutPicker />}
+                    extra={
+                      <>
+                        <ModeSwitch />
+                        <LayoutPicker
+                          value={projectLayouts[p.path]?.layout ?? '1x1'}
+                          onChange={(l) => setProjectLayout(p.path, l)}
+                        />
+                      </>
+                    }
                   />
                 )}
                 <div
                   className="min-h-0 flex-1 flex-col"
                   style={{ display: isSelected ? 'flex' : 'none' }}
                 >
-                  <Cell
+                  <ProjectGrid
                     project={p}
                     sessions={live}
                     server={devServers.find((d) => samePath(d.projectPath, p.path))}

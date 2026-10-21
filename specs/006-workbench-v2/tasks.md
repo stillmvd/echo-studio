@@ -187,36 +187,36 @@ quickstart §1–§6, сообщение пользователю «пачка 1
 
 **Independent Test**: quickstart.md §7.
 
-- [ ] T029 [US8] [D] `src/lib/workbench.ts`: типы `ProjectLayout`, `ProjectCell`; `emptyLayout()`,
+- [X] T029 [US8] [D] `src/lib/workbench.ts`: типы `ProjectLayout`, `ProjectCell`; `emptyLayout()`,
       `normalizeLayout(layout, tabs: string[]): ProjectLayout` (инварианты data-model.md: каждая вкладка ровно в одной
       ячейке, лишние удаляются, новые → ячейка `focus`, `active ∈ tabs`, ячейки за `CELL_COUNT` переезжают в последнюю
       видимую); `moveTabInLayout(layout, key, toCell, index?)`; `cellOfTab(layout, key)`; тесты в `workbench.test.ts`
-- [ ] T030 [US8] [D] `src/state/workbench-store.ts`: `mode`, `projectLayouts`, `setMode`, `setProjectLayout(path,
+- [X] T030 [US8] [D] `src/state/workbench-store.ts`: `mode`, `projectLayouts`, `setMode`, `setProjectLayout(path,
       layout)`, `moveTab(path, key, toCell, index?)`, `focusProjectCell(path, index)`, `activateInCell(path, cell, key)`;
       `openTab`/`closeTab`/`activate` в режиме `project` обновляют раскладку проекта (`normalizeLayout`); `setLayout`
       остаётся для пульта; `version: 3`, `migrateWorkbench` v2→v3 по data-model.md; `partialize` += новые поля; тесты
       миграции и действий в `workbench-store.test.ts`
-- [ ] T031 [P] [US8] [D] `src/components/workbench/ModeSwitch.tsx` (новый): сегмент «Проект / Пульт» (`role="radiogroup"`,
+- [X] T031 [P] [US8] [D] `src/components/workbench/ModeSwitch.tsx` (новый): сегмент «Проект / Пульт» (`role="radiogroup"`,
       тот же стиль `.wl-seg`), подсказки «Раскладка каждого проекта своя» / «Все проекты на одном экране, ячейки
       занимают ждущие»
-- [ ] T032 [US8] [D] `src/components/workbench/WorkbenchLayout.tsx`: `wall = mode === 'wall'`; в режиме `project` —
+- [X] T032 [US8] [D] `src/components/workbench/WorkbenchLayout.tsx`: `wall = mode === 'wall'`; в режиме `project` —
       `ProjectHeader` с `LayoutPicker` проекта (`projectLayouts[path].layout`, `setProjectLayout`) и `ModeSwitch`; сетка
       ячеек проекта `wl-grid l-<layout>` из `ProjectCellView` (новый компонент в `Wall.tsx` или `Cell.tsx` по выбору D):
       каждая ячейка — `Cell` с `activeKey`/`onActivate` по раскладке проекта, `focused` = `focus === i`, пустая
       ячейка — «Свободная ячейка» + «+ Claude» + «dev» (если есть) + подсказка «Перетащите сюда вкладку»; режим `wall`
       — `Wall` как в 005 плюс `ModeSwitch` в `wl-tb`
-- [ ] T033 [US8] [D] `src/components/workbench/Cell.tsx`: вкладки ячейки — только `cell.tabs` (проп `keys`), не весь
+- [X] T033 [US8] [D] `src/components/workbench/Cell.tsx`: вкладки ячейки — только `cell.tabs` (проп `keys`), не весь
       `tabs[path]`; `EmptyProject` показывается только если у проекта нет вкладок вовсе (не у пустой ячейки);
       `useStartSession`/`openTab` → фокусная ячейка
-- [ ] T034 [US8] [D] `src/components/workbench/SessionStrip.tsx`, `QuickSwitch.tsx`: «Вне сетки» и `pendingCount` —
+- [X] T034 [US8] [D] `src/components/workbench/SessionStrip.tsx`, `QuickSwitch.tsx`: «Вне сетки» и `pendingCount` —
       только в режиме `wall`; `openSession` в режиме `project` → `select` + `activate` (ячейка вкладки из
       `cellOfTab`); фокус терминала по ключу — та же логика
-- [ ] T035 [US7] [D] `src/components/workbench/useTabDrag.ts` (новый): `useTabDrag({ path, cell, key })` →
+- [X] T035 [US7] [D] `src/components/workbench/useTabDrag.ts` (новый): `useTabDrag({ path, cell, key })` →
       `draggable`, `onDragStart` (`dataTransfer.setData('text/x-echo-tab', JSON)`, `effectAllowed = 'move'`);
       `useTabDrop({ path, cell })` → `onDragOver` (проверка типа, `dropEffect`), `onDragEnter/Leave` → класс `drop`,
       `onDrop` → `moveTab`; указатель между капсулами: индекс по `clientX` относительно капсул `.wb-tab`; в пульте
       сброс в ячейку другого проекта → `placeProject`-подобное переназначение ячейки (`manual: true`) + `moveTab`
-- [ ] T036 [US7] [D] `src/components/workbench/Cell.tsx`, `Wall.tsx`: подключить `useTabDrag`/`useTabDrop`; стили
+- [X] T036 [US7] [D] `src/components/workbench/Cell.tsx`, `Wall.tsx`: подключить `useTabDrag`/`useTabDrop`; стили
       `.wl-cell.drop` (рамка акцента), `.wb-tab-ins` (вертикальная черта 2 px акцента между капсулами), `.wb-tab[draggable]`
       курсор `grab` в `src/styles/workbench.css`
 - [ ] T037 [US7] [D] Проверка DnD на живом dev (quickstart §7.1): перенос между ячейками, внутри ячейки, в пустую,
@@ -331,3 +331,27 @@ F2: T018, T021, T023, T024 [P] → T019, T020, T022, T025 → merge → T027, T0
   настоящих строк.
 - T006: фокус возвращается на якорь, только если он был внутри поповера (клик мимо по другому элементу фокус не
   отнимает).
+
+### D «wall» (T029–T037)
+
+- T029: кроме `normalizeLayout`/`moveTabInLayout`/`cellOfTab` — `insertTab(list, key, index)` (общая перестановка для
+  ячеек проекта и для `tabs[path]` в пульте) и `showTabInLayout` (вкладка активна в своей ячейке, ячейка — фокусная).
+  `index` — место вставки так, как его видно на полосе (до удаления самой вкладки).
+- T030: стор хранит раскладки уже нормализованными (`openTab`/`closeTab` нормализуют в обоих режимах, чтобы
+  раскладка не отставала от `tabs`); компоненты дополнительно нормализуют при чтении (`useProjectLayout`,
+  `layoutOf`). Активация (`activate`, `openTab` существующей вкладки) в режиме «Проект» переводит фокус в ячейку
+  вкладки — так Ctrl+Tab, «Запущено» и полоса открывают сессию там, где она лежит (T034 закрыт этим, без правок
+  `openSession`). `select` в режиме «Проект» не трогает ячейки пульта; проект ставится в пульт при `setMode('wall')`
+  (и при миграции — только если сохранён режим «Пульт»). Для сброса в пульте — отдельное действие
+  `moveTabToWallCell(id, path, key, index?)`: ячейка → проект вкладки (`manual`, если не закреплена), её активная
+  вкладка, фокус ячейки и `view`; `index` переставляет `tabs[path]` только внутри того же проекта.
+- T031: сегмент — нативные `radio` в `label` (`fieldset.wl-seg.txt`), а не `role="radio"` на кнопках: Biome
+  (`useSemanticElements`) требует `<input type="radio">`; стрелки работают нативно.
+- T032/T033: сетка проекта — `ProjectGrid` в `Cell.tsx`. 1×1 рисуется без рамки ячейки, как в 005; 2×1/2×2 —
+  `.wl-cell` без шапки, фокусная ячейка — тонкая рамка `.fx`. Ячейка проекта не «controlled»: держит терминалы всех
+  своих вкладок (как одиночный проект в 005), активная — `cell.active`. Пустая ячейка у проекта без вкладок:
+  `EmptyProject` — в фокусной, «Свободная ячейка» — в остальных.
+- T033: вкладки на полосе — в порядке списка, dev больше не прибит к началу (иначе его нельзя переставить); в пульте
+  порядок — `tabs[path]`.
+- T036: исправлен `--press-shade` → `--color-press-shade` у `.wl-seg button.on` (замечание F2).
+- T037: живая проверка DnD — у координатора (запрет `tauri dev` для исполнителей после перегрузки ПК 21.10).
