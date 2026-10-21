@@ -6,7 +6,6 @@ import { useWorkbenchStore } from '@/state/workbench-store';
 import { ProjectGrid } from './Cell';
 import { ModeSwitch } from './ModeSwitch';
 import { Overview } from './Overview';
-import { ProjectChips } from './ProjectChips';
 import { ProjectHeader } from './ProjectHeader';
 import { ProjectTree } from './ProjectTree';
 import { QuickSwitch } from './QuickSwitch';
@@ -26,7 +25,6 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   const { start, busy, dialogs } = useStartSession();
   const menu = useContextMenu();
 
-  const seen = useWorkbenchStore((s) => s.seen);
   const projects = useMemo(() => (tree ? all(tree) : []), [tree]);
   const byPath = useMemo(() => new Map(projects.map((p) => [p.path, p])), [projects]);
   useEffect(() => {
@@ -51,7 +49,13 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
             <div className="wb-ch">
               <b>Запущено</b>
             </div>
-            <RunningList sessions={sessions} devServers={devServers} projects={byPath} />
+            <RunningList
+              sessions={sessions}
+              devServers={devServers}
+              projects={byPath}
+              busy={busy}
+              onStart={(path) => void start(path)}
+            />
             <div className="wb-ch sub">
               <b>Проекты</b>
             </div>
@@ -61,16 +65,6 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
                 devServers={devServers}
                 busy={busy}
                 onStart={(path) => void start(path)}
-                tail={(paths) => {
-                  const inside = (path: string | null) =>
-                    !!path && paths.some((p) => samePath(p, path));
-                  const own = live.filter((s) => inside(s.projectPath));
-                  const devs = devServers.filter(
-                    (d) => d.state !== 'stopped' && inside(d.projectPath),
-                  );
-                  if (own.length === 0 && devs.length === 0) return null;
-                  return <ProjectChips sessions={own} devServers={devs} seen={seen} />;
-                }}
               />
             )}
             {error && <p className="wb-dim px-3 py-2 text-[12.5px]">{String(error)}</p>}
@@ -126,7 +120,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
             })}
           </div>
         </div>
-        <SessionStrip sessions={sessions} projects={byPath} wall={wall} />
+        <SessionStrip sessions={sessions} projects={byPath} />
         <QuickSwitch enabled={!hidden} sessions={live} projects={byPath} />
         {dialogs}
         {menu.element}
