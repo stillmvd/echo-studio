@@ -3,6 +3,7 @@ import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import { effectiveStatus, runningItems, STATUS_LABEL } from '@/lib/workbench';
 import { devTabKey, useWorkbenchStore } from '@/state/workbench-store';
 import { DevDot } from './DevCapsule';
+import { externalTitle, useExternalSession } from './externalSession';
 import { StatusIcon } from './StatusIcon';
 
 interface Props {
@@ -21,9 +22,17 @@ export function RunningList({ sessions, devServers, projects }: Props) {
   const activeTab = useWorkbenchStore((s) => s.activeTab);
   const openTab = useWorkbenchStore((s) => s.openTab);
   const select = useWorkbenchStore((s) => s.select);
+  const { openExternal, layer } = useExternalSession();
 
   const items = runningItems(sessions, devServers, seen);
-  if (items.length === 0) return <p className="wb-runs-empty">Ничего не запущено</p>;
+  if (items.length === 0) {
+    return (
+      <>
+        <p className="wb-runs-empty">Ничего не запущено</p>
+        {layer}
+      </>
+    );
+  }
 
   const isOn = (path: string | null, key: string) =>
     view.kind === 'project' && view.path === path && activeTab[path ?? ''] === key;
@@ -62,20 +71,30 @@ export function RunningList({ sessions, devServers, projects }: Props) {
         const sub = [where, STATUS_LABEL[status], s.kind === 'external' && 'вне оболочки']
           .filter(Boolean)
           .join(' · ');
+        const external = s.kind === 'external';
         return (
           <button
             key={s.sessionId}
             type="button"
-            className={cn('wb-run', isOn(s.projectPath, s.sessionId) && 'on')}
+            className={cn(
+              'wb-run',
+              isOn(s.projectPath, s.sessionId) && 'on',
+              external && status === 'exited' && 'ext',
+            )}
             title={
-              s.projectPath
+              (external && externalTitle(s)) ||
+              (s.projectPath
                 ? (s.cwd ?? undefined)
-                : `${s.cwd ?? 'Папка неизвестна'} — не проект из списка`
+                : `${s.cwd ?? 'Папка неизвестна'} — не проект из списка`)
             }
-            disabled={!s.projectPath}
-            onClick={() => {
+            disabled={!external && !s.projectPath}
+            onClick={(e) => {
+              if (external) {
+                void openExternal(s, e.currentTarget);
+                return;
+              }
               if (!s.projectPath) return;
-              if (s.kind === 'shell') openTab(s.projectPath, s.sessionId);
+              openTab(s.projectPath, s.sessionId);
               select({ kind: 'project', path: s.projectPath });
             }}
           >
@@ -87,6 +106,7 @@ export function RunningList({ sessions, devServers, projects }: Props) {
           </button>
         );
       })}
+      {layer}
     </div>
   );
 }

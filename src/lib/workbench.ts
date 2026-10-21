@@ -151,6 +151,12 @@ export function runningItems(
   ].sort((a, b) => rank(a) - rank(b));
 }
 
+export function externalAction(s: ClaudeSession): 'focus' | 'resume' | 'none' {
+  if (s.kind !== 'external') return 'none';
+  if (s.status !== 'exited') return 'focus';
+  return s.projectPath ? 'resume' : 'none';
+}
+
 export function topStatus(
   sessions: ClaudeSession[],
   seen: Record<string, number>,

@@ -2,6 +2,7 @@ import { cn } from '@/lib/cn';
 import type { ClaudeSession, WorkbenchProject } from '@/lib/types';
 import { arrangeWall, byUrgency, CELL_COUNT, effectiveStatus, STATUS_LABEL } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
+import { externalTitle, useExternalSession } from './externalSession';
 import { StatusIcon } from './StatusIcon';
 
 interface Props {
@@ -40,12 +41,17 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
   const off = new Set(plan?.offGrid ?? []);
   const inGrid = (s: ClaudeSession) => !off.has(s.sessionId);
   const pending = plan?.pendingCount ?? 0;
+  const { openExternal, layer } = useExternalSession();
+  const ended = (s: ClaudeSession) => s.kind === 'external' && s.status === 'exited';
   const sorted = byUrgency(sessions, seen);
-  const ins = sorted.filter(inGrid);
-  const outs = sorted.filter((s) => !inGrid(s));
+  const live = sorted.filter((s) => !ended(s));
+  const ins = live.filter(inGrid);
+  const outs = live.filter((s) => !inGrid(s));
+  const gone = sorted.filter(ended);
 
   const chip = (s: ClaudeSession, out: boolean) => {
     const status = effectiveStatus(s, seen);
+    const external = s.kind === 'external';
     const on =
       view.kind === 'project' &&
       view.path === s.projectPath &&
@@ -54,9 +60,16 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
       <button
         key={s.sessionId}
         type="button"
-        className={cn('wb-bp', out && 'out', on && 'on')}
-        title={`${s.name || 'Claude'} · ${STATUS_LABEL[status]}`}
-        onClick={() => openSession(s)}
+        className={cn('wb-bp', out && 'out', on && 'on', ended(s) && 'ext')}
+        title={[
+          s.name || 'Claude',
+          STATUS_LABEL[status],
+          external && 'вне оболочки',
+          external && externalTitle(s),
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+        onClick={(e) => (external ? void openExternal(s, e.currentTarget) : openSession(s))}
       >
         <StatusIcon small session={{ status, phase: s.phase, tool: s.tool }} />
         <b>{sessionPlace(s, projects)}</b>
@@ -77,7 +90,9 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
         {ins.map((s) => chip(s, false))}
         {outs.length > 0 && <span className="wl-sep">Вне сетки</span>}
         {outs.map((s) => chip(s, true))}
+        {gone.map((s) => chip(s, false))}
       </div>
+      {layer}
       {pending > 0 && <span className="wb-bar-note">ещё ждут: {pending}</span>}
       <span className="wb-kbd">Ctrl</span>
       <span className="wb-kbd">Tab</span>

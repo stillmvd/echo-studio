@@ -14,6 +14,7 @@ import {
   byUrgency,
   effectiveStatus,
   emptyCells,
+  externalAction,
   HANDS_ON_MS,
   isPathTitle,
   type KeyInput,
@@ -203,10 +204,38 @@ describe('urgency', () => {
     ).toEqual(['b', 'err', 'a', 'run']);
   });
 
+  it('puts exited sessions after live ones and dev servers', () => {
+    const ext: ClaudeSession = { ...session('x', 'exited', 1), kind: 'external', exitedAt: 1 };
+    const items = runningItems([ext, session('a', 'idle', 5)], [], {});
+    expect(items.map((i) => (i.kind === 'session' ? i.session.sessionId : ''))).toEqual(['a', 'x']);
+  });
+
   it('gives the most urgent status of a project or group', () => {
     const group = [session('a', 'idle', 1), session('b', 'error', 5), session('c', 'working', 2)];
     expect(topStatus(group, {})).toBe('error');
     expect(topStatus([], {})).toBeNull();
+  });
+});
+
+describe('externalAction', () => {
+  const ext = (status: SessionStatus, projectPath: string | null): ClaudeSession => ({
+    ...session('e', status, 1, projectPath),
+    kind: 'external',
+    pid: status === 'exited' ? null : 42,
+  });
+
+  it('focuses a live external session wherever it runs', () => {
+    expect(externalAction(ext('working', 'C:\\P\\Tolk'))).toBe('focus');
+    expect(externalAction(ext('waiting', null))).toBe('focus');
+  });
+
+  it('offers to resume an exited one only inside a known project', () => {
+    expect(externalAction(ext('exited', 'C:\\P\\Tolk'))).toBe('resume');
+    expect(externalAction(ext('exited', null))).toBe('none');
+  });
+
+  it('leaves shell sessions to the shell', () => {
+    expect(externalAction(session('s', 'working', 1))).toBe('none');
   });
 });
 
