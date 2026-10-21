@@ -1,26 +1,32 @@
-import { Play, RotateCcw } from 'lucide-react';
+import { Play, RotateCcw, Square } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/cn';
+import type { SessionStatus } from '@/lib/types';
+import { STATUS_LABEL } from '@/lib/workbench';
 import { connect, fitTerm, focus, mount, reattach, unmount, useClaudeTerm } from './terminals';
 
 interface Props {
   sessionKey: string;
   shortId: string | null;
   live: boolean;
+  status: SessionStatus;
   visible: boolean;
   focused: boolean;
   accent?: boolean;
   onResume: () => void;
+  onStop: () => void;
 }
 
 export function ClaudeTerminal({
   sessionKey,
   shortId,
   live,
+  status,
   visible,
   focused,
   accent,
   onResume,
+  onStop,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const entry = useClaudeTerm(sessionKey);
@@ -49,7 +55,12 @@ export function ClaudeTerminal({
 
   useEffect(() => {
     if (!shortId || !live) return;
-    if (state === 'idle' || (state === 'ended' && Date.now() - entry.attachedAt > 3000)) {
+    const respawned = (state === 'detached' || state === 'ended') && shortId !== entry.shortId;
+    if (
+      state === 'idle' ||
+      respawned ||
+      (state === 'ended' && Date.now() - entry.attachedAt > 3000)
+    ) {
       connect(sessionKey, shortId);
     }
   }, [shortId, live, state, entry, sessionKey]);
@@ -63,6 +74,29 @@ export function ClaudeTerminal({
           <button type="button" className="wb-btn p" onClick={onResume}>
             <Play strokeWidth={2} />
             Продолжить
+          </button>
+        </div>
+      )}
+      {live && state === 'detached' && shortId && (
+        <div className="wb-term-note dt" role="status">
+          <span>
+            Отключено от сессии
+            <span className="wb-dim"> · {STATUS_LABEL[status]}</span>
+          </span>
+          <button
+            type="button"
+            className="wb-btn p"
+            onClick={() => {
+              reattach(sessionKey, shortId);
+              focus(sessionKey);
+            }}
+          >
+            <RotateCcw strokeWidth={2} />
+            Вернуться
+          </button>
+          <button type="button" className="wb-btn wb-stop" onClick={onStop}>
+            <Square fill="currentColor" strokeWidth={2} />
+            Завершить сессию
           </button>
         </div>
       )}

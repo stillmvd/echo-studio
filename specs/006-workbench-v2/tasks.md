@@ -56,15 +56,15 @@
 - [ ] T005 [US1] [R1] `src-tauri/src/commands/workbench.rs`: `focus_session_window(pid: u32, session_id: String) ->
       Result<window::Focus>`: `blocking` → `sessions::session_pid(&session_id)? == pid` иначе ошибка «pid is not the
       session's claude», затем `window::focus(pid)`; регистрация в `src-tauri/src/lib.rs`
-- [ ] T006 [P] [US1] [F1] `src/components/ui/Popover.tsx` (новый): `Popover({ anchor: HTMLElement | null, open,
+- [X] T006 [P] [US1] [F1] `src/components/ui/Popover.tsx` (новый): `Popover({ anchor: HTMLElement | null, open,
       onClose, children })` — карточка `radius 20`, тень как у меню, позиция у якоря (снизу, не выходит за окно),
       закрытие по клику мимо/Esc/blur/resize, вход 200 мс `translateY(-4px) scale(.96)`, выход 150 мс через
       `element.animate`, `hidden` в `finished`; `prefers-reduced-motion` — без анимации; `role="dialog"`,
       фокус внутрь и возврат
-- [ ] T007 [US1] [F1] `src/lib/workbench.ts`: `externalAction(s: ClaudeSession): 'focus' | 'resume' | 'none'` —
+- [X] T007 [US1] [F1] `src/lib/workbench.ts`: `externalAction(s: ClaudeSession): 'focus' | 'resume' | 'none'` —
       `external` + живая → `focus`; `external` + `exited` + `projectPath` → `resume`; иначе `none`; `runningItems` —
       `exited` в конце; тест в `src/lib/workbench.test.ts`
-- [ ] T008 [US1] [F1] `src/components/workbench/RunningList.tsx`: строка внешней сессии всегда активна (`disabled`
+- [X] T008 [US1] [F1] `src/components/workbench/RunningList.tsx`: строка внешней сессии всегда активна (`disabled`
       убрать); клик → `openExternal(s, anchor)` из нового `src/components/workbench/externalSession.tsx`: `focus` →
       `focusSessionWindow(s.pid, s.sessionId)`; `vscode` → `open('vscode://stillmvd.claude-session-focus/focus?session=<id>')`
       (`@tauri-apps/plugin-shell`); `not-found`/ошибка → `Popover` у строки: «Сессия открыта в терминале вне Echo»,
@@ -74,7 +74,7 @@
       `WorkbenchLayout.tsx` только для этой строки; согласовать с F2 — F2 `WorkbenchLayout.tsx` не трогает);
       подпись «завершена · вне оболочки»; сессия без проекта — подсказка «папка не из списка проектов — продолжить в
       Echo нельзя»
-- [ ] T009 [US1] [F1] `src/components/workbench/SessionStrip.tsx`: чип внешней сессии — тот же `openExternal`;
+- [X] T009 [US1] [F1] `src/components/workbench/SessionStrip.tsx`: чип внешней сессии — тот же `openExternal`;
       завершённые внешние — в конце полосы с приглушённым стилем `.wb-bp.ext`
 
 **Checkpoint**: quickstart §1.
@@ -85,22 +85,22 @@
 
 **Independent Test**: quickstart.md §3.
 
-- [ ] T010 [P] [US3] [F1] `src/lib/workbench.ts`: `detectAgentView(lines: string[]): boolean` — маркеры agent view
+- [X] T010 [P] [US3] [F1] `src/lib/workbench.ts`: `detectAgentView(lines: string[]): boolean` — маркеры agent view
       (снять на живой сессии: `claude attach` после `/exit`; ожидаемые — «Describe a task», «Background sessions»,
       подсказка `attach`); тест с примером экрана в `workbench.test.ts`
-- [ ] T011 [US3] [F1] `src/components/workbench/terminals.ts`: `TermState` += `'detached'`; в `connect` на каждую
+- [X] T011 [US3] [F1] `src/components/workbench/terminals.ts`: `TermState` += `'detached'`; в `connect` на каждую
       пачку данных — дебаунс 200 мс → последние 30 строк `term.buffer.active` → `detectAgentView` → `detach(id)`,
       `setState(entry, 'detached')`; `terminal-exit` для живой сессии → `'detached'` (вместо `'ended'` — `'ended'`
       остаётся для завершённых); `reattach` из `'detached'` работает
-- [ ] T012 [US3] [F1] `src/components/workbench/ClaudeTerminal.tsx`: оверлей `.wb-term-note.dt` для `'detached'`:
+- [X] T012 [US3] [F1] `src/components/workbench/ClaudeTerminal.tsx`: оверлей `.wb-term-note.dt` для `'detached'`:
       «Отключено от сессии» + кнопки «Вернуться» (`reattach`) и «Завершить сессию» (`onStop` проп → `ConfirmDialog`
       в `Cell`); для `'error'` — прежний текст с «Подключить»
-- [ ] T013 [US3] [F1] `src/components/workbench/Cell.tsx`: кнопка «Остановить сессию» → `wb-btn` с заполненным
+- [X] T013 [US3] [F1] `src/components/workbench/Cell.tsx`: кнопка «Остановить сессию» → `wb-btn` с заполненным
       квадратом danger и подписью «Завершить сессию» (`title="Завершить сессию Claude (с подтверждением)"`); крестик
       вкладки — `title="Скрыть вкладку — сессия продолжит работать"`; `onStop` в `ClaudeTerminal`; текст
       `ConfirmDialog`: «Завершить сессию?», «Claude завершит работу. Разговор сохранится — его можно продолжить из
       списка проекта.»
-- [ ] T014 [US3] [F1] `src/styles/workbench.css`: `.wb-term-note.dt`, `.wb-stop` (заполненный квадрат
+- [X] T014 [US3] [F1] `src/styles/workbench.css`: `.wb-term-note.dt`, `.wb-stop` (заполненный квадрат
       `--color-danger`, hover — `--color-danger-soft` фон), `.wb-bp.ext`
 
 **Checkpoint**: quickstart §3, включая Ctrl+C.
@@ -109,11 +109,11 @@
 
 ## Phase 5: User Story 6 и watching — Пустой проект, индикатор (P3, P2)
 
-- [ ] T015 [P] [US6] [F1] `src/components/workbench/EmptyProject.tsx`: `pending = !convProjects || (convId && isPending)`
+- [X] T015 [P] [US6] [F1] `src/components/workbench/EmptyProject.tsx`: `pending = !convProjects || (convId && isPending)`
       → блок «Продолжить» с 4 `<span className="wb-rr sk" />` высотой `ROW`; блок скрывается только при `!pending &&
       sessions.length === 0`; стили `.wb-rr.sk` (дыхание opacity 1→.5 за 1,2 с, `@media (prefers-reduced-motion)` —
       статично) в `src/styles/workbench.css`
-- [ ] T016 [P] [US4] [F1] watching: удалить `src/components/layout/StatusBar.tsx`; в `src/components/layout/AppShell.tsx`
+- [X] T016 [P] [US4] [F1] watching: удалить `src/components/layout/StatusBar.tsx`; в `src/components/layout/AppShell.tsx`
       вызвать `useToolingWatch()` и убрать `<StatusBar />`; в `src/components/workbench/SessionStrip.tsx` удалить
       `useLayoutEffect` с `marginRight`, после `Ctrl`/`Tab` добавить `<span className="wb-watch" title="Слежу за
       конфигом Claude — изменения подхватываются сами" />`; стиль `.wb-watch` (точка 8 px `--color-success` с мягким
@@ -307,3 +307,27 @@ F2: T018, T021, T023, T024 [P] → T019, T020, T022, T025 → merge → T027, T0
   всех групп, как в US7 005); из заголовка «Без проекта» кнопка убрана (решение координатора по ревью).
 - T028: подсказка «Без проекта» — `title` на всём заголовке и значок `CircleHelp` рядом (`title` новичок не найдёт
   без видимого значка).
+
+### F1 front-sessions (T006–T016)
+
+- T008/T009: `WorkbenchLayout.tsx` не тронут. «Продолжить в Echo» идёт через хук `useExternalSession`
+  (`externalSession.tsx`), который сам берёт `useStartSession` и рисует его диалоги рядом с поповером, — так же работает
+  и в полосе, куда `onStart` не приходит. Цена: `busy` этого запуска не гасит кнопки «Новая сессия» в ячейках.
+- T009: завершённые внешние — в самом конце полосы, после «Вне сетки».
+- T010: маркеры сняты на Claude Code 2.1.306 своим ConPTY-хостом (`claude attach` + `/exit`, двойная «←», Ctrl+Z), не
+  через dev Echo — сборка Rust запрещена по нагрузке. Agent view: строка шапки `New sessions: <модель> · <усилие>`,
+  поле `❯ describe a task for a new session`, подвал `enter to return · space to reply · …`. Echo запускает attach в
+  `~`, поэтому после `/exit` сначала идёт вопрос доверия к `~`: `Accessing workspace:` и `Quick safety check: Is this a
+  project you created or one you trust?` — тоже маркеры. Правило: ≥ 2 маркеров, каждый с начала строки. Ctrl+Z не
+  открывает agent view — attach завершается (`?1049l` и выход), это ловит `terminal-exit` → `detached`.
+- T011: выход attach сразу после запуска (`earlyExits`) остаётся `ended` с авто-переподключением через 3 с, как в 005;
+  `detached` — только после живого подключения. После детекции экран терминала очищается (`term.reset()`), чтобы за
+  оверлеем не висел agent view.
+- T012: в оверлее после «Отключено от сессии» — статус сессии (`· ждёт тебя` и т. п.), edge case из spec; оверлей по
+  центру ячейки; «Вернуться» сразу отдаёт фокус терминалу.
+- T013: кнопка подтверждения — «Завершить».
+- T015: `.wb-empty` — сетка `2fr / auto / 3fr`: иконка и кнопки в средней строке, список — в нижней, поэтому кнопки не
+  зависят ни от силуэтов, ни от длины списка, ни от его исчезновения. Силуэт — 44 px + зазор 2 = шаг `ROW` (46), как у
+  настоящих строк.
+- T006: фокус возвращается на якорь, только если он был внутри поповера (клик мимо по другому элементу фокус не
+  отнимает).

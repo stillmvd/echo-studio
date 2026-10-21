@@ -12,8 +12,10 @@ import {
   assignTabs,
   byRecency,
   byUrgency,
+  detectAgentView,
   effectiveStatus,
   emptyCells,
+  externalAction,
   HANDS_ON_MS,
   isPathTitle,
   type KeyInput,
@@ -203,10 +205,106 @@ describe('urgency', () => {
     ).toEqual(['b', 'err', 'a', 'run']);
   });
 
+  it('puts exited sessions after live ones and dev servers', () => {
+    const ext: ClaudeSession = { ...session('x', 'exited', 1), kind: 'external', exitedAt: 1 };
+    const items = runningItems([ext, session('a', 'idle', 5)], [], {});
+    expect(items.map((i) => (i.kind === 'session' ? i.session.sessionId : ''))).toEqual(['a', 'x']);
+  });
+
   it('gives the most urgent status of a project or group', () => {
     const group = [session('a', 'idle', 1), session('b', 'error', 5), session('c', 'working', 2)];
     expect(topStatus(group, {})).toBe('error');
     expect(topStatus([], {})).toBeNull();
+  });
+});
+
+describe('detectAgentView', () => {
+  const rule = '─'.repeat(60);
+  const agentView = [
+    ' ▐▛███▜▌   Claude Code v2.1.306',
+    '▝▜█████▛▘  New sessions: Opus 5.5 · high effort',
+    '  ▘▘ ▝▝    ~\\Projects\\Windows Apps\\Echo Studio',
+    '',
+    '           5 awaiting input · 3 working · 17 completed',
+    'Needs input',
+    ' ✻ current session                           v2-front-sessions                 8m',
+    'Working',
+    ' ✻ v2-rust                                   Running cat "C:/Users/…"         34m',
+    'Completed',
+    ' ∙ v2-front-controls                         Правка по ревью…                 25m',
+    rule,
+    '❯ describe a task for a new session',
+    rule,
+    '  enter to return · space to reply · ctrl+x to delete · ? for shortcuts',
+  ];
+  const trust = [
+    rule,
+    '',
+    ' Accessing workspace:',
+    '',
+    ' C:\\Users\\stillmvd',
+    '',
+    ' Quick safety check: Is this a project you created or one you trust?',
+  ];
+  const session = [
+    ' ▐▛███▜▌   Claude Code v2.1.306',
+    '▝▜█████▛▘  Opus 5.5 with high effort · Claude Max',
+    '  ▘▘ ▝▝    ~\\Projects\\Windows Apps\\Echo Studio\\.claude\\worktrees\\v2-front-sessions',
+    rule,
+    '❯ ',
+    rule,
+    '  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← 2 agents',
+  ];
+  const slashMenu = [
+    '❯ /exit',
+    rule,
+    '  /exit            Detach from this background session (it keeps running)',
+    '  /phase:next      Взять следующую неначатую фазу задачи и выполнить её',
+    '  /besit           Записать, что бесит в моих десктоп-приложениях',
+  ];
+  const quoted = [
+    '⏺ Agent view shows a field that says "describe a task for a new session" and a hint',
+    '  line: enter to return · space to reply · ctrl+x to delete.',
+    '  New sessions: Opus 5.5 · high effort is the header there.',
+  ];
+
+  it('sees agent view after /exit and the double left arrow', () => {
+    expect(detectAgentView(agentView)).toBe(true);
+    expect(detectAgentView(agentView.slice(-4))).toBe(true);
+  });
+
+  it('sees the trust prompt agent view opens in an untrusted home folder', () => {
+    expect(detectAgentView(trust)).toBe(true);
+  });
+
+  it('leaves the session screen, its slash menu and quoted marker text alone', () => {
+    expect(detectAgentView(session)).toBe(false);
+    expect(detectAgentView(slashMenu)).toBe(false);
+    expect(detectAgentView([...session.slice(0, 3), ...slashMenu])).toBe(false);
+    expect(detectAgentView(quoted)).toBe(false);
+    expect(detectAgentView([])).toBe(false);
+  });
+});
+
+describe('externalAction', () => {
+  const ext = (status: SessionStatus, projectPath: string | null): ClaudeSession => ({
+    ...session('e', status, 1, projectPath),
+    kind: 'external',
+    pid: status === 'exited' ? null : 42,
+  });
+
+  it('focuses a live external session wherever it runs', () => {
+    expect(externalAction(ext('working', 'C:\\P\\Tolk'))).toBe('focus');
+    expect(externalAction(ext('waiting', null))).toBe('focus');
+  });
+
+  it('offers to resume an exited one only inside a known project', () => {
+    expect(externalAction(ext('exited', 'C:\\P\\Tolk'))).toBe('resume');
+    expect(externalAction(ext('exited', null))).toBe('none');
+  });
+
+  it('leaves shell sessions to the shell', () => {
+    expect(externalAction(session('s', 'working', 1))).toBe('none');
   });
 });
 

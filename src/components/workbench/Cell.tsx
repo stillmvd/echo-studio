@@ -170,7 +170,7 @@ export function Cell({
             <button
               type="button"
               className="wb-tx"
-              title={info.live ? 'Закрыть вкладку (сессия продолжит работать)' : 'Закрыть'}
+              title={info.live ? 'Скрыть вкладку — сессия продолжит работать' : 'Закрыть'}
               onClick={(e) => {
                 e.stopPropagation();
                 close(info);
@@ -202,11 +202,12 @@ export function Cell({
             </button>
             <button
               type="button"
-              className="wb-ib"
-              title="Остановить сессию"
+              className="wb-btn sm wb-stop"
+              title="Завершить сессию Claude (с подтверждением)"
               onClick={() => setStopping(current)}
             >
-              <Square strokeWidth={2} />
+              <Square fill="currentColor" strokeWidth={2} />
+              Завершить сессию
             </button>
           </>
         )}
@@ -220,17 +221,19 @@ export function Cell({
           sessionKey={info.key}
           shortId={info.shortId}
           live={info.live}
+          status={info.status}
           visible={visible && info.key === current?.key}
           focused={isFocused}
           accent={!inWall && info.status === 'waiting'}
           onResume={() => void startHere(info.key)}
+          onStop={() => setStopping(info)}
         />
       ))}
       <ConfirmDialog
         open={stopping !== null}
-        title="Остановить сессию?"
-        description="Claude завершит работу в этой сессии. Разговор сохранится, его можно будет продолжить."
-        confirmLabel="Остановить"
+        title="Завершить сессию?"
+        description="Claude завершит работу. Разговор сохранится — его можно продолжить из списка проекта."
+        confirmLabel="Завершить"
         cancelLabel="Отмена"
         danger
         onConfirm={async () => {

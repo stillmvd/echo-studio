@@ -1,8 +1,8 @@
-import { useLayoutEffect, useRef } from 'react';
 import { cn } from '@/lib/cn';
 import type { ClaudeSession, WorkbenchProject } from '@/lib/types';
 import { arrangeWall, byUrgency, CELL_COUNT, effectiveStatus, STATUS_LABEL } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
+import { externalTitle, useExternalSession } from './externalSession';
 import { StatusIcon } from './StatusIcon';
 
 interface Props {
@@ -31,28 +31,6 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
   const layout = useWorkbenchStore((s) => s.layout);
   const cells = useWorkbenchStore((s) => s.cells);
   const focusCell = useWorkbenchStore((s) => s.focusCell);
-  const bar = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    const el = bar.current;
-    if (!el) return;
-    const clear = () => {
-      const pill = document.querySelector<HTMLElement>('[role="status"]');
-      const margin = Number.parseFloat(el.style.marginRight) || 0;
-      if (!pill) {
-        el.style.marginRight = '';
-        return;
-      }
-      const a = el.getBoundingClientRect();
-      const b = pill.getBoundingClientRect();
-      const overlaps = b.top < a.bottom && b.bottom > a.top;
-      el.style.marginRight = `${overlaps ? Math.max(0, a.right + margin - b.left + 8) : 0}px`;
-    };
-    clear();
-    const ro = new ResizeObserver(clear);
-    if (el.parentElement) ro.observe(el.parentElement);
-    return () => ro.disconnect();
-  }, []);
 
   const plan = wall
     ? arrangeWall(cells, CELL_COUNT[layout], sessions, Date.now(), focusCell, seen, {
@@ -63,12 +41,17 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
   const off = new Set(plan?.offGrid ?? []);
   const inGrid = (s: ClaudeSession) => !off.has(s.sessionId);
   const pending = plan?.pendingCount ?? 0;
+  const { openExternal, layer } = useExternalSession();
+  const ended = (s: ClaudeSession) => s.kind === 'external' && s.status === 'exited';
   const sorted = byUrgency(sessions, seen);
-  const ins = sorted.filter(inGrid);
-  const outs = sorted.filter((s) => !inGrid(s));
+  const live = sorted.filter((s) => !ended(s));
+  const ins = live.filter(inGrid);
+  const outs = live.filter((s) => !inGrid(s));
+  const gone = sorted.filter(ended);
 
   const chip = (s: ClaudeSession, out: boolean) => {
     const status = effectiveStatus(s, seen);
+    const external = s.kind === 'external';
     const on =
       view.kind === 'project' &&
       view.path === s.projectPath &&
@@ -77,9 +60,16 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
       <button
         key={s.sessionId}
         type="button"
-        className={cn('wb-bp', out && 'out', on && 'on')}
-        title={`${s.name || 'Claude'} · ${STATUS_LABEL[status]}`}
-        onClick={() => openSession(s)}
+        className={cn('wb-bp', out && 'out', on && 'on', ended(s) && 'ext')}
+        title={[
+          s.name || 'Claude',
+          STATUS_LABEL[status],
+          external && 'вне оболочки',
+          external && externalTitle(s),
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+        onClick={(e) => (external ? void openExternal(s, e.currentTarget) : openSession(s))}
       >
         <StatusIcon small session={{ status, phase: s.phase, tool: s.tool }} />
         <b>{sessionPlace(s, projects)}</b>
@@ -89,7 +79,7 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
   };
 
   return (
-    <div ref={bar} className="wb-bar2" role="toolbar" aria-label="Сессии">
+    <div className="wb-bar2" role="toolbar" aria-label="Сессии">
       <div
         className="wb-bar-list"
         onWheel={(e) => {
@@ -100,10 +90,13 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
         {ins.map((s) => chip(s, false))}
         {outs.length > 0 && <span className="wl-sep">Вне сетки</span>}
         {outs.map((s) => chip(s, true))}
+        {gone.map((s) => chip(s, false))}
       </div>
+      {layer}
       {pending > 0 && <span className="wb-bar-note">ещё ждут: {pending}</span>}
       <span className="wb-kbd">Ctrl</span>
       <span className="wb-kbd">Tab</span>
+      <span className="wb-watch" title="Слежу за конфигом Claude — изменения подхватываются сами" />
     </div>
   );
 }

@@ -151,6 +151,25 @@ export function runningItems(
   ].sort((a, b) => rank(a) - rank(b));
 }
 
+const AGENT_VIEW_MARKERS = [
+  /^\s*\S*\s*New sessions: .+ · .+$/m,
+  /^\s*\S*\s*describe a task for a new session\s*$/im,
+  /^\s*enter to return · space to reply · /m,
+  /^\s*Accessing workspace:\s*$/m,
+  /^\s*Quick safety check: Is this a project you created or one you trust\?/m,
+];
+
+export function detectAgentView(lines: string[]): boolean {
+  const screen = lines.join('\n');
+  return AGENT_VIEW_MARKERS.filter((m) => m.test(screen)).length >= 2;
+}
+
+export function externalAction(s: ClaudeSession): 'focus' | 'resume' | 'none' {
+  if (s.kind !== 'external') return 'none';
+  if (s.status !== 'exited') return 'focus';
+  return s.projectPath ? 'resume' : 'none';
+}
+
 export function topStatus(
   sessions: ClaudeSession[],
   seen: Record<string, number>,
