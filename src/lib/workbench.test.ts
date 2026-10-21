@@ -244,6 +244,12 @@ describe('urgency', () => {
     const fresh = session('a', 'idle', null);
     expect(statusView(fresh, {})).toBe('new');
     expect(statusView({ ...fresh, name: 'fix login' }, {})).toBe('idle');
+    const bg = {
+      ...session('72940b83-1111-2222-3333-444455556666', 'idle', null),
+      name: '72940B83',
+    };
+    expect(statusView(bg, {})).toBe('new');
+    expect(statusView({ ...bg, name: '  ' }, {})).toBe('new');
     expect(statusView(session('b', 'done', 1_000), { b: 2_000 })).toBe('idle');
     expect(statusView(session('c', 'done', 1_000), {})).toBe('done');
     expect(STATUS_LABEL[statusView(fresh, {})]).toBe('новая · ждёт задачу');

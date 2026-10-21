@@ -1,8 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Plus, RotateCcw, Square, X } from 'lucide-react';
-import { Fragment, type ReactNode, useEffect, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
+import { useConversationProjects, useConversationSessions } from '@/hooks/use-conversations';
 import { cn } from '@/lib/cn';
 import { forgetClaudeSession, stopClaudeSession } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
@@ -13,6 +14,7 @@ import {
   samePath,
   statusView,
 } from '@/lib/workbench';
+import { withoutVisit } from '@/state/recent-store';
 import { devTabKey, isDevTab, useProjectLayout, useWorkbenchStore } from '@/state/workbench-store';
 import { ClaudeTerminal } from './ClaudeTerminal';
 import { closeDevLog, DevCapsule, DevDot, devActions, useDevControl } from './DevCapsule';
@@ -25,6 +27,32 @@ import { type DraggedTab, tabDragProps, useTabDrop } from './useTabDrag';
 
 const NO_TABS: string[] = [];
 const CELL_IDS = ['p1', 'p2', 'p3', 'p4'];
+
+function useGoneTabs(path: string, exited: string[]): string[] {
+  const projects = useConversationProjects();
+  const slug = path.replace(/[^A-Za-z0-9]/g, '-');
+  const matches = projects.data?.filter((p) => samePath(p.cwd, path)) ?? [];
+  const convId = (matches.find((p) => p.id === slug) ?? matches[0])?.id ?? null;
+  const sessions = useConversationSessions(exited.length ? convId : null);
+  const since = useRef(new Map<string, number>());
+  const now = Date.now();
+  for (const key of exited) if (!since.current.has(key)) since.current.set(key, now);
+  const from = Math.max(0, ...exited.map((key) => since.current.get(key) ?? 0));
+  const projectsFresh = projects.dataUpdatedAt > from;
+  const sessionsFresh = convId === null || sessions.dataUpdatedAt > from;
+  const waiting = exited.length > 0 && (!projectsFresh || !sessionsFresh);
+  const busy = projects.isFetching || sessions.isFetching;
+  const { refetch: refetchProjects } = projects;
+  const { refetch: refetchSessions } = sessions;
+  useEffect(() => {
+    if (!waiting || busy) return;
+    if (!projectsFresh) void refetchProjects();
+    else void refetchSessions();
+  }, [waiting, busy, projectsFresh, refetchProjects, refetchSessions]);
+  if (exited.length === 0 || waiting) return NO_TABS;
+  const known = new Set(sessions.data?.map((s) => s.sessionId));
+  return exited.filter((key) => !known.has(key));
+}
 
 export function useStopSession() {
   const qc = useQueryClient();
@@ -293,6 +321,17 @@ export function Cell({
         status: session ? statusView(session, seen) : live ? 'new' : 'exited',
       };
     });
+  const gone = useGoneTabs(
+    project.path,
+    infos.filter((i) => !i.live).map((i) => i.key),
+  ).join('\n');
+  useEffect(() => {
+    if (!gone) return;
+    for (const key of gone.split('\n')) {
+      dispose(key);
+      closeTab(project.path, key);
+    }
+  }, [gone, project.path, closeTab]);
   const devKey = devTabKey(project.path);
   const hasDev = tabs.includes(devKey);
   const order = tabs.filter((key) => key === devKey || !isDevTab(key));
@@ -305,7 +344,7 @@ export function Cell({
 
   const shownKey = devOn ? devKey : current?.key;
   useEffect(() => {
-    if (onActivate && shownKey && shownKey !== activeKey) onActivate(shownKey);
+    if (onActivate && shownKey && shownKey !== activeKey) withoutVisit(() => onActivate(shownKey));
   }, [onActivate, shownKey, activeKey]);
 
   const close = (info: TabInfo) => {

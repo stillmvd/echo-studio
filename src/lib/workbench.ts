@@ -128,7 +128,12 @@ export function statusView(
   session: Pick<ClaudeSession, 'sessionId' | 'status' | 'since' | 'name'>,
   seen: Record<string, number>,
 ): StatusView {
-  return session.status === 'idle' && !session.name ? 'new' : effectiveStatus(session, seen);
+  return session.status === 'idle' && !hasTitle(session) ? 'new' : effectiveStatus(session, seen);
+}
+
+export function hasTitle(session: Pick<ClaudeSession, 'sessionId' | 'name'>): boolean {
+  const name = session.name?.trim().toLowerCase();
+  return !!name && !session.sessionId.toLowerCase().startsWith(name);
 }
 
 function sinceKey(since: number | null): number {

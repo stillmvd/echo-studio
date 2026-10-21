@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { emptyCells } from '@/lib/workbench';
-import { seedRecent, useRecentStore } from './recent-store';
+import { seedRecent, useRecentStore, withoutVisit } from './recent-store';
 import { devTabKey, useWorkbenchStore } from './workbench-store';
 
 const P = 'C:\\P\\A';
@@ -45,6 +45,16 @@ describe('recent sessions', () => {
     expect(useRecentStore.getState().history).toEqual(['b', 'a']);
     useWorkbenchStore.setState({ recency: ['c'] });
     seedRecent();
+    expect(useRecentStore.getState().history).toEqual(['b', 'a']);
+  });
+
+  it('ignores activations made without the user', () => {
+    const s = useWorkbenchStore.getState();
+    s.openTab(P, 'a');
+    withoutVisit(() => s.openTab(P, 'b'));
+    expect(useRecentStore.getState().history).toEqual(['a']);
+    s.activate(P, 'a');
+    s.activate(P, 'b');
     expect(useRecentStore.getState().history).toEqual(['b', 'a']);
   });
 

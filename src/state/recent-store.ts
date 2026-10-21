@@ -37,7 +37,19 @@ export function seedRecent() {
 
 seedRecent();
 
+let quiet = false;
+
+export function withoutVisit(fn: () => void) {
+  quiet = true;
+  try {
+    fn();
+  } finally {
+    quiet = false;
+  }
+}
+
 useWorkbenchStore.subscribe((s, prev) => {
+  if (quiet) return;
   const key = s.recency[0];
   if (!key || key === prev.recency[0] || isDevTab(key)) return;
   if (s.recency.length < prev.recency.length) return;
