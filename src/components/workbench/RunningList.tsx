@@ -1,9 +1,12 @@
+import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import { effectiveStatus, runningItems, STATUS_LABEL } from '@/lib/workbench';
 import { devTabKey, useWorkbenchStore } from '@/state/workbench-store';
-import { DevDot } from './DevCapsule';
+import { useStopSession } from './Cell';
+import { DevDot, useDevControl } from './DevCapsule';
 import { externalTitle, useExternalSession } from './externalSession';
+import { canStopSession, copyText, devUrl, runningDevMenu, runningMenu } from './menus';
 import { StatusIcon } from './StatusIcon';
 
 interface Props {
@@ -23,6 +26,9 @@ export function RunningList({ sessions, devServers, projects }: Props) {
   const openTab = useWorkbenchStore((s) => s.openTab);
   const select = useWorkbenchStore((s) => s.select);
   const { openExternal, layer } = useExternalSession();
+  const openMenu = useOpenMenu();
+  const dev = useDevControl();
+  const stop = useStopSession();
 
   const items = runningItems(sessions, devServers, seen);
   if (items.length === 0) {
@@ -37,6 +43,16 @@ export function RunningList({ sessions, devServers, projects }: Props) {
   const isOn = (path: string | null, key: string) =>
     view.kind === 'project' && view.path === path && activeTab[path ?? ''] === key;
 
+  const goSession = (s: ClaudeSession, anchor: HTMLElement) => {
+    if (s.kind === 'external') {
+      void openExternal(s, anchor);
+      return;
+    }
+    if (!s.projectPath) return;
+    openTab(s.projectPath, s.sessionId);
+    select({ kind: 'project', path: s.projectPath });
+  };
+
   return (
     <div className="wb-runs">
       {items.map((item) => {
@@ -45,16 +61,31 @@ export function RunningList({ sessions, devServers, projects }: Props) {
           const key = devTabKey(d.projectPath);
           const ports = d.ports.map((p) => `:${p}`).join(' ');
           const sub = [d.command, DEV_SUB[d.state] || ports || 'без порта'].join(' · ');
+          const go = () => {
+            openTab(d.projectPath, key);
+            select({ kind: 'project', path: d.projectPath });
+          };
+          const url = devUrl(d);
           return (
             <button
               key={key}
               type="button"
               className={cn('wb-run', isOn(d.projectPath, key) && 'on')}
               title={d.projectPath}
-              onClick={() => {
-                openTab(d.projectPath, key);
-                select({ kind: 'project', path: d.projectPath });
-              }}
+              onClick={go}
+              onContextMenu={(e) =>
+                openMenu(
+                  e,
+                  runningDevMenu({
+                    server: d,
+                    actions: {
+                      go,
+                      copyUrl: () => url && copyText(url),
+                      stop: () => dev.askStop({ path: d.projectPath, dev: { command: d.command } }),
+                    },
+                  }),
+                )
+              }
             >
               <DevDot server={d} />
               <span className="wb-tn">
@@ -88,14 +119,22 @@ export function RunningList({ sessions, devServers, projects }: Props) {
                 : `${s.cwd ?? 'Папка неизвестна'} — не проект из списка`)
             }
             disabled={!external && !s.projectPath}
-            onClick={(e) => {
-              if (external) {
-                void openExternal(s, e.currentTarget);
-                return;
-              }
-              if (!s.projectPath) return;
-              openTab(s.projectPath, s.sessionId);
-              select({ kind: 'project', path: s.projectPath });
+            onClick={(e) => goSession(s, e.currentTarget)}
+            onContextMenu={(e) => {
+              if (!external && !s.projectPath) return;
+              const anchor = e.currentTarget;
+              openMenu(
+                e,
+                runningMenu({
+                  external,
+                  canStop: canStopSession(s),
+                  actions: {
+                    go: () => goSession(s, anchor),
+                    copyId: () => copyText(s.sessionId),
+                    stop: () => stop.ask(s.shortId),
+                  },
+                }),
+              );
             }}
           >
             <StatusIcon session={{ status, phase: s.phase, tool: s.tool }} />
@@ -107,6 +146,8 @@ export function RunningList({ sessions, devServers, projects }: Props) {
         );
       })}
       {layer}
+      {dev.dialogs}
+      {stop.dialog}
     </div>
   );
 }

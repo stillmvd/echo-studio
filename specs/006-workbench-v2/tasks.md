@@ -261,14 +261,14 @@ quickstart §1–§6, сообщение пользователю «пачка 1
 
 **Independent Test**: quickstart.md §8.
 
-- [ ] T038 [P] [US9] [E] `src/components/ui/ContextMenu.tsx`: тип `MenuItem` из data-model.md (пункт, подменю,
+- [X] T038 [P] [US9] [E] `src/components/ui/ContextMenu.tsx`: тип `MenuItem` из data-model.md (пункт, подменю,
       разделитель, `disabled`, `hint`); стиль по Kockers `t-menu` (research R-06); анимация WAAPI вход/выход с
       `transform-origin` у точки клика, `hidden` в `finished`, `prefers-reduced-motion`; Enter/Space на пункте; возврат
       фокуса на элемент-источник; подменю — раскрытие справа по наведению/→/Enter, ← закрывает; `origin` проп
       `{ x, y }`; можно стартовать параллельно с D
-- [ ] T039 [P] [US9] [E] `src/lib/context-menu.ts`: `menuPlacement(x, y, w, h, viewport) → { left, top, originX,
+- [X] T039 [P] [US9] [E] `src/lib/context-menu.ts`: `menuPlacement(x, y, w, h, viewport) → { left, top, originX,
       originY }` (меню внутри окна, origin — угол у курсора); тест `src/lib/context-menu.test.ts`
-- [ ] T040 [P] [US9] [E] `src/components/workbench/menus.ts` (новый): фабрики пунктов: `projectMenu({ project, server,
+- [X] T040 [P] [US9] [E] `src/components/workbench/menus.ts` (новый): фабрики пунктов: `projectMenu({ project, server,
       actions })` — Открыть, Новая сессия Claude, Запустить/Остановить dev, Открыть в проводнике (`revealInExplorer`),
       Открыть в VS Code (`openInVscode`), Копировать путь, разделитель, Скрыть из дерева; `sessionTabMenu` —
       Переместить в ячейку… (подменю по `CELL_COUNT[layout]`, текущая `disabled`), Переподключить, Копировать id,
@@ -277,14 +277,14 @@ quickstart §1–§6, сообщение пользователю «пачка 1
       Копировать командную строку, Открыть папку (cwd — нет в `ProcessRow`: открыть папку проекта), разделитель,
       Завершить (danger, с подтверждением для `guard`); `runningMenu` — Перейти / Показать окно (внешняя), Копировать
       id, разделитель, Завершить (danger); тест состава пунктов по контексту в `src/components/workbench/menus.test.ts`
-- [ ] T041 [US9] [E] Подключить меню: `ProjectTree.tsx` (строка проекта, `onContextMenu` + `menuPoint`), `Cell.tsx`
+- [X] T041 [US9] [E] Подключить меню: `ProjectTree.tsx` (строка проекта, `onContextMenu` + `menuPoint`), `Cell.tsx`
       (вкладки сессии и dev), `DevCapsule.tsx` (капсула), `Processes.tsx` (строка), `RunningList.tsx` (строка),
       `SessionStrip.tsx` (чип) — один хост меню в `WorkbenchLayout.tsx` (`useContextMenu` из `context-menu.ts`:
       состояние `{ items, x, y, source }`), чтобы не плодить порталы
 - [X] T042 [US9] [R1→E] `src-tauri/src/commands/workbench.rs`: `open_in_vscode(project_path)` — `ensure_project` →
       `child_command("cmd.exe").args(["/c", "code", path])` или поиск `code.cmd` в PATH; ошибка «VS Code не найден в
       PATH»; регистрация в `lib.rs` (делает R1 в пачке 1 вместе с T005, E только использует)
-- [ ] T043 [US9] [E] Правило из памяти `desktop-app-peeves`: пункты меню не выделяют текст (`user-select: none` уже
+- [X] T043 [US9] [E] Правило из памяти `desktop-app-peeves`: пункты меню не выделяют текст (`user-select: none` уже
       глобально для `[role="menuitem"]` — проверить в `globals.css`, добавить при отсутствии), вдавливание пункта
       `scale .98` при `:active`
 
@@ -431,3 +431,36 @@ F2: T018, T021, T023, T024 [P] → T019, T020, T022, T025 → merge → T027, T0
   смена проекта и обратно — раскладка цела; «Пульт» ↔ «Проект» — фокус на выбранном пункте. Перетаскивание шло через
   CDP (`Input.setInterceptDrags` + `dispatchDragEvent`) — путь страницы; системный путь мыши с `dragDropEnabled: false`
   в окне не проверен (реальная мышь на экране пользователя запрещена).
+- T038 (E): `ContextMenu` внутри держит ключ по точке (`x,y`): новое открытие в другой точке — новый экземпляр с
+  входной анимацией, выход прежнего отменяется. `onClose` вызывается после окончания анимации выхода (150 мс), действие
+  пункта — сразу; API (`items`, `x`, `y`, `onClose`, `ContextMenuAction`, `ContextMenuItem`) прежний, вызовы в
+  conversations/memory/tooling не менялись. Esc закрывает всё меню (и подменю), ← — только подменю; Tab — закрыть.
+  Вместо `scroll` (capture) меню закрывает `wheel` мимо него: `scroll` приходит и от автопрокрутки xterm при выводе
+  живой сессии — меню закрывалось бы само; перетаскивание полосы прокрутки закрывает `pointerdown`. Меню рисуется
+  порталом в `body`: внутри `.wb-root` правило `.wb-root button { font: inherit; color: inherit }` (вне слоёв)
+  перебивало утилиты пунктов. Хост передаёт `openId` — ПКМ в ту же точку открывает меню заново, а не гасит его.
+  Фокус возвращается на запомненный при открытии `document.activeElement`, только если фокус в меню или на `body`
+  (диалог, открытый пунктом, фокус не теряет). `disabled` — нативный атрибут: пункт выпадает из навигации стрелками.
+  `useContextMenu` и контекст (`ContextMenuProvider`/`useOpenMenu`) — в `ContextMenu.tsx`, а не в `context-menu.ts`
+  (JSX и хуки рядом с компонентом); `source` в состоянии хоста не нужен — его заменил `activeElement`. Подсказка
+  клавиши — текст `kb` по Kockers `t-menu`, не колпачок `Kbd` (в пунктах Рабочего места подсказок нет).
+  Тест компонента — `ContextMenu.test.tsx` в jsdom (директива `@vitest-environment` в первой строке, `animate`
+  подменён).
+- T039 (E): меню не просто сдвигается внутрь окна, а переворачивается от курсора (влево/вверх), если с той стороны
+  места хватает; иначе прижимается к краю (отступ 8). Подменю — `submenuPlacement`: справа от меню, при нехватке
+  места — слева, первый пункт на уровне родительского.
+- T040 (E): «Завершить сессию» и «Переподключить» — только у живой вкладки с `shortId`; у завершённой — «Копировать
+  id» и «Закрыть вкладку». У dev-вкладки остановленного сервера — «Запустить» вместо «Перезапустить» и без
+  «Остановить». «Открыть папку» процесса — «Открыть папку проекта» (`disabled` без проекта). «Запущено» — две фабрики:
+  `runningMenu` (сессия; «Завершить» только у своей фоновой сессии в проекте — `canStopSession`) и `runningDevMenu`
+  (Перейти, Копировать адрес, Остановить). «Запустить/Остановить dev» в меню проекта — по `devRuns` (как у капсулы).
+- T041 (E): действия dev вынесены из `DevCapsule` в `useDevControl()` (старт, перезапуск, остановка с подтверждением,
+  открыть адрес, ошибки), подтверждение «Завершить сессию» — `useStopSession()` в `Cell.tsx`; ими пользуются дерево,
+  вкладки, «Запущено» и полоса сессий. «Переместить в ячейку…» в режиме «Проект» — ячейки раскладки проекта
+  (`moveTab`), в пульте — видимые ячейки пульта (`moveTabToWallCell`). Капсула вкладки, капсула dev и строка процесса
+  получили `role="toolbar"` (Biome `noStaticElementInteractions` / `useSemanticElements` для ПКМ на `div`/`span`).
+- T040/T041 (ревью): «Перезапустить» работающего dev — через тот же `ConfirmDialog`, что «Остановить» (подпись
+  «Перезапустить», после остановки — запуск); у dev-вкладки тоже есть «Переместить в ячейку…» (она перетаскивается);
+  строка «Запущено» без проекта (не внешняя) меню не открывает.
+- T043 (E): `user-select: none` и `scale: .98` при `:active` — в `globals.css` для `[role="menuitem"]`, переход
+  `background-color, scale` — у пункта.

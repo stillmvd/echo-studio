@@ -2,21 +2,73 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Plus, RotateCcw, Square, X } from 'lucide-react';
 import { Fragment, type ReactNode, useEffect, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
 import { forgetClaudeSession, stopClaudeSession } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, SessionStatus, WorkbenchProject } from '@/lib/types';
 import { CELL_COUNT, effectiveStatus, type ProjectCell, samePath } from '@/lib/workbench';
 import { devTabKey, isDevTab, useProjectLayout, useWorkbenchStore } from '@/state/workbench-store';
 import { ClaudeTerminal } from './ClaudeTerminal';
-import { DevCapsule, DevDot } from './DevCapsule';
+import { closeDevLog, DevCapsule, DevDot, devActions, useDevControl } from './DevCapsule';
 import { EmptyProject } from './EmptyProject';
 import { LogTerminal } from './LogTerminal';
+import { copyText, devTabMenu, type MoveTargets, sessionTabMenu } from './menus';
 import { StatusIcon } from './StatusIcon';
 import { dispose, isFresh, reattach, rememberShort, shortOf, useClaudeTerm } from './terminals';
 import { type DraggedTab, tabDragProps, useTabDrop } from './useTabDrag';
 
 const NO_TABS: string[] = [];
 const CELL_IDS = ['p1', 'p2', 'p3', 'p4'];
+
+export function useStopSession() {
+  const qc = useQueryClient();
+  const [stopping, setStopping] = useState<string | null>(null);
+  const dialog = (
+    <ConfirmDialog
+      open={stopping !== null}
+      title="Завершить сессию?"
+      description="Claude завершит работу. Разговор сохранится — его можно продолжить из списка проекта."
+      confirmLabel="Завершить"
+      cancelLabel="Отмена"
+      danger
+      onConfirm={async () => {
+        if (stopping) await stopClaudeSession(stopping);
+        setStopping(null);
+        void qc.invalidateQueries({ queryKey: ['workbench', 'sessions'] });
+      }}
+      onCancel={() => setStopping(null)}
+    />
+  );
+  return { ask: (shortId: string | null) => setStopping(shortId), dialog };
+}
+
+function useMoveTargets(path: string, cellId: string | undefined) {
+  const projectLayout = useProjectLayout(path).layout;
+  const wallLayout = useWorkbenchStore((s) => s.layout);
+  const wallCells = useWorkbenchStore((s) => s.cells);
+  const moveTab = useWorkbenchStore((s) => s.moveTab);
+  const moveTabToWallCell = useWorkbenchStore((s) => s.moveTabToWallCell);
+  return (key: string): MoveTargets | null => {
+    if (!cellId) return null;
+    const own = CELL_IDS.indexOf(cellId);
+    if (own >= 0) {
+      return {
+        count: CELL_COUNT[projectLayout],
+        current: own,
+        move: (i) => moveTab(path, key, i),
+      };
+    }
+    const shown = wallCells.slice(0, CELL_COUNT[wallLayout]);
+    return {
+      count: shown.length,
+      current: shown.findIndex((c) => c.id === cellId),
+      move: (i) => {
+        const target = shown[i];
+        if (target) moveTabToWallCell(target.id, path, key);
+      },
+    };
+  };
+}
 
 interface GridProps {
   project: WorkbenchProject;
@@ -146,14 +198,24 @@ function TabTitle({ info, projectName }: { info: TabInfo; projectName: string })
 function TabCapsule({
   drag,
   on,
+  label,
+  onContextMenu,
   children,
 }: {
   drag: DraggedTab | null;
   on: boolean;
+  label: string;
+  onContextMenu: (e: React.MouseEvent) => void;
   children: ReactNode;
 }) {
   return (
-    <div className={cn('wb-tab', on && 'on')} {...tabDragProps(drag)}>
+    <div
+      role="toolbar"
+      aria-label={label}
+      className={cn('wb-tab', on && 'on')}
+      onContextMenu={onContextMenu}
+      {...tabDragProps(drag)}
+    >
       {children}
     </div>
   );
@@ -192,7 +254,10 @@ export function Cell({
 }: Props) {
   const controlled = onActivate !== undefined;
   const isFocused = visible && (focused ?? true);
-  const qc = useQueryClient();
+  const openMenu = useOpenMenu();
+  const dev = useDevControl();
+  const stop = useStopSession();
+  const moveTargets = useMoveTargets(project.path, cellId);
   const projectTabs = useWorkbenchStore((s) => s.tabs[project.path]) ?? NO_TABS;
   const tabs = keys ?? projectTabs;
   const projectActive = useWorkbenchStore((s) => s.activeTab[project.path]);
@@ -207,7 +272,6 @@ export function Cell({
   };
   const closeTab = useWorkbenchStore((s) => s.closeTab);
   const markSeen = useWorkbenchStore((s) => s.markSeen);
-  const [stopping, setStopping] = useState<TabInfo | null>(null);
 
   const infos: TabInfo[] = tabs
     .filter((key) => !isDevTab(key))
@@ -244,10 +308,33 @@ export function Cell({
     closeTab(project.path, info.key);
   };
 
-  const closeDev = () => {
-    dispose(devKey);
-    closeTab(project.path, devKey);
-  };
+  const closeDev = () => closeDevLog(project.path);
+
+  const devMenu = (e: React.MouseEvent) =>
+    openMenu(
+      e,
+      devTabMenu({
+        server,
+        cells: moveTargets(devKey),
+        actions: devActions(dev, project, server),
+      }),
+    );
+
+  const tabMenu = (e: React.MouseEvent, info: TabInfo) =>
+    openMenu(
+      e,
+      sessionTabMenu({
+        live: info.live,
+        canStop: info.live && !!info.shortId,
+        cells: moveTargets(info.key),
+        actions: {
+          reconnect: () => info.shortId && reattach(info.key, info.shortId),
+          copyId: () => copyText(info.key),
+          hide: () => close(info),
+          stop: () => stop.ask(info.shortId),
+        },
+      }),
+    );
 
   if (projectTabs.length === 0) {
     return (
@@ -271,7 +358,12 @@ export function Cell({
             return (
               <Fragment key={key}>
                 {marker}
-                <TabCapsule drag={drag} on={devOn}>
+                <TabCapsule
+                  drag={drag}
+                  on={devOn}
+                  label={project.dev?.command ?? 'dev'}
+                  onContextMenu={devMenu}
+                >
                   <button
                     type="button"
                     className="wb-tab-b"
@@ -301,7 +393,12 @@ export function Cell({
           return (
             <Fragment key={key}>
               {marker}
-              <TabCapsule drag={drag} on={info.key === current?.key}>
+              <TabCapsule
+                drag={drag}
+                on={info.key === current?.key}
+                label={info.session?.name || 'Claude'}
+                onContextMenu={(e) => tabMenu(e, info)}
+              >
                 <button
                   type="button"
                   className="wb-tab-b"
@@ -358,7 +455,7 @@ export function Cell({
               type="button"
               className="wb-btn sm wb-stop"
               title="Завершить сессию Claude (с подтверждением)"
-              onClick={() => setStopping(current)}
+              onClick={() => stop.ask(current.shortId)}
             >
               <Square fill="currentColor" strokeWidth={2} />
               <span className="wb-stop-l">Завершить сессию</span>
@@ -380,23 +477,11 @@ export function Cell({
           focused={isFocused}
           accent={accent && info.status === 'waiting'}
           onResume={() => void startHere(info.key)}
-          onStop={() => setStopping(info)}
+          onStop={() => stop.ask(info.shortId)}
         />
       ))}
-      <ConfirmDialog
-        open={stopping !== null}
-        title="Завершить сессию?"
-        description="Claude завершит работу. Разговор сохранится — его можно продолжить из списка проекта."
-        confirmLabel="Завершить"
-        cancelLabel="Отмена"
-        danger
-        onConfirm={async () => {
-          if (stopping?.shortId) await stopClaudeSession(stopping.shortId);
-          setStopping(null);
-          void qc.invalidateQueries({ queryKey: ['workbench', 'sessions'] });
-        }}
-        onCancel={() => setStopping(null)}
-      />
+      {stop.dialog}
+      {dev.dialogs}
     </div>
   );
 }
