@@ -236,6 +236,14 @@ fn cached_agents(
     Ok(list)
 }
 
+fn clear_agents(cache: &AgentsCache) {
+    *cache.lock().unwrap_or_else(|e| e.into_inner()) = None;
+}
+
+pub fn invalidate_agents() {
+    clear_agents(&AGENTS);
+}
+
 pub fn run_agents_cached(max_age: Duration) -> Result<Vec<AgentEntry>, String> {
     cached_agents(&AGENTS, max_age, || {
         parse_agents(&claude(&["agents", "--json"], None)?.stdout)
@@ -506,6 +514,7 @@ pub fn start(project: &Path, resume: Option<&str>) -> Result<Started, String> {
     }
     let short_id = parse_backgrounded(&text)
         .ok_or_else(|| format!("unexpected claude --bg output: {}", text.trim()))?;
+    invalidate_agents();
     for _ in 0..10 {
         let found = run_agents()
             .ok()
@@ -532,7 +541,7 @@ pub fn stop(short_id: &str) -> Result<(), String> {
     match shell_agent(short_id, Duration::ZERO)? {
         None => Err(format!("no session {short_id}")),
         Some(agent) if !is_live(&agent) => Ok(()),
-        Some(_) => claude(&["stop", short_id], None).map(|_| ()),
+        Some(_) => claude(&["stop", short_id], None).map(|_| invalidate_agents()),
     }
 }
 
@@ -540,7 +549,7 @@ pub fn forget(short_id: &str) -> Result<(), String> {
     match shell_agent(short_id, Duration::ZERO)? {
         None => Ok(()),
         Some(agent) if is_live(&agent) => Err(format!("session {short_id} is still running")),
-        Some(_) => claude(&["rm", short_id], None).map(|_| ()),
+        Some(_) => claude(&["rm", short_id], None).map(|_| invalidate_agents()),
     }
 }
 
@@ -768,6 +777,9 @@ mod tests {
         assert!(cached_agents(&cache, Duration::ZERO, || Err("boom".into())).is_err());
         cached_agents(&cache, fresh, run).unwrap();
         assert_eq!(runs.get(), 2, "a failed run keeps the last good list");
+        clear_agents(&cache);
+        cached_agents(&cache, fresh, run).unwrap();
+        assert_eq!(runs.get(), 3, "an invalidated cache runs again");
     }
 
     #[test]
