@@ -264,6 +264,7 @@ export interface WorkbenchGroup {
 export interface ProjectTree {
   groups: WorkbenchGroup[];
   roots: WorkbenchProject[];
+  root: string;
 }
 
 export type SessionStatus = 'waiting' | 'error' | 'working' | 'done' | 'idle' | 'exited';
@@ -281,7 +282,10 @@ export interface ClaudeSession {
   since: number | null;
   pid: number | null;
   transcript: string | null;
+  exitedAt: number | null;
 }
+
+export type FocusResult = 'focused' | 'vscode' | 'not-found';
 
 export interface Limit {
   usedPercentage: number;
