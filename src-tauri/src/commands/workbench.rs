@@ -11,7 +11,7 @@ use crate::workbench::sessions::{self, ClaudeSession, Started};
 use crate::workbench::terminal::Terminals;
 use crate::workbench::watch::SessionsHub;
 use crate::workbench::{
-    child_command, dev, git, limits, processes, projects, projects_root, usage,
+    child_command, dev, git, limits, processes, projects, projects_root, usage, window,
 };
 
 #[tauri::command]
@@ -87,6 +87,36 @@ pub async fn kill_processes(
 #[tauri::command]
 pub async fn list_claude_sessions() -> Result<Vec<ClaudeSession>, String> {
     blocking(sessions::list).await?
+}
+
+#[tauri::command]
+pub async fn focus_session_window(pid: u32, session_id: String) -> Result<window::Focus, String> {
+    blocking(move || {
+        if sessions::session_pid(&session_id)? != pid {
+            return Err("pid is not the session's claude".to_owned());
+        }
+        Ok(window::focus(pid))
+    })
+    .await?
+}
+
+fn vscode_cli() -> Option<PathBuf> {
+    std::env::var_os("PATH").and_then(|paths| {
+        std::env::split_paths(&paths)
+            .map(|dir| dir.join("code.cmd"))
+            .find(|p| p.is_file())
+    })
+}
+
+#[tauri::command]
+pub async fn open_in_vscode(project_path: String) -> Result<(), String> {
+    let project = blocking(move || projects::ensure_project(&project_path)).await??;
+    let code = vscode_cli().ok_or("VS Code не найден в PATH")?;
+    child_command(&code.to_string_lossy())
+        .arg(&project.path)
+        .spawn()
+        .map_err(|e| format!("failed to start VS Code: {e}"))?;
+    Ok(())
 }
 
 #[tauri::command]
