@@ -104,6 +104,7 @@ const proj = (path: string): WorkbenchProject => ({
 
 describe('projectOf', () => {
   const tree: ProjectTree = {
+    root: 'C:\\P',
     roots: [proj('C:\\P\\Solo')],
     groups: [{ name: 'G', icon: null, projects: [proj('C:\\P\\G\\App'), proj('C:\\P\\G\\App2')] }],
   };
@@ -138,6 +139,7 @@ const session = (
   since,
   pid: null,
   transcript: null,
+  exitedAt: null,
 });
 
 const cell = (id: string, projectPath: string | null, over: Partial<WallCell> = {}): WallCell => ({
