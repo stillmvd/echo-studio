@@ -39,7 +39,7 @@ importers:
         specifier: ^2.5.2
         version: 2.5.2
       '@tauri-apps/plugin-notification':
-        specifier: ~2.3.3
+        specifier: ^2.3.3
         version: 2.3.3
       '@tauri-apps/plugin-shell':
         specifier: ^2.3.6
