@@ -38,10 +38,12 @@
   `-D warnings`.
 - Коммиты: `feat(workbench): …` / `fix(workbench): …`, по историям, маленькие. **Никаких упоминаний Claude /
   Anthropic / AI в сообщении и trailer'ах** (`Co-Authored-By` не добавлять). Без пуша. `pnpm release` не запускать.
-- Чужие процессы не трогать: сессию пользователя в `Projects` (`projects-19`), `am-2-0-7e`, `echo-studio-e6`, фоновые
+- Чужие процессы не трогать: сессию пользователя в `Projects` (`projects-12`), `am-2-0-7e`, `echo-studio-e6`, фоновые
   сессии Smart Control `56b05866` и `3ab7f61b`; dev-сервер Smart Control на :5057; Echo пользователя (vite :1420 и
   установленный `echo-studio.exe`). Не `claude stop`/`rm`, не «Стоп», не attach. Проекты AM 2.0 и Smart Control —
   не открывать для правок, dev и сессии там не запускать.
+- Пробное убирать сразу после шага: `claude stop` + `claude rm` своих сессий, dev — «Стоп». Чужие и старые сессии
+  из «Продолжить» не возобновлять (пользователя путают пробные сессии и dev, которые он не запускал).
 - Живые проверки — только на Echo Studio, Tolk, Booked, Breeze. Пробные сессии — `claude --bg` в своём worktree
   Echo Studio; после проверки `claude stop <id>` + `claude rm <id>` только своих.
 - Свой dev Echo из worktree: `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=<CDP>" pnpm tauri dev
