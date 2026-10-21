@@ -332,6 +332,9 @@ export function arrangeCells<C extends WallCell>(
 export interface WallTabs {
   tabsOf: (path: string) => string[];
   activeOf: (path: string) => string | undefined;
+  pick?: TabPick;
+  isFresh?: (key: string) => boolean;
+  ready?: boolean;
 }
 
 function shownKeys(visible: WallCell[], tabs: WallTabs): (string | null)[] {
@@ -339,7 +342,12 @@ function shownKeys(visible: WallCell[], tabs: WallTabs): (string | null)[] {
     visible.flatMap((c) =>
       c.activeTab && c.projectPath && samePath(c.projectPath, path) ? [c.activeTab] : [],
     );
-  return assignTabs(visible, (path) => [...tabs.tabsOf(path), ...extra(path)], tabs.activeOf);
+  return assignTabs(
+    visible,
+    (path) => [...tabs.tabsOf(path), ...extra(path)],
+    tabs.activeOf,
+    tabs.pick,
+  );
 }
 
 export function displayedSessions(
@@ -374,11 +382,21 @@ export function arrangeWall(
   now: number,
   focus: string | null,
   seen: Record<string, number>,
-  tabs: WallTabs,
+  wallTabs: WallTabs,
 ): WallArrangement {
-  const r = arrangeCells(cells.slice(0, count), sessions, now, focus, seen);
+  if (wallTabs.ready === false) {
+    return { cells, moved: [], changed: false, offGrid: [], pendingCount: 0 };
+  }
+  const tabs = { ...wallTabs, pick: wallTabs.pick ?? wallPick(sessions, seen, wallTabs.activeOf) };
+  const hot = sessions.filter(
+    (s) => s.kind === 'shell' && WALL_STATUSES.includes(effectiveStatus(s, seen)),
+  );
+  const r = arrangeCells(cells.slice(0, count), hot, now, focus, seen);
+  const topHot = (path: string | null) =>
+    byUrgency(hot, seen).find((s) => path && s.projectPath && samePath(s.projectPath, path))
+      ?.sessionId;
   const visible = r.cells.map((c, i) =>
-    c.projectPath === cells[i]?.projectPath ? c : { ...c, activeTab: undefined },
+    c.projectPath === cells[i]?.projectPath ? c : { ...c, activeTab: topHot(c.projectPath) },
   );
   const holds = (c: WallCell, path: string | null) =>
     path !== null && c.projectPath !== null && samePath(c.projectPath, path);
@@ -386,6 +404,18 @@ export function arrangeWall(
     c.pinned || c.manual || c.id === focus || now - c.lastInputAt < HANDS_ON_MS;
   const keys = shownKeys(visible, tabs);
   for (const [i, c] of visible.entries()) {
+    const holder = visible.findIndex(
+      (o, j) => j !== i && holds(o, c.projectPath) && (o.pinned || o.manual) && !keys[j],
+    );
+    const held = visible[holder];
+    const key = keys[i];
+    if (held && key && !locked(c)) {
+      visible[holder] = { ...held, activeTab: key };
+      visible[i] = { ...c, ...freeCell() };
+      keys[holder] = key;
+      keys[i] = null;
+      continue;
+    }
     const twin = visible.some(
       (o, j) => j !== i && holds(o, c.projectPath) && (j < i || o.pinned || o.manual),
     );
@@ -419,6 +449,17 @@ export function arrangeWall(
       manual: false,
     };
   }
+  const live = (key: string) =>
+    key.startsWith('dev:') ||
+    !!tabs.isFresh?.(key) ||
+    sessions.some((s) => s.sessionId === key && effectiveStatus(s, seen) !== 'exited');
+  const final = shownKeys(visible, tabs);
+  for (const [i, c] of visible.entries()) {
+    if (!c.projectPath || c.pinned || c.manual || now - c.lastInputAt < HANDS_ON_MS) continue;
+    const key = final[i];
+    if (key ? live(key) : c.id === focus) continue;
+    visible[i] = { ...c, ...freeCell() };
+  }
   const hidden = cells
     .slice(count)
     .map((c) =>
@@ -447,7 +488,8 @@ export function arrangeWall(
     moved,
     changed,
     offGrid: off.map((s) => s.sessionId),
-    pendingCount: off.filter((s) => effectiveStatus(s, seen) === 'waiting').length,
+    pendingCount: off.filter((s) => s.kind === 'shell' && effectiveStatus(s, seen) === 'waiting')
+      .length,
   };
 }
 
@@ -475,7 +517,13 @@ export function placeProject(
   const shown = cells.slice(0, count);
   const holds = (c: WallCell) => c.projectPath !== null && samePath(c.projectPath, path);
   const already = shown.find(holds);
-  if (already) return { cells, focus: already.id };
+  if (already?.pinned || already?.manual) return { cells, focus: already.id };
+  if (already) {
+    return {
+      cells: cells.map((c) => (c.id === already.id ? { ...c, manual: true } : c)),
+      focus: already.id,
+    };
+  }
   const target =
     shown.find((c) => c.id === focus && !c.pinned) ??
     shown.find((c) => c.projectPath === null) ??
@@ -505,13 +553,14 @@ export function normalizeCells(cells: unknown): WallCell[] {
   return emptyCells().map((empty, i) => {
     const c = list[i] as Partial<WallCell> | undefined;
     if (!c || typeof c !== 'object') return empty;
+    const pinned = c.pinned === true;
     return {
       id: empty.id,
       projectPath: typeof c.projectPath === 'string' ? c.projectPath : null,
-      pinned: c.pinned === true,
-      manual: c.manual === true,
+      pinned,
+      manual: false,
       lastInputAt: 0,
-      activeTab: typeof c.activeTab === 'string' ? c.activeTab : undefined,
+      activeTab: pinned && typeof c.activeTab === 'string' ? c.activeTab : undefined,
     };
   });
 }
@@ -668,10 +717,35 @@ export function cellShowing(
   return (holders.find((c) => c.id === focus) ?? holders[0])?.id ?? null;
 }
 
+export type TabPick = (path: string, held: boolean, list: string[]) => (string | undefined)[];
+
+const WALL_STATUSES: SessionStatus[] = ['waiting', 'working', 'error'];
+
+export function wallPick(
+  sessions: ClaudeSession[],
+  seen: Record<string, number>,
+  activeOf: (path: string) => string | undefined,
+): TabPick {
+  const ordered = byUrgency(
+    sessions.filter((s) => s.kind === 'shell' && effectiveStatus(s, seen) !== 'exited'),
+    seen,
+  );
+  return (path, held, list) => {
+    const own = ordered.filter(
+      (s) => s.projectPath && samePath(s.projectPath, path) && list.includes(s.sessionId),
+    );
+    const hot = own.filter((s) => WALL_STATUSES.includes(effectiveStatus(s, seen)));
+    const active = activeOf(path);
+    const first = held && own.some((s) => s.sessionId === active) ? [active] : [];
+    return [...first, ...hot.map((s) => s.sessionId), ...own.map((s) => s.sessionId)];
+  };
+}
+
 export function assignTabs(
   cells: WallCell[],
   tabsOf: (path: string) => string[],
   activeOf: (path: string) => string | undefined,
+  pick?: TabPick,
 ): (string | null)[] {
   const used = new Set<string>();
   const own = cells.map((c) => {
@@ -684,12 +758,11 @@ export function assignTabs(
   const order = cells
     .map((c, i) => ({ c, i, held: c.pinned || c.manual }))
     .sort((a, b) => Number(b.held) - Number(a.held) || a.i - b.i);
-  for (const { c, i } of order) {
+  for (const { c, i, held } of order) {
     if (own[i] || !c.projectPath) continue;
     const list = tabsOf(c.projectPath);
-    const key = [activeOf(c.projectPath), ...list].find(
-      (k) => !!k && list.includes(k) && !used.has(k),
-    );
+    const candidates = pick ? pick(c.projectPath, held, list) : [activeOf(c.projectPath), ...list];
+    const key = candidates.find((k) => !!k && list.includes(k) && !used.has(k));
     if (key) used.add(key);
     keys[i] = key ?? null;
   }

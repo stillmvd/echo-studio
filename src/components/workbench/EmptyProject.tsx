@@ -8,7 +8,7 @@ import { samePath } from '@/lib/workbench';
 import { DevCapsule } from './DevCapsule';
 import { ProjectIcon } from './ProjectIcon';
 
-const ROW = 46;
+const ROW = 42;
 const SKELETON = [0, 1, 2, 3];
 
 const DAY_MS = 86_400_000;
@@ -69,11 +69,11 @@ export function EmptyProject({ project, server, visible, busy, onStart }: Props)
         <div className="wb-eh">
           <ProjectIcon svg={project.icon} size="xl" />
           <div className="wb-eb">
-            <button type="button" className="wb-btn p lg" disabled={busy} onClick={() => onStart()}>
+            <button type="button" className="wb-btn p" disabled={busy} onClick={() => onStart()}>
               <Plus strokeWidth={2} />
               Новая сессия Claude
             </button>
-            <DevCapsule project={project} server={server} large />
+            <DevCapsule project={project} server={server} />
           </div>
         </div>
         {pending && (

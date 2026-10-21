@@ -42,6 +42,7 @@ import {
   urgentTab,
   type WallCell,
   type WallTabs,
+  wallPick,
 } from './workbench';
 
 const key = (over: Partial<KeyInput>): KeyInput => ({
@@ -513,7 +514,9 @@ describe('placeProject', () => {
     const start = cells().map((c) => (c.id === 'c2' ? { ...c, projectPath: 'c:\\p\\' } : c));
     const r = placeProject(start, '2x2', 'c1', 'C:\\P');
     expect(r.focus).toBe('c2');
-    expect(r.cells).toBe(start);
+    expect(r.cells[1]).toMatchObject({ projectPath: 'c:\\p\\', manual: true });
+    const held = start.map((c) => (c.id === 'c2' ? { ...c, pinned: true } : c));
+    expect(placeProject(held, '2x2', 'c1', 'C:\\P').cells).toBe(held);
   });
 
   it('skips a pinned focus and cells beyond the layout', () => {
@@ -545,6 +548,17 @@ describe('wall cells', () => {
     const cells = normalizeCells([{ projectPath: 'A', pinned: true }, 7, null]);
     expect(cells[0]).toMatchObject({ id: 'c1', projectPath: 'A', pinned: true, manual: false });
     expect(cells.slice(1).every((c) => c.projectPath === null)).toBe(true);
+  });
+
+  it('restored cells forget their tab and manual mark unless pinned', () => {
+    const cells = normalizeCells([
+      { projectPath: 'B', manual: true, activeTab: 'b-old' },
+      { projectPath: 'S', activeTab: 'dev:S' },
+      { projectPath: 'P', pinned: true, activeTab: 'p1' },
+    ]);
+    expect(cells[0]).toMatchObject({ projectPath: 'B', manual: false, activeTab: undefined });
+    expect(cells[1]).toMatchObject({ projectPath: 'S', activeTab: undefined });
+    expect(cells[2]).toMatchObject({ pinned: true, activeTab: 'p1' });
   });
 
   it('frees cells of removed projects and keeps the array when nothing changes', () => {
@@ -682,6 +696,132 @@ describe('arrangeWall', () => {
     const r = arrangeWall(start, 2, sessions, 10_000, null, {}, tabsFrom({ E: ['e1'], F: ['f1'] }));
     expect(r.offGrid).toEqual(['e2']);
     expect(r.pendingCount).toBe(1);
+  });
+
+  it('places only waiting, working and failed sessions by itself', () => {
+    const sessions = [
+      session('d', 'done', 1, 'D'),
+      session('i', 'idle', 2, 'I'),
+      session('x', 'exited', 3, 'X'),
+      session('w', 'working', 4, 'W'),
+    ];
+    const r = arrangeWall(at([null, null, null, null]), 4, sessions, 10_000, null, {}, noTabs);
+    expect(r.cells.map((c) => c.projectPath)).toEqual(['W', null, null, null]);
+    expect(r.cells[0]?.activeTab).toBe('w');
+  });
+
+  it('an automatic cell shows the live session, never the dev log or an ended tab', () => {
+    const dev = 'dev:S';
+    const tabs: WallTabs = {
+      tabsOf: () => [dev, 'old', 'w'],
+      activeOf: () => dev,
+    };
+    const sessions = [session('w', 'working', 1, 'S')];
+    const r = arrangeWall(at([null, null, null, null]), 4, sessions, 10_000, null, {}, tabs);
+    expect(r.cells[0]).toMatchObject({ projectPath: 'S', activeTab: 'w' });
+    const keys = assignTabs(
+      at(['S', null, null, null]),
+      tabs.tabsOf,
+      tabs.activeOf,
+      wallPick(sessions, {}, tabs.activeOf),
+    );
+    expect(keys[0]).toBe('w');
+  });
+
+  it('frees an automatic cell whose session ended or that has nothing live to show', () => {
+    const ended = at(['B', 'S', null, null]).map((c) =>
+      c.id === 'c1' ? { ...c, activeTab: 'b-old' } : c,
+    );
+    const tabs = tabsFrom({ B: ['b-old'], S: ['dev:S'] });
+    const r = arrangeWall(ended, 4, [], 10_000, null, {}, tabs);
+    expect(r.cells.map((c) => c.projectPath)).toEqual([null, null, null, null]);
+  });
+
+  it('frees nothing until the session list has answered', () => {
+    const start = at(['B', null, null, null]).map((c) =>
+      c.id === 'c1' ? { ...c, activeTab: 'b-old' } : c,
+    );
+    const r = arrangeWall(
+      start,
+      4,
+      [],
+      10_000,
+      null,
+      {},
+      {
+        ...tabsFrom({ B: ['b-old'] }),
+        ready: false,
+      },
+    );
+    expect(r.changed).toBe(false);
+    expect(r.cells).toBe(start);
+  });
+
+  it('keeps an ended automatic cell under the hands for a moment, then frees it', () => {
+    const start = at(['B', null, null, null]).map((c) =>
+      c.id === 'c1' ? { ...c, activeTab: 'b-old', lastInputAt: 9_000 } : c,
+    );
+    const tabs = tabsFrom({ B: ['b-old'] });
+    expect(arrangeWall(start, 4, [], 10_000, null, {}, tabs).cells[0]?.projectPath).toBe('B');
+    expect(
+      arrangeWall(start, 4, [], 9_000 + HANDS_ON_MS, null, {}, tabs).cells[0]?.projectPath,
+    ).toBeNull();
+  });
+
+  it('keeps an empty focused automatic cell and an ended tab the user chose', () => {
+    const start = at(['B', 'C', null, null]).map((c) =>
+      c.id === 'c2' ? { ...c, manual: true, activeTab: 'c-old' } : c,
+    );
+    const r = arrangeWall(start, 4, [], 10_000, 'c1', {}, tabsFrom({ C: ['c-old'] }));
+    expect(r.cells.map((c) => c.projectPath)).toEqual(['B', 'C', null, null]);
+    expect(r.cells[1]?.activeTab).toBe('c-old');
+  });
+
+  it('hands the session of an automatic twin to the held cell of the project', () => {
+    const start = at(['X', 'X', null, null]).map((c) =>
+      c.id === 'c1' ? { ...c, manual: true } : { ...c, activeTab: c.projectPath ? 'x' : undefined },
+    );
+    const sessions = [session('x', 'working', 1, 'X')];
+    const r = arrangeWall(start, 4, sessions, 10_000, null, {}, tabsFrom({ X: ['x'] }));
+    expect(r.cells[0]).toMatchObject({ projectPath: 'X', manual: true, activeTab: 'x' });
+    expect(r.cells[1]?.projectPath).toBeNull();
+  });
+
+  it('external waiting sessions are not counted as pending for the wall', () => {
+    const ext = { ...session('e', 'waiting', 1, 'E'), kind: 'external' as const };
+    const r = arrangeWall(at([null, null, null, null]), 4, [ext], 10_000, null, {}, noTabs);
+    expect(r.pendingCount).toBe(0);
+    expect(r.cells.every((c) => c.projectPath === null)).toBe(true);
+  });
+
+  it('keeps a dev log the user opened in a cell and a session that just started', () => {
+    const start = at(['S', 'N', null, null]).map((c) =>
+      c.id === 'c1' ? { ...c, activeTab: 'dev:S' } : { ...c, activeTab: 'new' },
+    );
+    const tabs: WallTabs = {
+      ...tabsFrom({ S: ['dev:S'], N: ['new'] }),
+      isFresh: (key) => key === 'new',
+    };
+    const r = arrangeWall(start, 4, [], 10_000, null, {}, tabs);
+    expect(r.cells.map((c) => c.projectPath)).toEqual(['S', 'N', null, null]);
+  });
+
+  it('a held cell without live sessions keeps its project but shows no ended tab', () => {
+    const start = at(['B', null, null, null]).map((c) => ({
+      ...c,
+      manual: c.projectPath !== null,
+    }));
+    const tabs = tabsFrom({ B: ['dev:B', 'b-old'] });
+    const sessions = [session('b-old', 'exited', 1, 'B')];
+    const r = arrangeWall(start, 4, sessions, 10_000, null, {}, tabs);
+    expect(r.cells[0]?.projectPath).toBe('B');
+    const keys = assignTabs(
+      r.cells,
+      tabs.tabsOf,
+      tabs.activeOf,
+      wallPick(sessions, {}, tabs.activeOf),
+    );
+    expect(keys[0]).toBeNull();
   });
 });
 
