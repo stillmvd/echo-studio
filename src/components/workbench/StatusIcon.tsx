@@ -6,7 +6,8 @@ import {
   Globe,
   type LucideIcon,
   MessageCircleQuestion,
-  Pause,
+  PenLine,
+  Plus,
   Power,
   Search,
   Sparkles,
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import type { ClaudeSession } from '@/lib/types';
-import { STATUS_LABEL } from '@/lib/workbench';
+import { type StatusView, statusTitle } from '@/lib/workbench';
 
 const TOOL_ICONS: [RegExp, LucideIcon][] = [
   [/^bash|powershell/i, SquareTerminal],
@@ -27,7 +28,9 @@ const TOOL_ICONS: [RegExp, LucideIcon][] = [
   [/^(task|agent)/i, Bot],
 ];
 
-function iconOf(s: Pick<ClaudeSession, 'status' | 'phase' | 'tool'>): LucideIcon {
+type Shown = Pick<ClaudeSession, 'phase' | 'tool'> & { status: StatusView };
+
+function iconOf(s: Shown): LucideIcon {
   switch (s.status) {
     case 'waiting':
       return MessageCircleQuestion;
@@ -38,7 +41,9 @@ function iconOf(s: Pick<ClaudeSession, 'status' | 'phase' | 'tool'>): LucideIcon
     case 'exited':
       return Power;
     case 'idle':
-      return Pause;
+      return PenLine;
+    case 'new':
+      return Plus;
     case 'working':
       if (s.phase === 'agents') return Bot;
       if (s.phase === 'tool' && s.tool) {
@@ -48,18 +53,12 @@ function iconOf(s: Pick<ClaudeSession, 'status' | 'phase' | 'tool'>): LucideIcon
   }
 }
 
-export function StatusIcon({
-  session,
-  small,
-}: {
-  session: Pick<ClaudeSession, 'status' | 'phase' | 'tool'>;
-  small?: boolean;
-}) {
+export function StatusIcon({ session, small }: { session: Shown; small?: boolean }) {
   const Icon = iconOf(session);
   return (
     <span
       className={cn('wb-gl', `st-${session.status}`, small && 'sm')}
-      title={STATUS_LABEL[session.status]}
+      title={statusTitle(session.status)}
     >
       <Icon strokeWidth={2.25} />
     </span>

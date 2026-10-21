@@ -3,12 +3,14 @@ import { cn } from '@/lib/cn';
 import type { ClaudeSession, WorkbenchProject } from '@/lib/types';
 import {
   assignTabs,
-  byRecency,
   CELL_COUNT,
-  effectiveStatus,
   nextInRecency,
+  recentSessions,
   STATUS_LABEL,
+  statusTitle,
+  statusView,
 } from '@/lib/workbench';
+import { useRecentStore } from '@/state/recent-store';
 import { layoutOf, useWorkbenchStore } from '@/state/workbench-store';
 import { ProjectIcon } from './ProjectIcon';
 import { openSession, sessionPlace } from './SessionStrip';
@@ -105,7 +107,7 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
         show({ ...cur.open, pick: nextInRecency(ids, cur.open.pick, e.shiftKey) });
         return;
       }
-      const order = byRecency(cur.sessions, useWorkbenchStore.getState().recency, cur.seen);
+      const order = recentSessions(useRecentStore.getState().history, cur.sessions);
       if (order.length === 0) return;
       const ids = order.map((s) => s.sessionId);
       show({ order, pick: nextInRecency(ids, ids[0] ?? null, e.shiftKey) });
@@ -139,7 +141,7 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
         aria-activedescendant={open.pick ? `qs-${open.pick}` : undefined}
       >
         {open.order.map((s, i) => {
-          const status = effectiveStatus(s, seen);
+          const status = statusView(s, seen);
           const project = s.projectPath ? projects.get(s.projectPath) : undefined;
           return (
             <button
@@ -150,6 +152,7 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
               tabIndex={-1}
               aria-selected={s.sessionId === open.pick}
               className={cn('wb-swr', s.sessionId === open.pick && 'on')}
+              title={statusTitle(status)}
               onClick={() => jump(s)}
             >
               <ProjectIcon svg={project?.icon ?? null} />

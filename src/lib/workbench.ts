@@ -7,14 +7,35 @@ import type {
   WorkbenchProject,
 } from './types';
 
-export const STATUS_LABEL: Record<SessionStatus, string> = {
+export type StatusView = SessionStatus | 'new';
+
+export const STATUS_LABEL: Record<StatusView, string> = {
   waiting: 'ждёт тебя',
   error: 'ошибка',
   working: 'работает',
-  done: 'готово',
-  idle: 'простаивает',
+  done: 'ответ готов',
+  idle: 'ждёт задачу',
+  new: 'новая · ждёт задачу',
   exited: 'завершена',
 };
+
+export const STATUS_HINT: Record<StatusView, string> = {
+  waiting: 'Claude задал вопрос или ждёт подтверждения',
+  error: 'Ответ Claude оборвался с ошибкой',
+  working: 'Claude отвечает',
+  done: 'Claude закончил, ответ ещё не открывали',
+  idle: 'Можно писать следующую задачу',
+  new: 'Сессия запущена, первого запроса ещё не было',
+  exited: 'Сессия завершена',
+};
+
+export const EXTERNAL_LABEL = 'вне Echo';
+export const EXTERNAL_HINT = 'Открыта в терминале вне Echo';
+
+export function statusTitle(status: StatusView, external = false): string {
+  const line = `${STATUS_LABEL[status]} — ${STATUS_HINT[status]}`;
+  return external ? `${line}\n${EXTERNAL_HINT}` : line;
+}
 
 export function all(tree: ProjectTree): WorkbenchProject[] {
   return [...tree.roots, ...tree.groups.flatMap((g) => g.projects)];
@@ -103,6 +124,13 @@ export function effectiveStatus(
   return session.status;
 }
 
+export function statusView(
+  session: Pick<ClaudeSession, 'sessionId' | 'status' | 'since' | 'name'>,
+  seen: Record<string, number>,
+): StatusView {
+  return session.status === 'idle' && !session.name ? 'new' : effectiveStatus(session, seen);
+}
+
 function sinceKey(since: number | null): number {
   return since ?? Number.POSITIVE_INFINITY;
 }
@@ -134,21 +162,54 @@ export type RunningItem =
   | { kind: 'session'; session: ClaudeSession }
   | { kind: 'dev'; server: DevServer };
 
-export function runningItems(
+export interface RunningGroup {
+  path: string | null;
+  sessions: ClaudeSession[];
+  devs: DevServer[];
+  top: RunningItem;
+}
+
+export function runningGroups(
   sessions: ClaudeSession[],
   servers: DevServer[],
   seen: Record<string, number>,
-): RunningItem[] {
+): RunningGroup[] {
   const rank = (item: RunningItem) =>
     urgency(
       item.kind === 'session' ? effectiveStatus(item.session, seen) : DEV_STATUS[item.server.state],
     );
-  return [
-    ...byUrgency(sessions, seen).map((session) => ({ kind: 'session' as const, session })),
-    ...servers
-      .filter((server) => server.state !== 'stopped')
-      .map((server) => ({ kind: 'dev' as const, server })),
-  ].sort((a, b) => rank(a) - rank(b));
+  const groups = new Map<string, Omit<RunningGroup, 'top'>>();
+  const group = (path: string | null) => {
+    const key = path ? norm(path) : '';
+    const found = groups.get(key);
+    if (found) return found;
+    const created = { path, sessions: [], devs: [] };
+    groups.set(key, created);
+    return created;
+  };
+  for (const s of byUrgency(sessions, seen)) group(s.projectPath).sessions.push(s);
+  for (const d of servers) if (d.state !== 'stopped') group(d.projectPath).devs.push(d);
+  return [...groups.values()]
+    .map((g) => {
+      const items: RunningItem[] = [
+        ...g.sessions.map((session) => ({ kind: 'session' as const, session })),
+        ...g.devs.map((server) => ({ kind: 'dev' as const, server })),
+      ];
+      const top = items.reduce((a, b) => (rank(b) < rank(a) ? b : a));
+      return { ...g, top };
+    })
+    .sort((a, b) => rank(a.top) - rank(b.top) || Number(!a.path) - Number(!b.path));
+}
+
+export function recentSessions(
+  history: string[],
+  sessions: ClaudeSession[],
+  limit = 6,
+): ClaudeSession[] {
+  const live = new Map(
+    sessions.filter((s) => s.status !== 'exited').map((s) => [s.sessionId, s] as const),
+  );
+  return history.flatMap((id) => live.get(id) ?? []).slice(0, limit);
 }
 
 const AGENT_VIEW_MARKERS = [
@@ -633,19 +694,6 @@ export function assignTabs(
     keys[i] = key ?? null;
   }
   return keys;
-}
-
-export function byRecency<S extends ClaudeSession>(
-  sessions: S[],
-  recency: string[],
-  seen: Record<string, number>,
-): S[] {
-  const at = (s: S) => {
-    const i = recency.indexOf(s.sessionId);
-    return i < 0 ? recency.length : i;
-  };
-  const urgent = byUrgency(sessions, seen);
-  return [...urgent].sort((a, b) => at(a) - at(b) || urgent.indexOf(a) - urgent.indexOf(b));
 }
 
 export function nextInRecency(

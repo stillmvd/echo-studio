@@ -1,5 +1,4 @@
 import { ChevronRight, LayoutDashboard } from 'lucide-react';
-import type { ReactNode } from 'react';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
 import { openInVscode, revealInExplorer } from '@/lib/ipc';
@@ -12,7 +11,6 @@ import { ProjectIcon } from './ProjectIcon';
 
 interface Props {
   tree: Tree;
-  tail?: (paths: string[]) => ReactNode;
   devServers: DevServer[];
   busy: boolean;
   onStart: (path: string) => void;
@@ -20,47 +18,11 @@ interface Props {
 
 type RowMenu = (e: React.MouseEvent, project: WorkbenchProject) => void;
 
-function ProjectRow({
-  project,
-  tail,
-  menu,
-}: {
-  project: WorkbenchProject;
-  tail?: Props['tail'];
-  menu: RowMenu;
-}) {
-  const view = useWorkbenchStore((s) => s.view);
+export function useProjectMenu(devServers: DevServer[], busy: boolean, onStart: Props['onStart']) {
   const select = useWorkbenchStore((s) => s.select);
-  const on = view.kind === 'project' && view.path === project.path;
-  return (
-    <button
-      type="button"
-      className={cn('wb-tr', on && 'on')}
-      title={project.path}
-      onClick={() => select({ kind: 'project', path: project.path })}
-      onContextMenu={(e) => menu(e, project)}
-    >
-      <ProjectIcon svg={project.icon} />
-      <span className="wb-tn">
-        <b>{project.name}</b>
-      </span>
-      {tail?.([project.path])}
-    </button>
-  );
-}
-
-export function ProjectTree({ tree, tail, devServers, busy, onStart }: Props) {
-  const view = useWorkbenchStore((s) => s.view);
-  const select = useWorkbenchStore((s) => s.select);
-  const openGroups = useWorkbenchStore((s) => s.openGroups);
-  const toggleGroup = useWorkbenchStore((s) => s.toggleGroup);
-  const hidden = useWorkbenchStore((s) => s.hiddenProjects);
   const hideProject = useWorkbenchStore((s) => s.hideProject);
   const openMenu = useOpenMenu();
   const dev = useDevControl();
-  const shown = (list: WorkbenchProject[]) =>
-    hidden.length ? list.filter((p) => !hidden.some((h) => samePath(h, p.path))) : list;
-
   const menu: RowMenu = (e, p) =>
     openMenu(
       e,
@@ -80,6 +42,38 @@ export function ProjectTree({ tree, tail, devServers, busy, onStart }: Props) {
         },
       }),
     );
+  return { menu, dev };
+}
+
+function ProjectRow({ project, menu }: { project: WorkbenchProject; menu: RowMenu }) {
+  const view = useWorkbenchStore((s) => s.view);
+  const select = useWorkbenchStore((s) => s.select);
+  const on = view.kind === 'project' && view.path === project.path;
+  return (
+    <button
+      type="button"
+      className={cn('wb-tr', on && 'on')}
+      title={project.path}
+      onClick={() => select({ kind: 'project', path: project.path })}
+      onContextMenu={(e) => menu(e, project)}
+    >
+      <ProjectIcon svg={project.icon} />
+      <span className="wb-tn">
+        <b>{project.name}</b>
+      </span>
+    </button>
+  );
+}
+
+export function ProjectTree({ tree, devServers, busy, onStart }: Props) {
+  const view = useWorkbenchStore((s) => s.view);
+  const select = useWorkbenchStore((s) => s.select);
+  const openGroups = useWorkbenchStore((s) => s.openGroups);
+  const toggleGroup = useWorkbenchStore((s) => s.toggleGroup);
+  const hidden = useWorkbenchStore((s) => s.hiddenProjects);
+  const { menu, dev } = useProjectMenu(devServers, busy, onStart);
+  const shown = (list: WorkbenchProject[]) =>
+    hidden.length ? list.filter((p) => !hidden.some((h) => samePath(h, p.path))) : list;
 
   return (
     <div className="wb-tree">
@@ -96,13 +90,12 @@ export function ProjectTree({ tree, tail, devServers, busy, onStart }: Props) {
         </span>
       </button>
       {shown(tree.roots).map((p) => (
-        <ProjectRow key={p.path} project={p} tail={tail} menu={menu} />
+        <ProjectRow key={p.path} project={p} menu={menu} />
       ))}
       {tree.groups.map((g) => {
         const projects = shown(g.projects);
         if (!projects.length) return null;
         const open = openGroups.includes(g.name);
-        const chips = open ? null : tail?.(projects.map((p) => p.path));
         return (
           <div key={g.name} className="contents">
             <button
@@ -116,12 +109,12 @@ export function ProjectTree({ tree, tail, devServers, busy, onStart }: Props) {
               <span className="wb-tn">
                 <b>{g.name}</b>
               </span>
-              {chips || <span className="wb-cnt">{projects.length}</span>}
+              <span className="wb-cnt">{projects.length}</span>
             </button>
             {open &&
               projects.map((p) => (
                 <span key={p.path} className="wb-ind">
-                  <ProjectRow project={p} tail={tail} menu={menu} />
+                  <ProjectRow project={p} menu={menu} />
                 </span>
               ))}
           </div>

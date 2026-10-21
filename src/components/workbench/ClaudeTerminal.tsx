@@ -1,15 +1,15 @@
 import { Play, RotateCcw, Square } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/cn';
-import type { SessionStatus } from '@/lib/types';
-import { STATUS_LABEL } from '@/lib/workbench';
+
+import { STATUS_LABEL, type StatusView, statusTitle } from '@/lib/workbench';
 import { connect, fitTerm, focus, mount, reattach, unmount, useClaudeTerm } from './terminals';
 
 interface Props {
   sessionKey: string;
   shortId: string | null;
   live: boolean;
-  status: SessionStatus;
+  status: StatusView;
   visible: boolean;
   focused: boolean;
   accent?: boolean;
@@ -81,7 +81,10 @@ export function ClaudeTerminal({
         <div className="wb-term-note dt" role="status">
           <span>
             Отключено от сессии
-            <span className="wb-dim"> · {STATUS_LABEL[status]}</span>
+            <span className="wb-dim" title={statusTitle(status)}>
+              {' '}
+              · {STATUS_LABEL[status]}
+            </span>
           </span>
           <button
             type="button"

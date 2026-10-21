@@ -10,7 +10,6 @@ import {
   arrangeCells,
   arrangeWall,
   assignTabs,
-  byRecency,
   byUrgency,
   cellOfTab,
   detectAgentView,
@@ -28,10 +27,17 @@ import {
   placeProject,
   projectOf,
   pruneCells,
-  runningItems,
+  type RunningItem,
+  recentSessions,
+  runningGroups,
+  STATUS_HINT,
+  STATUS_LABEL,
   samePath,
+  statusTitle,
+  statusView,
   terminalKey,
   topStatus,
+  URGENCY,
   urgency,
   urgentTab,
   type WallCell,
@@ -188,31 +194,69 @@ describe('urgency', () => {
     expect(effectiveStatus(session('b', 'waiting', 1_000), { b: 2_000 })).toBe('waiting');
   });
 
-  it('mixes dev servers into the running list by urgency, hides stopped ones', () => {
-    const dev = (projectPath: string, state: DevServer['state']): DevServer => ({
-      projectPath,
-      command: 'pnpm dev',
-      state,
-      ports: [],
-      startedAt: 0,
-      exitCode: null,
-      log: '',
-      pids: [],
-    });
-    const items = runningItems(
-      [session('a', 'idle', 1), session('b', 'waiting', 2)],
-      [dev('run', 'running'), dev('err', 'error'), dev('off', 'stopped')],
+  const dev = (projectPath: string, state: DevServer['state']): DevServer => ({
+    projectPath,
+    command: 'pnpm dev',
+    state,
+    ports: [],
+    startedAt: 0,
+    exitCode: null,
+    log: '',
+    pids: [],
+  });
+  const top = (i: RunningItem) => (i.kind === 'session' ? i.session.sessionId : i.server.state);
+
+  it('groups the running list by project, the most urgent group first', () => {
+    const groups = runningGroups(
+      [
+        session('a1', 'idle', 1, 'A'),
+        session('b1', 'working', 3, 'B'),
+        session('a2', 'waiting', 2, 'A'),
+        session('r', 'working', 1, null),
+      ],
+      [dev('C', 'error'), dev('B', 'running'), dev('D', 'stopped')],
       {},
     );
-    expect(
-      items.map((i) => (i.kind === 'session' ? i.session.sessionId : i.server.projectPath)),
-    ).toEqual(['b', 'err', 'a', 'run']);
+    expect(groups.map((g) => g.path)).toEqual(['A', 'C', 'B', null]);
+    expect(groups.map((g) => top(g.top))).toEqual(['a2', 'error', 'b1', 'r']);
+    expect(groups[0]?.sessions.map((s) => s.sessionId)).toEqual(['a2', 'a1']);
+    expect(groups[2]?.devs.map((d) => d.state)).toEqual(['running']);
   });
 
-  it('puts exited sessions after live ones and dev servers', () => {
+  it('matches project paths without case, puts the Projects group last on a tie', () => {
+    const groups = runningGroups(
+      [session('r', 'working', 1, null), session('x', 'working', 2, 'C:\\P\\X')],
+      [dev('c:/p/x', 'running')],
+      {},
+    );
+    expect(groups.map((g) => g.path)).toEqual(['C:\\P\\X', null]);
+    expect(groups[0]?.devs).toHaveLength(1);
+  });
+
+  it('puts groups with only exited sessions last', () => {
     const ext: ClaudeSession = { ...session('x', 'exited', 1), kind: 'external', exitedAt: 1 };
-    const items = runningItems([ext, session('a', 'idle', 5)], [], {});
-    expect(items.map((i) => (i.kind === 'session' ? i.session.sessionId : ''))).toEqual(['a', 'x']);
+    const groups = runningGroups([ext, session('a', 'idle', 5)], [], {});
+    expect(groups.map((g) => g.path)).toEqual(['a', 'x']);
+  });
+
+  it('shows a fresh session without a title as new, a resumed or seen one as waiting for a task', () => {
+    const fresh = session('a', 'idle', null);
+    expect(statusView(fresh, {})).toBe('new');
+    expect(statusView({ ...fresh, name: 'fix login' }, {})).toBe('idle');
+    expect(statusView(session('b', 'done', 1_000), { b: 2_000 })).toBe('idle');
+    expect(statusView(session('c', 'done', 1_000), {})).toBe('done');
+    expect(STATUS_LABEL[statusView(fresh, {})]).toBe('новая · ждёт задачу');
+    expect(STATUS_LABEL.idle).toBe('ждёт задачу');
+    expect(STATUS_LABEL.done).toBe('ответ готов');
+  });
+
+  it('gives every status a label and a hint, external sessions say so', () => {
+    for (const status of [...URGENCY, 'new'] as const) {
+      expect(STATUS_LABEL[status]).toBeTruthy();
+      expect(STATUS_HINT[status]).toBeTruthy();
+    }
+    expect(statusTitle('working')).toBe('работает — Claude отвечает');
+    expect(statusTitle('waiting', true)).toContain('Открыта в терминале вне Echo');
   });
 
   it('gives the most urgent status of a project or group', () => {
@@ -642,15 +686,21 @@ describe('arrangeWall', () => {
 });
 
 describe('Ctrl+Tab order', () => {
-  it('puts recently focused sessions first, the rest by urgency', () => {
+  it('walks the history of opened sessions, drops exited and removed ones', () => {
     const sessions = [
       session('A', 'idle', 1),
       session('B', 'waiting', 2),
       session('C', 'working', 3),
-      session('D', 'error', 4),
+      session('E', 'exited', 4),
     ];
-    const ids = byRecency(sessions, ['C', 'X', 'A'], {}).map((s) => s.sessionId);
-    expect(ids).toEqual(['C', 'A', 'B', 'D']);
+    const ids = recentSessions(['C', 'X', 'E', 'A'], sessions).map((s) => s.sessionId);
+    expect(ids).toEqual(['C', 'A']);
+  });
+
+  it('keeps at most six recent sessions', () => {
+    const ids = ['1', '2', '3', '4', '5', '6', '7'];
+    const sessions = ids.map((id) => session(id, 'working', 1));
+    expect(recentSessions(ids, sessions).map((s) => s.sessionId)).toEqual(ids.slice(0, 6));
   });
 
   it('steps forward and back with wrap-around', () => {
