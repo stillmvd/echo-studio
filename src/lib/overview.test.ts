@@ -7,6 +7,7 @@ import {
   groupProcesses,
   mb,
   mt,
+  orphans,
   percent,
   resetText,
   topUsage,
@@ -130,6 +131,22 @@ suite('process grouping', () => {
     expect(a?.rows.map((r) => r.pid)).toEqual([5, 6]);
     expect(groupName(ROOT, ROOT)).toBe('Projects (корень)');
     expect(groupName('C:\\P\\A', ROOT)).toBe('A');
+  });
+
+  it('collects hanging processes from every group, guarded ones stay out', () => {
+    const rows = [
+      row({ pid: 1, projectPath: 'C:\\P\\A', memory: 5, orphan: { reason: 'session-closed' } }),
+      row({ pid: 2, memory: 9, orphan: { reason: 'no-project' } }),
+      row({
+        pid: 3,
+        projectPath: 'C:\\P\\A',
+        memory: 50,
+        orphan: { reason: 'duplicate', of: 1 },
+        guard: 'running-dev',
+      }),
+      row({ pid: 4, projectPath: 'C:\\P\\A', memory: 99 }),
+    ];
+    expect(orphans(rows).map((r) => r.pid)).toEqual([2, 1]);
   });
 
   it('shows a seen finished session as idle', () => {

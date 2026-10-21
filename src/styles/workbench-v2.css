@@ -16,4 +16,6 @@
 .wb-ps .wb-mb { width: 64px; margin-right: 38px; font-weight: 500; color: var(--dim); }
 .wb-pr.in { padding-left: 50px; grid-template-columns: 108px minmax(0, 1fr) 64px 28px; }
 .wb-pr.orphan > span.wb-dim { color: var(--color-danger); }
+.wb-hang { margin-bottom: 6px; padding: 0 4px 0 12px; height: 40px; border-radius: 999px; background: var(--color-danger-soft); }
+.wb-hang b { color: var(--color-danger); }
 .wb-phint { flex: none; width: 14px; height: 14px; color: var(--dim); cursor: help; }

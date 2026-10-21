@@ -9,6 +9,7 @@ import {
   groupName,
   groupProcesses,
   mb,
+  orphans,
   type SessionGroup,
 } from '@/lib/overview';
 import type { KillResult, ProcessRow, WorkbenchProject } from '@/lib/types';
@@ -106,7 +107,7 @@ export function Processes({
   const [note, setNote] = useState<string | null>(null);
   const { stray, groups } = groupProcesses(rows, root, sessions, seen);
   const strayMemory = stray.reduce((s, r) => s + r.memory, 0);
-  const killable = stray.filter((r) => !r.guard);
+  const hanging = orphans(rows);
 
   const run = async (list: ProcessRow[], confirmed: boolean) => {
     const targets = list.map((r) => ({ pid: r.pid, startTime: r.startTime }));
@@ -127,6 +128,21 @@ export function Processes({
   return (
     <>
       {note && <span className="wb-pnote">{note}</span>}
+      {hanging.length > 0 && (
+        <div className="wb-pgh wb-hang">
+          <b>Висящих процессов: {hanging.length}</b>
+          <span className="wb-mb">{mb(hanging.reduce((s, r) => s + r.memory, 0))}</span>
+          <button
+            type="button"
+            className="wb-btn sm"
+            disabled={kill.isPending}
+            onClick={() => setPending({ rows: hanging, confirmed: false })}
+          >
+            <Power />
+            Завершить все висящие
+          </button>
+        </div>
+      )}
       {stray.length > 0 && (
         <div className="wb-pg stray hot">
           <div className="wb-pgh" title={STRAY_HINT}>
@@ -137,17 +153,6 @@ export function Processes({
             <span className="wb-dim">висящие</span>
             <CircleHelp className="wb-phint" strokeWidth={1.75} aria-label={STRAY_HINT} />
             <span className="wb-mb">{mb(strayMemory)}</span>
-            {killable.length > 0 && (
-              <button
-                type="button"
-                className="wb-btn sm"
-                disabled={kill.isPending}
-                onClick={() => setPending({ rows: killable, confirmed: false })}
-              >
-                <Power />
-                Завершить все
-              </button>
-            )}
           </div>
           {stray.map((r) => (
             <Row key={r.pid} row={r} onKill={onKill} />

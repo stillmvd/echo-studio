@@ -119,6 +119,10 @@ export interface ProcessGroup {
 const heavier = (a: { memory: number }, b: { memory: number }) => b.memory - a.memory;
 const total = (rows: ProcessRow[]) => rows.reduce((s, r) => s + r.memory, 0);
 
+export function orphans(rows: ProcessRow[]): ProcessRow[] {
+  return rows.filter((r) => r.orphan && !r.guard).sort(heavier);
+}
+
 export function groupName(path: string | null, root: string): string {
   return path && samePath(path, root) ? ROOT_GROUP : nameOf(path);
 }
