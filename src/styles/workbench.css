@@ -109,9 +109,9 @@
 .wb-cap-i:hover { background: var(--hover-strong); }
 .wb-cap-i svg { width: 15px; height: 15px; }
 
-.wb-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 999px; background: var(--raised); font-size: 13px; font-weight: 600; white-space: nowrap; transition: transform 120ms var(--ease-trail), background-color 200ms var(--ease-trail); }
+.wb-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 999px; background: var(--raised); font-size: 13px; font-weight: 600; white-space: nowrap; transition: background-color 200ms var(--ease-trail); }
 .wb-btn:hover { background: var(--hover-strong); }
-.wb-btn:active { transform: scale(.96); }
+.wb-btn:active { box-shadow: inset 0 0 0 999px var(--color-press-shade); }
 .wb-btn:disabled { opacity: .5; pointer-events: none; }
 .wb-btn.p { background: var(--gb); color: var(--gb-ink); }
 .wb-btn.p:hover { background: var(--color-accent-hover); }
@@ -306,3 +306,4 @@ fieldset.wl-seg { margin: 0; border: 0; min-width: 0; }
 .wb-tab[draggable="true"] { cursor: grab; }
 .wb-tab[draggable="true"] .wb-tab-b { cursor: inherit; }
 .wb-tab-ins { flex: none; align-self: center; width: 2px; height: 24px; margin: 0 -3px; border-radius: 1px; background: var(--color-accent); pointer-events: none; }
+.wl-seg.txt label, .wb-tab, .wl-free .wb-btn { user-select: none; }
