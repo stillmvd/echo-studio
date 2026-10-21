@@ -307,3 +307,6 @@ fieldset.wl-seg { margin: 0; border: 0; min-width: 0; }
 .wb-tab[draggable="true"] .wb-tab-b { cursor: inherit; }
 .wb-tab-ins { flex: none; align-self: center; width: 2px; height: 24px; margin: 0 -3px; border-radius: 1px; background: var(--color-accent); pointer-events: none; }
 .wl-seg.txt label, .wb-tab, .wl-free .wb-btn { user-select: none; }
+.wl-cell { container-type: inline-size; }
+.wb-tab:not(.add) { min-width: 72px; }
+@container (max-width: 560px) { .wb-stop .wb-stop-l { display: none; } .wb-stop.sm { width: 28px; padding: 0; } }

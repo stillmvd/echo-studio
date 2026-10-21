@@ -18,13 +18,23 @@ impl Splash {
     }
 }
 
+fn background() -> bool {
+    cfg!(debug_assertions) && std::env::var_os("ECHO_BACKGROUND_DEV").is_some()
+}
+
 pub fn show_main(window: &WebviewWindow) {
+    if background() {
+        let _ = window.set_skip_taskbar(true);
+        let _ = window.set_position(tauri::PhysicalPosition::new(-20000, 100));
+        imp::show_inactive(window);
+        return;
+    }
     let _ = window.show();
     let _ = window.set_focus();
 }
 
 pub fn show(identifier: &str) -> Option<Splash> {
-    if imp::already_running(identifier) {
+    if background() || imp::already_running(identifier) {
         return None;
     }
     let ready = Arc::new(AtomicBool::new(false));
@@ -185,6 +195,12 @@ mod imp {
     };
 
     use super::{render, DRAW};
+
+    pub fn show_inactive(window: &tauri::WebviewWindow) {
+        if let Ok(hwnd) = window.hwnd() {
+            unsafe { ShowWindow(hwnd.0 as _, SW_SHOWNOACTIVATE) };
+        }
+    }
 
     const LOGICAL: f64 = 128.0;
     const FADE_OUT: f64 = 0.24;
@@ -350,6 +366,10 @@ mod imp {
 
 #[cfg(not(windows))]
 mod imp {
+    pub fn show_inactive(window: &tauri::WebviewWindow) {
+        let _ = window.show();
+    }
+
     pub fn already_running(_identifier: &str) -> bool {
         true
     }

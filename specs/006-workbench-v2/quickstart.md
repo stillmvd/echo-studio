@@ -7,8 +7,12 @@
 ## 0. Подготовка
 
 - Dev из worktree на свободных портах (1420/9222 заняты пользователем): `pnpm tauri dev --config <json>` с
-  `{"build":{"devUrl":"http://localhost:1425","beforeDevCommand":"pnpm dev --port 1425"}}` и
-  `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9226"`.
+  `{"identifier":"com.stillmvd.echo-studio.check","build":{"devUrl":"http://localhost:1425","beforeDevCommand":"pnpm dev
+  --port 1425 --strictPort"}}`, `ECHO_BACKGROUND_DEV=1` и `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9226
+  --disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows"`. Свой identifier — своё
+  состояние окна и профиль WebView2 (не трогают Echo пользователя); `ECHO_BACKGROUND_DEV` (только debug) — без заставки,
+  окно за пределами экрана, без кнопки на панели задач и без фокуса; без флагов occlusion WebView2 за экраном не рисует.
+  Управление — CDP 9226; закрыть сразу после проверки (`WM_CLOSE` окну), не держать открытым между шагами.
 - Пробные сессии — в Echo Studio или Tolk; после проверки `claude stop` + `claude rm`.
 - MCP-браузер закрыть после проверки.
 

@@ -442,7 +442,7 @@ export function Cell({
               onClick={() => stop.ask(current.shortId)}
             >
               <Square fill="currentColor" strokeWidth={2} />
-              Завершить сессию
+              <span className="wb-stop-l">Завершить сессию</span>
             </button>
           </>
         )}
