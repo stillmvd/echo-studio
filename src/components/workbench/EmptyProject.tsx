@@ -9,6 +9,7 @@ import { DevCapsule } from './DevCapsule';
 import { ProjectIcon } from './ProjectIcon';
 
 const ROW = 46;
+const SKELETON = [0, 1, 2, 3];
 
 const DAY_MS = 86_400_000;
 
@@ -46,7 +47,8 @@ export function EmptyProject({ project, server, visible, busy, onStart }: Props)
   const slug = project.path.replace(/[^A-Za-z0-9]/g, '-');
   const matches = convProjects?.filter((p) => samePath(p.cwd, project.path)) ?? [];
   const convId = (matches.find((p) => p.id === slug) ?? matches[0])?.id ?? null;
-  const { data } = useConversationSessions(visible ? convId : null);
+  const { data, isPending } = useConversationSessions(visible ? convId : null);
+  const pending = !convProjects || (convId !== null && isPending);
   const sessions = useMemo(
     () =>
       [...(data ?? [])].sort((a, b) => (b.lastEventAt ?? '').localeCompare(a.lastEventAt ?? '')),
@@ -64,15 +66,30 @@ export function EmptyProject({ project, server, visible, busy, onStart }: Props)
   return (
     <div className="wb-area">
       <div className="wb-empty">
-        <ProjectIcon svg={project.icon} size="xl" />
-        <div className="wb-eb">
-          <button type="button" className="wb-btn p lg" disabled={busy} onClick={() => onStart()}>
-            <Plus strokeWidth={2} />
-            Новая сессия Claude
-          </button>
-          <DevCapsule project={project} server={server} large />
+        <div className="wb-eh">
+          <ProjectIcon svg={project.icon} size="xl" />
+          <div className="wb-eb">
+            <button type="button" className="wb-btn p lg" disabled={busy} onClick={() => onStart()}>
+              <Plus strokeWidth={2} />
+              Новая сессия Claude
+            </button>
+            <DevCapsule project={project} server={server} large />
+          </div>
         </div>
-        {sessions.length > 0 && (
+        {pending && (
+          <div className="wb-res" aria-busy="true">
+            <span className="wb-lbl">Продолжить</span>
+            <div className="wb-res-list">
+              {SKELETON.map((k) => (
+                <span key={k} className="wb-rr sk">
+                  <i />
+                  <i />
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {!pending && sessions.length > 0 && (
           <div className="wb-res">
             <span className="wb-lbl">Продолжить</span>
             <div ref={scrollRef} className="wb-res-list">
