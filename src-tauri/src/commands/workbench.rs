@@ -53,7 +53,7 @@ pub async fn list_processes() -> Result<Vec<processes::ProcessRow>, String> {
 }
 
 fn live_agents() -> Result<Vec<processes::AgentRef>, String> {
-    Ok(sessions::run_agents()?
+    Ok(sessions::run_agents_cached(sessions::AGENTS_FRESH)?
         .into_iter()
         .filter(sessions::is_live)
         .map(|a| processes::AgentRef {

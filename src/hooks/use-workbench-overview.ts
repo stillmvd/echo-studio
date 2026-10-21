@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { killProcesses, listProcesses, readGitStates, readRateLimits, readUsage } from '@/lib/ipc';
 import type { KillTarget } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
+import { useWorkbenchStore } from '@/state/workbench-store';
 import { useTauriEvent } from './use-workbench';
 
 const MINUTE = 60_000;
@@ -10,9 +11,14 @@ function useOpen() {
   return useUiStore((s) => s.activeTab === 'workbench');
 }
 
+function useOverviewOpen() {
+  const overview = useWorkbenchStore((s) => s.view.kind === 'overview');
+  return useOpen() && overview;
+}
+
 export function useRateLimits() {
   const qc = useQueryClient();
-  const open = useOpen();
+  const open = useOverviewOpen();
   useTauriEvent('workbench://limits', () => {
     void qc.invalidateQueries({ queryKey: ['workbench', 'limits'] });
   });
@@ -25,7 +31,7 @@ export function useRateLimits() {
 }
 
 export function useUsage() {
-  const open = useOpen();
+  const open = useOverviewOpen();
   return useQuery({
     queryKey: ['workbench', 'usage'],
     queryFn: readUsage,
@@ -46,12 +52,13 @@ export function useGitStates(paths: string[]) {
 }
 
 export function useProcesses() {
-  const open = useOpen();
+  const open = useOverviewOpen();
   return useQuery({
     queryKey: ['workbench', 'processes'],
     queryFn: listProcesses,
     enabled: open,
-    refetchInterval: 5_000,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: false,
   });
 }
 
