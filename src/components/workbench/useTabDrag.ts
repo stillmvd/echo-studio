@@ -10,7 +10,7 @@ export interface DraggedTab {
 
 let dragging: DraggedTab | null = null;
 
-export function useTabDrag(tab: DraggedTab | null) {
+export function tabDragProps(tab: DraggedTab | null) {
   if (!tab) return {};
   return {
     draggable: true,

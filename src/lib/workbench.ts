@@ -546,6 +546,22 @@ export function showTabInLayout(layout: ProjectLayout, key: string): ProjectLayo
   };
 }
 
+export function closeTabInLayout(
+  layout: ProjectLayout,
+  key: string,
+  tabs: string[],
+): ProjectLayout {
+  const from = cellOfTab(layout, key);
+  const cell = layout.cells[from];
+  if (!cell || cell.active !== key) return normalizeLayout(layout, tabs);
+  const at = cell.tabs.indexOf(key);
+  const active = cell.tabs[at + 1] ?? cell.tabs[at - 1];
+  return normalizeLayout(
+    { ...layout, cells: layout.cells.map((c, i) => (i === from ? { ...c, active } : c)) },
+    tabs,
+  );
+}
+
 export function moveTabInLayout(
   layout: ProjectLayout,
   key: string,

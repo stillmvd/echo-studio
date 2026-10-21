@@ -4,7 +4,9 @@ import { persist } from 'zustand/middleware';
 import {
   assignTabs,
   CELL_COUNT,
+  cellOfTab,
   cellShowing,
+  closeTabInLayout,
   emptyCells,
   HANDS_ON_MS,
   insertTab,
@@ -276,12 +278,16 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       closeTab: (path, key) =>
         set((s) => {
           const list = (s.tabs[path] ?? []).filter((k) => k !== key);
-          const placed = layoutOf(s, path, list);
+          const before = layoutOf(s, path);
+          const from = cellOfTab(before, key);
+          const placed = closeTabInLayout(before, key, list);
           const activeTab = { ...s.activeTab };
           if (activeTab[path] === key) {
             const next =
               s.mode === 'project'
-                ? (placed.cells[placed.focus]?.active ?? list[list.length - 1])
+                ? (placed.cells[from]?.active ??
+                  placed.cells[placed.focus]?.active ??
+                  list[list.length - 1])
                 : list[list.length - 1];
             if (next) activeTab[path] = next;
             else delete activeTab[path];

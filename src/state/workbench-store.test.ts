@@ -263,6 +263,35 @@ describe('workbench store', () => {
     ]);
   });
 
+  it('empties a cell when its last tab moves away and keeps the layout', () => {
+    const st = useWorkbenchStore.getState();
+    st.openTab(P, 'a');
+    st.setProjectLayout(P, '2x1');
+    st.moveTab(P, 'a', 1);
+    st.moveTab(P, 'a', 0);
+    const l = useWorkbenchStore.getState().projectLayouts[P];
+    expect(l?.layout).toBe('2x1');
+    expect(l?.cells[1]).toEqual({ tabs: [] });
+    expect(l?.cells[0]).toEqual({ tabs: ['a'], active: 'a' });
+  });
+
+  it('activates the neighbour in the same cell when the active tab closes', () => {
+    const st = useWorkbenchStore.getState();
+    for (const k of ['a', 'b', 'c', 'x']) st.openTab(P, k);
+    st.setProjectLayout(P, '2x1');
+    st.moveTab(P, 'x', 1);
+    st.activate(P, 'b');
+    st.closeTab(P, 'b');
+    let s = useWorkbenchStore.getState();
+    expect(s.projectLayouts[P]?.cells[0]).toEqual({ tabs: ['a', 'c'], active: 'c' });
+    expect(s.activeTab[P]).toBe('c');
+    st.closeTab(P, 'c');
+    s = useWorkbenchStore.getState();
+    expect(s.projectLayouts[P]?.cells[0]?.active).toBe('a');
+    expect(s.activeTab[P]).toBe('a');
+    expect(s.projectLayouts[P]?.cells[1]?.active).toBe('x');
+  });
+
   it('places the project in the wall on switching modes and drops tabs into wall cells', () => {
     const B = 'C:\\P\\B';
     useWorkbenchStore.setState({

@@ -5,7 +5,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { cn } from '@/lib/cn';
 import { forgetClaudeSession, stopClaudeSession } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, SessionStatus, WorkbenchProject } from '@/lib/types';
-import { CELL_COUNT, effectiveStatus, type ProjectCell } from '@/lib/workbench';
+import { CELL_COUNT, effectiveStatus, type ProjectCell, samePath } from '@/lib/workbench';
 import { devTabKey, isDevTab, useProjectLayout, useWorkbenchStore } from '@/state/workbench-store';
 import { ClaudeTerminal } from './ClaudeTerminal';
 import { DevCapsule, DevDot } from './DevCapsule';
@@ -13,7 +13,7 @@ import { EmptyProject } from './EmptyProject';
 import { LogTerminal } from './LogTerminal';
 import { StatusIcon } from './StatusIcon';
 import { dispose, isFresh, reattach, rememberShort, shortOf, useClaudeTerm } from './terminals';
-import { type DraggedTab, useTabDrag, useTabDrop } from './useTabDrag';
+import { type DraggedTab, tabDragProps, useTabDrop } from './useTabDrag';
 
 const NO_TABS: string[] = [];
 const CELL_IDS = ['p1', 'p2', 'p3', 'p4'];
@@ -75,7 +75,7 @@ function ProjectCellView({
     path: project.path,
     cell: id,
     keys: cell.tabs,
-    accept: (tab) => tab.path === project.path,
+    accept: (tab) => samePath(tab.path, project.path),
     onDrop: (tab, at) => moveTab(project.path, tab.key, index, at),
   });
   const touch = () => {
@@ -153,7 +153,7 @@ function TabCapsule({
   children: ReactNode;
 }) {
   return (
-    <div className={cn('wb-tab', on && 'on')} {...useTabDrag(drag)}>
+    <div className={cn('wb-tab', on && 'on')} {...tabDragProps(drag)}>
       {children}
     </div>
   );
