@@ -119,9 +119,9 @@ function Panel({ items, place, shared, focusFirst, onBack, panelRef }: PanelProp
     if (buttons.length === 0) return;
     const i = buttons.indexOf(document.activeElement as HTMLButtonElement);
     const next =
-      e.key === 'Home'
+      e.key === 'Home' || (i < 0 && e.key === 'ArrowDown')
         ? 0
-        : e.key === 'End'
+        : e.key === 'End' || i < 0
           ? buttons.length - 1
           : (i + (e.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
     buttons[next]?.focus();

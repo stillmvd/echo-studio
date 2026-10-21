@@ -198,17 +198,20 @@ function TabTitle({ info, projectName }: { info: TabInfo; projectName: string })
 function TabCapsule({
   drag,
   on,
+  label,
   onContextMenu,
   children,
 }: {
   drag: DraggedTab | null;
   on: boolean;
+  label: string;
   onContextMenu: (e: React.MouseEvent) => void;
   children: ReactNode;
 }) {
   return (
     <div
       role="toolbar"
+      aria-label={label}
       className={cn('wb-tab', on && 'on')}
       onContextMenu={onContextMenu}
       {...tabDragProps(drag)}
@@ -308,7 +311,14 @@ export function Cell({
   const closeDev = () => closeDevLog(project.path);
 
   const devMenu = (e: React.MouseEvent) =>
-    openMenu(e, devTabMenu({ server, actions: devActions(dev, project, server) }));
+    openMenu(
+      e,
+      devTabMenu({
+        server,
+        cells: moveTargets(devKey),
+        actions: devActions(dev, project, server),
+      }),
+    );
 
   const tabMenu = (e: React.MouseEvent, info: TabInfo) =>
     openMenu(
@@ -348,7 +358,12 @@ export function Cell({
             return (
               <Fragment key={key}>
                 {marker}
-                <TabCapsule drag={drag} on={devOn} onContextMenu={devMenu}>
+                <TabCapsule
+                  drag={drag}
+                  on={devOn}
+                  label={project.dev?.command ?? 'dev'}
+                  onContextMenu={devMenu}
+                >
                   <button
                     type="button"
                     className="wb-tab-b"
@@ -381,6 +396,7 @@ export function Cell({
               <TabCapsule
                 drag={drag}
                 on={info.key === current?.key}
+                label={info.session?.name || 'Claude'}
                 onContextMenu={(e) => tabMenu(e, info)}
               >
                 <button

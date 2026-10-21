@@ -121,6 +121,7 @@ export function RunningList({ sessions, devServers, projects }: Props) {
             disabled={!external && !s.projectPath}
             onClick={(e) => goSession(s, e.currentTarget)}
             onContextMenu={(e) => {
+              if (!external && !s.projectPath) return;
               const anchor = e.currentTarget;
               openMenu(
                 e,

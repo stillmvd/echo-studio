@@ -24,7 +24,7 @@ export function devActions(
   const url = devUrl(server);
   return {
     openBrowser: () => dev.openBrowser(project.path),
-    restart: () => (devRuns(server) ? dev.restart(project.path) : dev.start(project.path)),
+    restart: () => (devRuns(server) ? dev.askStop(project, true) : dev.start(project.path)),
     copyUrl: () => url && copyText(url),
     closeLog: () => closeDevLog(project.path),
     stop: () => dev.askStop(project),
@@ -48,7 +48,11 @@ export function DevDot({ server, large }: { server: DevServer | undefined; large
 export function useDevControl() {
   const qc = useQueryClient();
   const openTab = useWorkbenchStore((s) => s.openTab);
-  const [stopping, setStopping] = useState<{ path: string; command: string } | null>(null);
+  const [stopping, setStopping] = useState<{
+    path: string;
+    command: string;
+    restart: boolean;
+  } | null>(null);
   const [error, setError] = useState<{ title: string; text: string } | null>(null);
   const refresh = () => void qc.invalidateQueries({ queryKey: ['workbench', 'dev'] });
   const fail = (title: string) => (e: unknown) => setError({ title, text: String(e) });
@@ -67,30 +71,21 @@ export function useDevControl() {
     }
   };
 
-  const restart = async (path: string) => {
-    try {
-      await stopDevServer(path);
-    } catch (e) {
-      fail('dev-сервер не остановился')(e);
-      refresh();
-      return;
-    }
-    await start(path);
-  };
-
   const dialogs = (
     <>
       <ConfirmDialog
         open={stopping !== null}
-        title="Остановить dev-сервер?"
-        description={`${stopping?.command ?? 'dev'} — будут завершены все его процессы.`}
-        confirmLabel="Остановить"
+        title={stopping?.restart ? 'Перезапустить dev-сервер?' : 'Остановить dev-сервер?'}
+        description={`${stopping?.command ?? 'dev'} — будут завершены все его процессы${stopping?.restart ? ', затем он запустится снова' : ''}.`}
+        confirmLabel={stopping?.restart ? 'Перезапустить' : 'Остановить'}
         cancelLabel="Отмена"
         danger
         onConfirm={async () => {
-          if (stopping) await stopDevServer(stopping.path);
+          if (!stopping) return;
+          await stopDevServer(stopping.path);
           setStopping(null);
           refresh();
+          if (stopping.restart) void start(stopping.path);
         }}
         onCancel={() => setStopping(null)}
       />
@@ -108,9 +103,10 @@ export function useDevControl() {
 
   return {
     start: (path: string) => void start(path),
-    restart: (path: string) => void restart(path),
-    askStop: (project: Pick<WorkbenchProject, 'path'> & { dev: { command: string } | null }) =>
-      setStopping({ path: project.path, command: project.dev?.command ?? 'dev' }),
+    askStop: (
+      project: Pick<WorkbenchProject, 'path'> & { dev: { command: string } | null },
+      restart = false,
+    ) => setStopping({ path: project.path, command: project.dev?.command ?? 'dev', restart }),
     openBrowser: (path: string) => void openDevServer(path).catch(fail('Адрес не открылся')),
     fail,
     dialogs,

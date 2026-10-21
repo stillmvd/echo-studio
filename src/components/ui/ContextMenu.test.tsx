@@ -71,6 +71,12 @@ describe('ContextMenu', () => {
     expect(document.activeElement?.textContent).toBe('C');
     keydown('Home');
     expect(document.activeElement?.textContent).toBe('A');
+    screen.getByRole('menu').focus();
+    keydown('ArrowUp');
+    expect(document.activeElement?.textContent).toBe('C');
+    screen.getByRole('menu').focus();
+    keydown('ArrowDown');
+    expect(document.activeElement?.textContent).toBe('A');
   });
 
   it('closes after the exit animation, not at once, and returns focus', async () => {

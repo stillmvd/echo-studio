@@ -146,6 +146,20 @@ describe('devTabMenu', () => {
     ]);
   });
 
+  it('a dev tab can be moved to another cell', () => {
+    const move = vi.fn();
+    const items = devTabMenu({
+      server: server('running', [1420]),
+      cells: { count: 2, current: 0, move },
+      actions,
+    });
+    const sub = items[0] as ContextSubmenu;
+    expect(sub.label).toBe('Переместить в ячейку…');
+    expect(labels(sub.items)).toEqual(['Ячейка 1 (x)', 'Ячейка 2']);
+    find(sub.items, 'Ячейка 2')?.onSelect();
+    expect(move).toHaveBeenCalledWith(1);
+  });
+
   it('a stopped server can be started, not stopped', () => {
     expect(labels(devTabMenu({ server: server('stopped'), actions }))).toEqual([
       'Открыть в браузере (x)',

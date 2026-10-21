@@ -88,6 +88,21 @@ export interface MoveTargets {
   move: (index: number) => void;
 }
 
+function moveTo(cells: MoveTargets | null): MenuItem[] {
+  if (!cells || cells.count < 2) return [];
+  return [
+    {
+      label: 'Переместить в ячейку…',
+      icon: icon(MoveRight),
+      items: Array.from({ length: cells.count }, (_, i) =>
+        action(`Ячейка ${i + 1}`, SquareTerminal, () => cells.move(i), {
+          disabled: i === cells.current,
+        }),
+      ),
+    },
+  ];
+}
+
 export function sessionTabMenu({
   live,
   canStop,
@@ -99,22 +114,8 @@ export function sessionTabMenu({
   cells: MoveTargets | null;
   actions: { reconnect: () => void; copyId: () => void; hide: () => void; stop: () => void };
 }): MenuItem[] {
-  const move: MenuItem[] =
-    cells && cells.count > 1
-      ? [
-          {
-            label: 'Переместить в ячейку…',
-            icon: icon(MoveRight),
-            items: Array.from({ length: cells.count }, (_, i) =>
-              action(`Ячейка ${i + 1}`, SquareTerminal, () => cells.move(i), {
-                disabled: i === cells.current,
-              }),
-            ),
-          },
-        ]
-      : [];
   return [
-    ...move,
+    ...moveTo(cells),
     ...(canStop ? [action('Переподключить', RotateCcw, actions.reconnect)] : []),
     action('Копировать id', Copy, actions.copyId),
     action(live ? 'Скрыть вкладку' : 'Закрыть вкладку', X, actions.hide),
@@ -124,9 +125,11 @@ export function sessionTabMenu({
 
 export function devTabMenu({
   server,
+  cells = null,
   actions,
 }: {
   server: DevServer | undefined;
+  cells?: MoveTargets | null;
   actions: {
     openBrowser: () => void;
     restart: () => void;
@@ -138,6 +141,7 @@ export function devTabMenu({
   const url = devUrl(server);
   const runs = devRuns(server);
   return [
+    ...moveTo(cells),
     action('Открыть в браузере', Globe, actions.openBrowser, { disabled: !url }),
     runs
       ? action('Перезапустить', RotateCcw, actions.restart)
