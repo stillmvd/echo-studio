@@ -219,6 +219,7 @@ function TabCapsule({
     <div
       role="toolbar"
       aria-label={label}
+      title={label}
       className={cn('wb-tab', on && 'on')}
       onContextMenu={onContextMenu}
       {...tabDragProps(drag)}

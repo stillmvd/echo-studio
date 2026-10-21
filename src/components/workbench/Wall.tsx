@@ -221,11 +221,12 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
         <button
           type="button"
           className="wb-btn p"
+          title="Новая сессия Claude в выбранной ячейке"
           disabled={busy || !focused}
           onClick={() => focused && focusCell && startIn(focusCell, focused)}
         >
           <Plus strokeWidth={2} />
-          Claude
+          <span className="wb-btn-l">Claude</span>
         </button>
       </div>
       <div className={`wl-grid l-${layout}`}>

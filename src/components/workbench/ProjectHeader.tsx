@@ -53,9 +53,15 @@ export function ProjectHeader({ project, server, busy, onClaude, extra }: Props)
       <DevCapsule project={project} server={server} />
       {project.dev && extra && <span className="wb-ph-sep" aria-hidden="true" />}
       {extra}
-      <button type="button" className="wb-btn p" disabled={busy} onClick={onClaude}>
+      <button
+        type="button"
+        className="wb-btn p"
+        title="Новая сессия Claude"
+        disabled={busy}
+        onClick={onClaude}
+      >
         <Plus strokeWidth={2} />
-        Claude
+        <span className="wb-btn-l">Claude</span>
       </button>
     </div>
   );

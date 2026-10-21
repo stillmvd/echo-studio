@@ -39,7 +39,9 @@ export function ModeSwitch() {
             checked={key === mode}
             onChange={() => change(key)}
           />
-          {label}
+          <span className="wl-seg-t" data-t={label}>
+            {label}
+          </span>
         </label>
       ))}
     </fieldset>
