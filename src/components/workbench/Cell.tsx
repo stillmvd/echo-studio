@@ -1,18 +1,132 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Plus, RotateCcw, Square, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { cn } from '@/lib/cn';
 import { forgetClaudeSession, stopClaudeSession } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, SessionStatus, WorkbenchProject } from '@/lib/types';
-import { effectiveStatus } from '@/lib/workbench';
-import { devTabKey, isDevTab, useWorkbenchStore } from '@/state/workbench-store';
+import { CELL_COUNT, effectiveStatus, type ProjectCell, samePath } from '@/lib/workbench';
+import { devTabKey, isDevTab, useProjectLayout, useWorkbenchStore } from '@/state/workbench-store';
 import { ClaudeTerminal } from './ClaudeTerminal';
-import { DevDot } from './DevCapsule';
+import { DevCapsule, DevDot } from './DevCapsule';
 import { EmptyProject } from './EmptyProject';
 import { LogTerminal } from './LogTerminal';
 import { StatusIcon } from './StatusIcon';
 import { dispose, isFresh, reattach, rememberShort, shortOf, useClaudeTerm } from './terminals';
+import { type DraggedTab, tabDragProps, useTabDrop } from './useTabDrag';
+
+const NO_TABS: string[] = [];
+const CELL_IDS = ['p1', 'p2', 'p3', 'p4'];
+
+interface GridProps {
+  project: WorkbenchProject;
+  sessions: ClaudeSession[];
+  server: DevServer | undefined;
+  visible: boolean;
+  busy: boolean;
+  onStart: (resumeSessionId?: string) => Promise<string | null>;
+}
+
+export function ProjectGrid(props: GridProps) {
+  const layout = useProjectLayout(props.project.path);
+  const hasTabs = useWorkbenchStore((s) => (s.tabs[props.project.path]?.length ?? 0) > 0);
+  const one = layout.layout === '1x1';
+  return (
+    <div className={one ? 'flex min-h-0 flex-1 flex-col' : `wl-grid pg l-${layout.layout}`}>
+      {CELL_IDS.slice(0, CELL_COUNT[layout.layout]).map((id, i) => (
+        <ProjectCellView
+          key={id}
+          {...props}
+          id={id}
+          index={i}
+          one={one}
+          cell={layout.cells[i] ?? { tabs: [] }}
+          focused={layout.focus === i}
+          hasTabs={hasTabs}
+        />
+      ))}
+    </div>
+  );
+}
+
+interface CellViewProps extends GridProps {
+  id: string;
+  index: number;
+  one: boolean;
+  cell: ProjectCell;
+  focused: boolean;
+  hasTabs: boolean;
+}
+
+function ProjectCellView({
+  id,
+  index,
+  one,
+  cell,
+  focused,
+  hasTabs,
+  onStart,
+  ...props
+}: CellViewProps) {
+  const { project, busy, server } = props;
+  const moveTab = useWorkbenchStore((s) => s.moveTab);
+  const focusCell = useWorkbenchStore((s) => s.focusProjectCell);
+  const drop = useTabDrop({
+    path: project.path,
+    cell: id,
+    keys: cell.tabs,
+    accept: (tab) => samePath(tab.path, project.path),
+    onDrop: (tab, at) => moveTab(project.path, tab.key, index, at),
+  });
+  const touch = () => {
+    if (!focused) focusCell(project.path, index);
+  };
+  const startHere = (resume?: string) => {
+    focusCell(project.path, index);
+    return onStart(resume);
+  };
+  const free = hasTabs ? cell.tabs.length === 0 : !focused;
+  return (
+    <div
+      className={
+        one ? 'flex min-h-0 flex-1 flex-col' : cn('wl-cell', focused && 'fx', drop.over && 'drop')
+      }
+      onPointerDownCapture={touch}
+      onKeyDownCapture={touch}
+      {...drop.props}
+    >
+      {free ? (
+        <div className="wl-free">
+          <span className="wb-dim">Свободная ячейка</span>
+          <div>
+            <button
+              type="button"
+              className="wb-btn p"
+              disabled={busy}
+              onClick={() => void startHere()}
+            >
+              <Plus strokeWidth={2} />
+              Claude
+            </button>
+            {project.dev && <DevCapsule project={project} server={server} />}
+          </div>
+          <span className="wb-dim">Перетащите сюда вкладку</span>
+        </div>
+      ) : (
+        <Cell
+          {...props}
+          keys={cell.tabs}
+          activeKey={cell.active}
+          focused={focused}
+          accent
+          cellId={id}
+          insertAt={drop.insert}
+          onStart={startHere}
+        />
+      )}
+    </div>
+  );
+}
 
 interface TabInfo {
   key: string;
@@ -29,6 +143,22 @@ function TabTitle({ info, projectName }: { info: TabInfo; projectName: string })
   return <span title={title}>{title}</span>;
 }
 
+function TabCapsule({
+  drag,
+  on,
+  children,
+}: {
+  drag: DraggedTab | null;
+  on: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className={cn('wb-tab', on && 'on')} {...tabDragProps(drag)}>
+      {children}
+    </div>
+  );
+}
+
 interface Props {
   project: WorkbenchProject;
   sessions: ClaudeSession[];
@@ -39,6 +169,10 @@ interface Props {
   onActivate?: (key: string) => void;
   onStart: (resumeSessionId?: string) => Promise<string | null>;
   busy: boolean;
+  keys?: string[];
+  cellId?: string;
+  insertAt?: number | null;
+  accent?: boolean;
 }
 
 export function Cell({
@@ -51,12 +185,16 @@ export function Cell({
   onActivate,
   onStart,
   busy,
+  keys,
+  cellId,
+  insertAt = null,
+  accent = focused === undefined,
 }: Props) {
-  const inWall = focused !== undefined;
   const controlled = onActivate !== undefined;
   const isFocused = visible && (focused ?? true);
   const qc = useQueryClient();
-  const tabs = useWorkbenchStore((s) => s.tabs[project.path]) ?? [];
+  const projectTabs = useWorkbenchStore((s) => s.tabs[project.path]) ?? NO_TABS;
+  const tabs = keys ?? projectTabs;
   const projectActive = useWorkbenchStore((s) => s.activeTab[project.path]);
   const active = activeKey ?? projectActive;
   const seen = useWorkbenchStore((s) => s.seen);
@@ -87,6 +225,7 @@ export function Cell({
     });
   const devKey = devTabKey(project.path);
   const hasDev = tabs.includes(devKey);
+  const order = tabs.filter((key) => key === devKey || !isDevTab(key));
   const devOn = hasDev && (active === devKey || infos.length === 0);
   const current = devOn ? undefined : (infos.find((i) => i.key === active) ?? infos[0]);
 
@@ -110,7 +249,7 @@ export function Cell({
     closeTab(project.path, devKey);
   };
 
-  if (infos.length === 0 && !hasDev) {
+  if (projectTabs.length === 0) {
     return (
       <EmptyProject
         project={project}
@@ -125,61 +264,76 @@ export function Cell({
   return (
     <div className="wb-area">
       <div className="wb-tabs">
-        {hasDev && (
-          <div className={cn('wb-tab', devOn && 'on')}>
-            <button
-              type="button"
-              className="wb-tab-b"
-              aria-pressed={devOn}
-              onClick={() => activate(devKey)}
-            >
-              <DevDot server={server} />
-              <span title={project.dev?.command}>{project.dev?.command ?? 'dev'}</span>
-            </button>
-            <button
-              type="button"
-              className="wb-tx"
-              title="Закрыть лог (сервер продолжит работать)"
-              onClick={(e) => {
-                e.stopPropagation();
-                closeDev();
-              }}
-            >
-              <X strokeWidth={2} />
-            </button>
-          </div>
-        )}
-        {infos.map((info) => (
-          <div key={info.key} className={cn('wb-tab', info.key === current?.key && 'on')}>
-            <button
-              type="button"
-              className="wb-tab-b"
-              aria-pressed={info.key === current?.key}
-              onClick={() => activate(info.key)}
-            >
-              <StatusIcon
-                small
-                session={{
-                  status: info.status,
-                  phase: info.session?.phase ?? null,
-                  tool: info.session?.tool ?? null,
-                }}
-              />
-              <TabTitle info={info} projectName={project.name} />
-            </button>
-            <button
-              type="button"
-              className="wb-tx"
-              title={info.live ? 'Скрыть вкладку — сессия продолжит работать' : 'Закрыть'}
-              onClick={(e) => {
-                e.stopPropagation();
-                close(info);
-              }}
-            >
-              <X strokeWidth={2} />
-            </button>
-          </div>
-        ))}
+        {order.map((key, i) => {
+          const drag = cellId ? { path: project.path, key, cell: cellId } : null;
+          const marker = insertAt === i && <span className="wb-tab-ins" aria-hidden="true" />;
+          if (key === devKey) {
+            return (
+              <Fragment key={key}>
+                {marker}
+                <TabCapsule drag={drag} on={devOn}>
+                  <button
+                    type="button"
+                    className="wb-tab-b"
+                    aria-pressed={devOn}
+                    onClick={() => activate(devKey)}
+                  >
+                    <DevDot server={server} />
+                    <span title={project.dev?.command}>{project.dev?.command ?? 'dev'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="wb-tx"
+                    title="Закрыть лог (сервер продолжит работать)"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeDev();
+                    }}
+                  >
+                    <X strokeWidth={2} />
+                  </button>
+                </TabCapsule>
+              </Fragment>
+            );
+          }
+          const info = infos.find((x) => x.key === key);
+          if (!info) return null;
+          return (
+            <Fragment key={key}>
+              {marker}
+              <TabCapsule drag={drag} on={info.key === current?.key}>
+                <button
+                  type="button"
+                  className="wb-tab-b"
+                  aria-pressed={info.key === current?.key}
+                  onClick={() => activate(info.key)}
+                >
+                  <StatusIcon
+                    small
+                    session={{
+                      status: info.status,
+                      phase: info.session?.phase ?? null,
+                      tool: info.session?.tool ?? null,
+                    }}
+                  />
+                  <TabTitle info={info} projectName={project.name} />
+                </button>
+                <button
+                  type="button"
+                  className="wb-tx"
+                  title={info.live ? 'Скрыть вкладку — сессия продолжит работать' : 'Закрыть'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    close(info);
+                  }}
+                >
+                  <X strokeWidth={2} />
+                </button>
+              </TabCapsule>
+            </Fragment>
+          );
+        })}
+        {insertAt === order.length && <span className="wb-tab-ins" aria-hidden="true" />}
         <button
           type="button"
           className="wb-tab add"
@@ -224,7 +378,7 @@ export function Cell({
           status={info.status}
           visible={visible && info.key === current?.key}
           focused={isFocused}
-          accent={!inWall && info.status === 'waiting'}
+          accent={accent && info.status === 'waiting'}
           onResume={() => void startHere(info.key)}
           onStop={() => setStopping(info)}
         />
