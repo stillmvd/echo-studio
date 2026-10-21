@@ -1,0 +1,12 @@
+.wb-cap-i.wb-stop { color: var(--color-danger); }
+.wb-cap-i.wb-stop:hover { background: var(--color-danger-soft); }
+.wb-cap-i.wb-stop svg { width: 13px; height: 13px; }
+
+.wb-ph-sep { flex: none; width: 1px; height: 18px; margin: 0 -6px; background: var(--color-border); }
+
+.wb-ph .wl-seg, .wl-tb .wl-seg { gap: 0; padding: 2px; background: var(--color-bg-tertiary); }
+.wb-ph .wl-seg button, .wl-tb .wl-seg button { position: relative; width: 28px; height: 28px; }
+.wb-ph .wl-seg button + button::before, .wl-tb .wl-seg button + button::before { content: ""; position: absolute; left: 0; top: 7px; width: 1px; height: 14px; background: var(--color-border); transition: opacity 200ms var(--ease-trail); }
+.wb-ph .wl-seg button.on::before, .wl-tb .wl-seg button.on::before, .wb-ph .wl-seg button.on + button::before, .wl-tb .wl-seg button.on + button::before { opacity: 0; }
+.wb-ph .wl-seg button.on, .wl-tb .wl-seg button.on { background: var(--color-bg-primary); box-shadow: 0 0 0 1px var(--color-border), 0 1px 2px var(--color-press-shade); }
+.wb-ph .wl-seg svg, .wl-tb .wl-seg svg { width: 16px; height: 16px; }

@@ -31,14 +31,14 @@ export function LayoutPicker() {
   const layout = useWorkbenchStore((s) => s.layout);
   const setLayout = useWorkbenchStore((s) => s.setLayout);
   return (
-    <fieldset className="wl-seg" aria-label="Раскладка">
+    <fieldset className="wl-seg" aria-label="Раскладка проекта">
       {LAYOUTS.map(({ key, label, Icon }) => (
         <button
           key={key}
           type="button"
           aria-pressed={key === layout}
           aria-label={`Раскладка ${label}`}
-          title={label}
+          title={`Раскладка ${label}`}
           className={cn(key === layout && 'on')}
           onClick={() => setLayout(key)}
         >
