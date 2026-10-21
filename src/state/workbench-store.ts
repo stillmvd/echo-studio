@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
-  assignTabs,
   CELL_COUNT,
   cellOfTab,
   cellShowing,
@@ -60,7 +59,7 @@ interface WorkbenchState {
   setLayout: (layout: WallLayout) => void;
   setCells: (cells: WallCell[]) => void;
   pinCell: (id: string) => void;
-  touchCell: (id: string) => void;
+  touchCell: (id: string, key?: string) => void;
   activateCell: (id: string, key: string) => void;
   pruneCells: (exists: (path: string) => boolean) => void;
   hideProject: (path: string) => void;
@@ -349,20 +348,13 @@ export const useWorkbenchStore = create<WorkbenchState>()(
             recency: bump(s.recency, key),
           };
         }),
-      touchCell: (id) =>
+      touchCell: (id, key) =>
         set((s) => {
           const cell = s.cells.find((c) => c.id === id);
           if (!cell) return {};
           const now = Date.now();
           const fresh = now - cell.lastInputAt < HANDS_ON_MS / 3;
           if (fresh && s.focusCell === id) return {};
-          const shown = s.cells.slice(0, CELL_COUNT[s.layout]);
-          const keys = assignTabs(
-            shown,
-            (path) => s.tabs[path] ?? [],
-            (path) => s.activeTab[path],
-          );
-          const key = keys[shown.findIndex((c) => c.id === id)] ?? undefined;
           return {
             focusCell: id,
             view: cell.projectPath ? { kind: 'project', path: cell.projectPath } : s.view,

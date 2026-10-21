@@ -82,7 +82,7 @@ describe('workbench store', () => {
       activeTab: { [P]: 'sess' },
       seen: {},
     });
-    useWorkbenchStore.getState().touchCell('c2');
+    useWorkbenchStore.getState().touchCell('c2', 'sess');
     expect(useWorkbenchStore.getState().seen.sess).toBeGreaterThan(0);
   });
 

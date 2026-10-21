@@ -15,12 +15,15 @@ import {
   urgentTab,
   type WallCell,
   type WallLayout,
+  wallPick,
 } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { Cell } from './Cell';
+import { EmptyProject } from './EmptyProject';
 import { ModeSwitch } from './ModeSwitch';
 import { ProjectIcon } from './ProjectIcon';
 import { StatusIcon } from './StatusIcon';
+import { isFresh } from './terminals';
 import { type DraggedTab, useTabDrop } from './useTabDrag';
 
 interface ZoneProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
@@ -159,6 +162,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
     const r = arrangeWall(cells, count, sessions, Date.now(), focusCell, seen, {
       tabsOf: (path) => tabs[path] ?? [],
       activeOf: (path) => activeTab[path],
+      isFresh,
     });
     if (r.changed) {
       setCells(r.cells);
@@ -174,16 +178,20 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
   }, [cells, count, sessions, seen, focusCell, setCells, tick, hidden, tabs, activeTab]);
 
   const shown = cells.slice(0, count);
+  const activeOf = (path: string) => activeTab[path];
   const keys = assignTabs(
     shown,
     (path) => tabs[path] ?? [],
-    (path) => activeTab[path],
+    activeOf,
+    wallPick(sessions, seen, activeOf),
   );
   const focused = cells.find((c) => c.id === focusCell)?.projectPath ?? null;
-  const startIn = (id: string, path: string) =>
-    void onStart(path).then((key) => {
+  const startIn = (id: string, path: string, resume?: string) =>
+    void onStart(path, resume).then((key) => {
       if (key) activateCell(id, key);
     });
+  const holdsPath = (c: WallCell, path: string | null) =>
+    !!path && !!c.projectPath && samePath(c.projectPath, path);
 
   return (
     <>
@@ -209,13 +217,18 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
       <div className={`wl-grid l-${layout}`}>
         {shown.map((c, i) => {
           const project = c.projectPath ? projects.get(c.projectPath) : undefined;
-          const twin = !keys[i] && (tabs[c.projectPath ?? ''] ?? []).length > 0;
+          const listed = (tabs[c.projectPath ?? ''] ?? []).length > 0;
+          const twin =
+            !keys[i] &&
+            listed &&
+            shown.some((o, j) => j !== i && !!keys[j] && holdsPath(o, c.projectPath));
+          const quiet = !keys[i] && listed && !twin;
           const own = project
             ? sessions.filter((s) => s.projectPath && samePath(s.projectPath, project.path))
             : [];
           const status = topStatus(own, seen);
           const touch = () => {
-            if (!c.projectPath || project) touchCell(c.id);
+            if (!c.projectPath || project) touchCell(c.id, keys[i] ?? undefined);
           };
           const lock = c.pinned ? 'pinned' : c.manual ? 'manual' : 'auto';
           return (
@@ -268,7 +281,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
                     </button>
                   </div>
                   <div className="wl-cb">
-                    {project && !twin && (
+                    {project && !twin && !quiet && (
                       <Cell
                         key={project.path}
                         project={project}
@@ -282,6 +295,15 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
                         onStart={(resume) => onStart(project.path, resume)}
                         cellId={c.id}
                         insertAt={insertAt}
+                      />
+                    )}
+                    {project && quiet && (
+                      <EmptyProject
+                        project={project}
+                        server={devServers.find((d) => samePath(d.projectPath, project.path))}
+                        visible={!hidden}
+                        busy={busy}
+                        onStart={(resume) => startIn(c.id, project.path, resume)}
                       />
                     )}
                     {project && twin && (
