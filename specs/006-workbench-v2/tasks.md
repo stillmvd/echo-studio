@@ -193,20 +193,20 @@ quickstart §1–§6, сообщение пользователю «пачка 1
 
 - [ ] T047 [R1] Замер «до» (координатор, без нагрузки на исполнителя): число запусков `claude.exe … agents --json` в
       минуту и CPU `echo-studio.exe` при текущем dev пользователя; результат — в `spec.md` «Решения»
-- [ ] T048 [R1] `src-tauri/src/workbench/watch.rs`: хаб сессий — single-flight (один `sessions::list()` за раз; поки,
+- [X] T048 [R1] `src-tauri/src/workbench/watch.rs`: хаб сессий — single-flight (один `sessions::list()` за раз; поки,
       пришедшие во время работы, схлопываются в один следующий запуск) и `SESSIONS_MIN_GAP` 3 с вместо 1 с; тик 15 с
       остаётся; `hub.active == false` → ничего не запускать (уже так). `sessions::list()` вызывается только из хаба:
       команда `list_claude_sessions` и `live_agents()` в `commands/workbench.rs` (для `list_processes`/`kill_processes`)
       должны переиспользовать последний результат хаба, если он моложе 3 с (кэш `Mutex<Option<(Instant, Vec<AgentEntry>)>>`
       в `sessions.rs`: `run_agents_cached(max_age)`), иначе запускать один раз. `focus_session_window` → тот же кэш.
       Юнит-тест на кэш (функция с инъекцией «запускателя»: два вызова подряд → один запуск)
-- [ ] T049 [R1] `src/hooks/use-workbench-overview.ts`: `useProcesses` — `enabled` только пока открыт раздел И выбран
+- [X] T049 [R1] `src/hooks/use-workbench-overview.ts`: `useProcesses` — `enabled` только пока открыт раздел И выбран
       Обзор (`useWorkbenchStore(s => s.view.kind === 'overview')`), `refetchInterval` 10 000, `refetchOnWindowFocus:
       false`; `useUsage`/`useGitStates`/`useRateLimits` — `enabled` только в Обзоре (git — и в шапке проекта,
       оставить как есть для `ProjectHeader`). `Overview.tsx` не трогать (его `useProcesses` уже условный по
       монтированию? — проверь: `Overview` монтируется только при `!selected`, но хук `useProcesses` вызывается и из
       других мест? — `grep useProcesses src`)
-- [ ] T050 [R1] `src-tauri/src/workbench/processes.rs` `snapshot`: не запускать внешних процессов в горячем пути
+- [X] T050 [R1] `src-tauri/src/workbench/processes.rs` `snapshot`: не запускать внешних процессов в горячем пути
       (проверить `dev::read_listeners` — WinAPI, ок) и не делать `refresh_processes` чаще, чем приходит запрос;
       `list_processes` берёт `live_agents()` из кэша T048. Замер «после» — координатор
 
@@ -382,3 +382,11 @@ F2: T018, T021, T023, T024 [P] → T019, T020, T022, T025 → merge → T027, T0
   таких сессий ждёт `projectPath` = корень вместо `null`; остальные поля сверяются как раньше.
 - T042 (R1): `code.cmd` ищется в PATH и запускается напрямую, а не `cmd /c code <path>`: std экранирует аргументы
   `.cmd` сам, а через `cmd /c` путь с `&` без пробелов ушёл бы в cmd без кавычек.
+- T048 (R1): single-flight у хаба уже был (один поток, поки во время `list()` схлопываются в один следующий запуск) —
+  поменян только `SESSIONS_MIN_GAP` 1 → 3 с. Кэш `run_agents_cached(3 с)`: `list()` (хаб и `list_claude_sessions`),
+  `live_agents()` (`list_processes`/`kill_processes`), `ensure_attachable`, `session_pid`. Без кэша (свежий запуск,
+  он же обновляет кэш): `stop`, `forget`, `start` — после остановки кэш ещё считал бы сессию живой и `forget` отказал
+  бы. Лок кэша держится на время запуска: параллельные вызовы ждут и берут один результат. Заодно `list()` сканирует
+  дерево проектов только при наличии кандидатов в завершённые (свежий файл хука без записи в agents).
+- T050 (R1): в `snapshot` внешних процессов нет (`read_listeners` — WinAPI, `dev::jobs` — файлы), `refresh_processes`
+  — один раз на запрос; изменилось только `live_agents()` → кэш T048.

@@ -12,7 +12,7 @@ use super::sessions;
 pub const EVENT_PROJECTS: &str = "workbench://projects";
 pub const EVENT_SESSIONS: &str = "workbench://sessions";
 const SESSIONS_TICK: Duration = Duration::from_secs(15);
-const SESSIONS_MIN_GAP: Duration = Duration::from_secs(1);
+const SESSIONS_MIN_GAP: Duration = Duration::from_secs(3);
 
 pub struct SessionsHub {
     pub active: AtomicBool,

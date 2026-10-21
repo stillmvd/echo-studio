@@ -214,15 +214,43 @@ fn claude(args: &[&str], cwd: Option<&Path>) -> Result<Output, String> {
     }
 }
 
-pub fn run_agents() -> Result<Vec<AgentEntry>, String> {
-    parse_agents(&claude(&["agents", "--json"], None)?.stdout)
+type AgentsCache = Mutex<Option<(Instant, Vec<AgentEntry>)>>;
+
+static AGENTS: AgentsCache = Mutex::new(None);
+
+pub const AGENTS_FRESH: Duration = Duration::from_secs(3);
+
+fn cached_agents(
+    cache: &AgentsCache,
+    max_age: Duration,
+    run: impl FnOnce() -> Result<Vec<AgentEntry>, String>,
+) -> Result<Vec<AgentEntry>, String> {
+    let mut slot = cache.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((at, list)) = slot.as_ref() {
+        if !max_age.is_zero() && at.elapsed() < max_age {
+            return Ok(list.clone());
+        }
+    }
+    let list = run()?;
+    *slot = Some((Instant::now(), list.clone()));
+    Ok(list)
 }
 
-pub fn shell_agent(short_id: &str) -> Result<Option<AgentEntry>, String> {
+pub fn run_agents_cached(max_age: Duration) -> Result<Vec<AgentEntry>, String> {
+    cached_agents(&AGENTS, max_age, || {
+        parse_agents(&claude(&["agents", "--json"], None)?.stdout)
+    })
+}
+
+pub fn run_agents() -> Result<Vec<AgentEntry>, String> {
+    run_agents_cached(Duration::ZERO)
+}
+
+fn shell_agent(short_id: &str, max_age: Duration) -> Result<Option<AgentEntry>, String> {
     if !is_short_id(short_id) {
         return Err(format!("invalid short id: {short_id}"));
     }
-    let Some(agent) = run_agents()?
+    let Some(agent) = run_agents_cached(max_age)?
         .into_iter()
         .find(|a| a.id.as_deref() == Some(short_id))
     else {
@@ -379,14 +407,23 @@ fn now_ms() -> u64 {
 }
 
 pub fn list() -> Result<Vec<ClaudeSession>, String> {
-    let agents = run_agents()?;
+    let agents = run_agents_cached(AGENTS_FRESH)?;
     let hooks = hooks_dir().map(|d| read_hooks(&d)).unwrap_or_default();
     let mut list = merge(&agents, &hooks);
-    if let Some(root) = projects_root() {
+    let now = now_ms();
+    let candidates: HashMap<String, HookState> = hooks
+        .into_iter()
+        .filter(|(_, h)| {
+            h.updated_at
+                .is_some_and(|t| t.saturating_add(EXITED_WINDOW_MS) >= now)
+                && !agents.iter().any(|a| a.session_id == h.session_id)
+        })
+        .collect();
+    if let (false, Some(root)) = (candidates.is_empty(), projects_root()) {
         let tree = projects::scan(&root);
-        let pids: Vec<u32> = hooks.values().filter_map(|h| h.claude_pid).collect();
+        let pids: Vec<u32> = candidates.values().filter_map(|h| h.claude_pid).collect();
         let alive = alive_claudes(&pids);
-        list.extend(exited_external(&hooks, &agents, &tree, now_ms(), |pid| {
+        list.extend(exited_external(&candidates, &agents, &tree, now, |pid| {
             alive.contains(&pid)
         }));
     }
@@ -397,7 +434,7 @@ pub fn session_pid(session_id: &str) -> Result<u32, String> {
     if !is_session_id(session_id) {
         return Err(format!("invalid session id: {session_id}"));
     }
-    let agents = run_agents();
+    let agents = run_agents_cached(AGENTS_FRESH);
     let from_agents = agents.as_ref().ok().and_then(|list| {
         list.iter()
             .find(|a| a.session_id.as_deref() == Some(session_id))
@@ -492,7 +529,7 @@ pub fn start(project: &Path, resume: Option<&str>) -> Result<Started, String> {
 }
 
 pub fn stop(short_id: &str) -> Result<(), String> {
-    match shell_agent(short_id)? {
+    match shell_agent(short_id, Duration::ZERO)? {
         None => Err(format!("no session {short_id}")),
         Some(agent) if !is_live(&agent) => Ok(()),
         Some(_) => claude(&["stop", short_id], None).map(|_| ()),
@@ -500,7 +537,7 @@ pub fn stop(short_id: &str) -> Result<(), String> {
 }
 
 pub fn forget(short_id: &str) -> Result<(), String> {
-    match shell_agent(short_id)? {
+    match shell_agent(short_id, Duration::ZERO)? {
         None => Ok(()),
         Some(agent) if is_live(&agent) => Err(format!("session {short_id} is still running")),
         Some(_) => claude(&["rm", short_id], None).map(|_| ()),
@@ -508,7 +545,7 @@ pub fn forget(short_id: &str) -> Result<(), String> {
 }
 
 pub fn ensure_attachable(short_id: &str) -> Result<(), String> {
-    shell_agent(short_id)?
+    shell_agent(short_id, AGENTS_FRESH)?
         .map(|_| ())
         .ok_or_else(|| format!("no session {short_id}"))
 }
@@ -712,6 +749,25 @@ mod tests {
         assert_eq!(v["status"], "exited");
         assert_eq!(v["exitedAt"], 5);
         assert_eq!(v["kind"], "external");
+    }
+
+    #[test]
+    fn agents_cache_runs_once_while_fresh() {
+        let cache: AgentsCache = Mutex::new(None);
+        let runs = std::cell::Cell::new(0);
+        let run = || {
+            runs.set(runs.get() + 1);
+            Ok(Vec::new())
+        };
+        let fresh = Duration::from_secs(60);
+        cached_agents(&cache, fresh, run).unwrap();
+        cached_agents(&cache, fresh, run).unwrap();
+        assert_eq!(runs.get(), 1);
+        cached_agents(&cache, Duration::ZERO, run).unwrap();
+        assert_eq!(runs.get(), 2, "zero max age always runs");
+        assert!(cached_agents(&cache, Duration::ZERO, || Err("boom".into())).is_err());
+        cached_agents(&cache, fresh, run).unwrap();
+        assert_eq!(runs.get(), 2, "a failed run keeps the last good list");
     }
 
     #[test]
