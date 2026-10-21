@@ -21,6 +21,9 @@ import { StatusIcon } from './StatusIcon';
 const STRAY_HINT =
   'Процессы, которые не удалось отнести ни к проекту, ни к живой сессии Claude — их можно завершать';
 
+const OUTSIDE_HINT =
+  'Работает вне папок проектов — например сессия Claude, открытая в домашней папке, и её MCP-серверы';
+
 const GUARD_TITLE = {
   'live-session': 'Завершить процесс живой сессии Claude?',
   'running-dev': 'Остановить работающий dev-сервер?',
@@ -164,7 +167,7 @@ export function Processes({
         const isRoot = !!g.key && !!root && samePath(g.key, root);
         return (
           <div key={g.key ?? '—'} className="wb-pg">
-            <div className="wb-pgh">
+            <div className="wb-pgh" title={g.key ? undefined : OUTSIDE_HINT}>
               {isRoot ? (
                 <span className="wb-pi none">
                   <FolderTree strokeWidth={1.75} />
@@ -174,6 +177,9 @@ export function Processes({
               )}
               <b>{project?.name ?? (g.key ? groupName(g.key, root) : 'Без проекта')}</b>
               {!g.key && <span className="wb-dim">работает</span>}
+              {!g.key && (
+                <CircleHelp className="wb-phint" strokeWidth={1.75} aria-label={OUTSIDE_HINT} />
+              )}
               <span className="wb-mb">{mb(g.memory)}</span>
             </div>
             {g.sessions.map((s) => (

@@ -281,6 +281,26 @@ describe('detectAgentView', () => {
     expect(detectAgentView(trust)).toBe(true);
   });
 
+  it('sees agent view and the trust prompt wrapped in a narrow cell', () => {
+    const narrowTrust = [
+      ' Accessing workspace:',
+      '',
+      ' C:\\Users\\stillmvd',
+      '',
+      ' Quick safety check: Is this a',
+      ' project you created or one you',
+      ' trust?',
+    ];
+    const narrowView = [
+      '❯ describe a task for a',
+      '  new session',
+      '  enter to return · space to',
+      '  reply · ctrl+x to delete',
+    ];
+    expect(detectAgentView(narrowTrust)).toBe(true);
+    expect(detectAgentView(narrowView)).toBe(true);
+  });
+
   it('leaves the session screen, its slash menu and quoted marker text alone', () => {
     expect(detectAgentView(session)).toBe(false);
     expect(detectAgentView(slashMenu)).toBe(false);

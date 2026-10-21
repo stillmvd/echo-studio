@@ -361,7 +361,7 @@ export function Cell({
               onClick={() => setStopping(current)}
             >
               <Square fill="currentColor" strokeWidth={2} />
-              Завершить сессию
+              <span className="wb-stop-l">Завершить сессию</span>
             </button>
           </>
         )}

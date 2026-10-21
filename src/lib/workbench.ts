@@ -152,11 +152,11 @@ export function runningItems(
 }
 
 const AGENT_VIEW_MARKERS = [
-  /^\s*\S*\s*New sessions: .+ · .+$/m,
-  /^\s*\S*\s*describe a task for a new session\s*$/im,
-  /^\s*enter to return · space to reply · /m,
+  /^\s*\S*\s*New sessions: \S/m,
+  /^\s*\S*\s*describe a task for a\b/im,
+  /^\s*enter to return ·/m,
   /^\s*Accessing workspace:\s*$/m,
-  /^\s*Quick safety check: Is this a project you created or one you trust\?/m,
+  /^\s*Quick safety check:/m,
 ];
 
 export function detectAgentView(lines: string[]): boolean {
