@@ -46,9 +46,10 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
       <div className="wb-root" hidden={hidden}>
         <div className="wb-main">
           <div className="wb-card wb-side">
-            <div className="wb-ch">
-              <b>Запущено</b>
-            </div>
+            <h2 className="wb-title">
+              Рабочее <b>место</b>
+            </h2>
+            <div className="wb-sl">Запущено</div>
             <RunningList
               sessions={sessions}
               devServers={devServers}
@@ -56,9 +57,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
               busy={busy}
               onStart={(path) => void start(path)}
             />
-            <div className="wb-ch sub">
-              <b>Проекты</b>
-            </div>
+            <div className="wb-sl">Проекты</div>
             {tree && (
               <ProjectTree
                 tree={tree}
@@ -67,7 +66,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
                 onStart={(path) => void start(path)}
               />
             )}
-            {error && <p className="wb-dim px-3 py-2 text-[12.5px]">{String(error)}</p>}
+            {error && <p className="wb-dim px-3.5 py-2 text-xs">{String(error)}</p>}
           </div>
           <div className="wb-card wb-pv">
             {!selected && <Overview />}

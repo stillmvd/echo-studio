@@ -76,20 +76,6 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
       ? DEV_LABEL[item.server.state]
       : STATUS_LABEL[statusView(item.session, seen)];
 
-  const topIcon = (item: RunningItem) =>
-    item.kind === 'dev' ? (
-      <DevDot server={item.server} />
-    ) : (
-      <StatusIcon
-        small
-        session={{
-          status: statusView(item.session, seen),
-          phase: item.session.phase,
-          tool: item.session.tool,
-        }}
-      />
-    );
-
   const devRow = (d: DevServer) => {
     const key = devTabKey(d.projectPath);
     const ports = d.ports.map((p) => `:${p}`).join(' ');
@@ -120,7 +106,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
         }
       >
         <DevDot server={d} />
-        <span className="wb-dim">{d.command}</span>
+        <span className="wb-run-n">{d.command}</span>
         <span className="wb-run-s">
           {d.state === 'running' ? ports || 'без порта' : DEV_LABEL[d.state]}
         </span>
@@ -169,7 +155,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
         }}
       >
         <StatusIcon small session={{ status, phase: s.phase, tool: s.tool }} />
-        <span className="wb-dim">
+        <span className="wb-run-n">
           {s.name || (external ? folderName(s.cwd) : null) || 'Claude'}
         </span>
         <span className="wb-run-s">{label}</span>
@@ -187,10 +173,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
             <b className="wb-run-n">
               {project?.name ?? (g.path ? folderName(g.path) : 'Projects')}
             </b>
-            <span className="wb-run-t">
-              {topIcon(g.top)}
-              <span className="wb-run-l">{topLabel(g.top)}</span>
-            </span>
+            <span className="wb-run-s">{topLabel(g.top)}</span>
           </>
         );
         return (
