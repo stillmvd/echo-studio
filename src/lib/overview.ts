@@ -1,13 +1,5 @@
-import type {
-  ClaudeSession,
-  GitState,
-  GitStatus,
-  Limit,
-  ProcessRow,
-  SessionStatus,
-  Usage,
-} from './types';
-import { effectiveStatus, samePath, URGENCY, urgency } from './workbench';
+import type { ClaudeSession, GitState, GitStatus, Limit, ProcessRow, Usage } from './types';
+import { type StatusView, samePath, statusView, URGENCY, urgency } from './workbench';
 
 const MB = 1024 * 1024;
 
@@ -102,7 +94,7 @@ export type GroupSession = Pick<
 export interface SessionGroup {
   sessionId: string;
   name: string;
-  status: SessionStatus | null;
+  status: StatusView | null;
   phase: ClaudeSession['phase'];
   tool: string | null;
   rows: ProcessRow[];
@@ -145,7 +137,7 @@ function sessionGroups(
       return {
         sessionId,
         name: s?.name || `Claude ${sessionId.slice(0, 8)}`,
-        status: s ? effectiveStatus(s, seen) : null,
+        status: s ? statusView(s, seen) : null,
         phase: s?.phase ?? null,
         tool: s?.tool ?? null,
         rows: list.sort(heavier),

@@ -9,6 +9,7 @@ import {
   STATUS_LABEL,
   statusTitle,
   statusView,
+  wallPick,
 } from '@/lib/workbench';
 import { useRecentStore } from '@/state/recent-store';
 import { layoutOf, useWorkbenchStore } from '@/state/workbench-store';
@@ -57,10 +58,12 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
       return;
     }
     const shown = s.cells.slice(0, CELL_COUNT[s.layout]);
+    const activeOf = (path: string) => s.activeTab[path];
     const keys = assignTabs(
       shown,
       (path) => s.tabs[path] ?? [],
-      (path) => s.activeTab[path],
+      activeOf,
+      wallPick(state.current.sessions, state.current.seen, activeOf),
     );
     const key = keys[shown.findIndex((c) => c.id === s.focusCell)];
     if (key) focusTerminal(key);

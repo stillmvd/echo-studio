@@ -5,8 +5,14 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
 import { forgetClaudeSession, stopClaudeSession } from '@/lib/ipc';
-import type { ClaudeSession, DevServer, SessionStatus, WorkbenchProject } from '@/lib/types';
-import { CELL_COUNT, effectiveStatus, type ProjectCell, samePath } from '@/lib/workbench';
+import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
+import {
+  CELL_COUNT,
+  type ProjectCell,
+  type StatusView,
+  samePath,
+  statusView,
+} from '@/lib/workbench';
 import { devTabKey, isDevTab, useProjectLayout, useWorkbenchStore } from '@/state/workbench-store';
 import { ClaudeTerminal } from './ClaudeTerminal';
 import { closeDevLog, DevCapsule, DevDot, devActions, useDevControl } from './DevCapsule';
@@ -185,7 +191,7 @@ interface TabInfo {
   session: ClaudeSession | undefined;
   shortId: string | null;
   live: boolean;
-  status: SessionStatus;
+  status: StatusView;
 }
 
 function TabTitle({ info, projectName }: { info: TabInfo; projectName: string }) {
@@ -284,7 +290,7 @@ export function Cell({
         session,
         shortId: session?.shortId ?? shortOf(key),
         live,
-        status: session ? effectiveStatus(session, seen) : live ? 'idle' : 'exited',
+        status: session ? statusView(session, seen) : live ? 'new' : 'exited',
       };
     });
   const devKey = devTabKey(project.path);

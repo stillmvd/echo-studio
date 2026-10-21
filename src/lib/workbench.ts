@@ -111,8 +111,8 @@ export function terminalKey(e: KeyInput, hasSelection: boolean): KeyAction {
 
 export const URGENCY: SessionStatus[] = ['waiting', 'error', 'working', 'done', 'idle', 'exited'];
 
-export function urgency(status: SessionStatus): number {
-  return URGENCY.indexOf(status);
+export function urgency(status: StatusView): number {
+  return URGENCY.indexOf(status === 'new' ? 'idle' : status);
 }
 
 export function effectiveStatus(

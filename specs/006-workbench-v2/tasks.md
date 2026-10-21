@@ -521,8 +521,10 @@ F2: T018, T021, T023, T024 [P] → T019, T020, T022, T025 → merge → T027, T0
   `SessionStatus`, `effectiveStatus` и `urgency` не менялись. Подсказки — `STATUS_HINT`, `title` —
   `statusTitle(status, external)`: «подпись — подсказка», у внешних второй строкой «Открыта в терминале вне Echo»;
   «вне оболочки» в «Запущено» → «вне Echo». Значки до T058: «ждёт задачу» — `PenLine`, «новая» — `Plus` (пауза
-  убрана). `Cell.tsx:287` (P) по-прежнему передаёт `effectiveStatus` — на `statusView` переключит координатор при
-  merge.
+  убрана). После влития P: `statusView` в `Cell.tsx` (вкладка без записи в списке, но живая — `new`) и в группах
+  сессий процессов (`overview.ts`, `SessionGroup.status: StatusView`); `urgency` принимает `StatusView` (`new` = `idle`).
+  `Wall.tsx` не тронут — в шапке ячейки пульта только «ждёт тебя», `statusView` её не меняет. `QuickSwitch` при
+  отмене выбирает вкладку ячейки пульта тем же `wallPick`, что и пульт.
 
 ### P «polish» (T055–T056)
 

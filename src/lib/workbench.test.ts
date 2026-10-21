@@ -249,6 +249,7 @@ describe('urgency', () => {
     expect(STATUS_LABEL[statusView(fresh, {})]).toBe('новая · ждёт задачу');
     expect(STATUS_LABEL.idle).toBe('ждёт задачу');
     expect(STATUS_LABEL.done).toBe('ответ готов');
+    expect(urgency('new')).toBe(urgency('idle'));
   });
 
   it('gives every status a label and a hint, external sessions say so', () => {
