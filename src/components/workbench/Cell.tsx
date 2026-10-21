@@ -436,7 +436,6 @@ export function Cell({
                     session={{
                       status: info.status,
                       phase: info.session?.phase ?? null,
-                      tool: info.session?.tool ?? null,
                     }}
                   />
                   <TabTitle info={info} projectName={project.name} />

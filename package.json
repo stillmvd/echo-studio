@@ -43,6 +43,7 @@
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.7.0",
+    "three": "0.128.0",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
@@ -52,6 +53,7 @@
     "@testing-library/react": "^16.3.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/three": "0.128.0",
     "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "^30.1.1",
     "lefthook": "^2.1.14",

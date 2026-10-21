@@ -58,27 +58,12 @@
 .wb-pi.xl { width: 40px; height: 40px; border-radius: 10px; }
 .wb-pi.xl.none svg { width: 24px; height: 24px; }
 
-.wb-gl { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; }
-.wb-gl svg { width: 13px; height: 13px; }
+.live-gl { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 30; }
+.live-ico { flex: none; display: inline-block; }
+.live-ico svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.wb-gl { flex: none; width: 22px; height: 22px; }
 .wb-gl.sm { width: 18px; height: 18px; }
-.wb-gl.sm svg { width: 11px; height: 11px; }
-.wb-gl.st-working { background: var(--fg); color: var(--ground); }
-.wb-gl.st-waiting { background: var(--gb); color: var(--gb-ink); }
-.wb-gl.st-done { background: var(--ok); color: var(--cosmic); }
-.wb-gl.st-error { background: var(--danger); color: var(--cosmic); }
-.wb-gl.st-idle, .wb-gl.st-new, .wb-gl.st-exited { background: var(--hover-strong); color: var(--dim); }
-.wb-dv { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 999px; background: color-mix(in srgb, var(--ok) 24%, transparent); }
-.wb-dv i { width: 8px; height: 8px; border-radius: 999px; background: var(--ok); }
-.wb-dv.st-starting { background: color-mix(in srgb, var(--color-warning) 24%, transparent); }
-.wb-dv.st-starting i { background: var(--color-warning); }
-.wb-dv.st-warn { background: color-mix(in srgb, var(--color-warning) 24%, transparent); }
-.wb-dv.st-warn i { background: var(--color-warning); }
-.wb-dv.st-error { background: color-mix(in srgb, var(--danger) 24%, transparent); }
-.wb-dv.st-error i { background: var(--danger); }
-.wb-dv.st-stopped { background: var(--hover-strong); }
-.wb-dv.st-stopped i { background: var(--dim); }
-.wb-tr.on .wb-gl, .wb-tr.on .wb-dv, .wb-run.on .wb-gl { box-shadow: 0 0 0 1.5px var(--fg); }
-.wb-run.on .wb-gl.st-working { background: var(--ground); color: var(--fg); }
+.wb-dv { flex: none; width: 18px; height: 18px; }
 
 .wb-runs { flex: none; display: flex; flex-direction: column; gap: 4px; max-height: 45%; overflow-y: auto; overflow-x: hidden; user-select: none; }
 .wb-rg { flex: none; display: flex; flex-direction: column; gap: 2px; }

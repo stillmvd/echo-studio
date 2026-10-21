@@ -3,11 +3,12 @@ import { Globe, Play, RotateCcw, Square } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
-import { cn } from '@/lib/cn';
 import { openDevServer, startDevServer, stopDevServer } from '@/lib/ipc';
+import { devLook } from '@/lib/live-status';
 import type { DevServer, WorkbenchProject } from '@/lib/types';
 import { devHealth, devStatusLabel } from '@/lib/workbench';
 import { devTabKey, useWorkbenchStore } from '@/state/workbench-store';
+import { LiveIcon } from './live/LiveIcon';
 import { copyText, devRuns, devTabMenu, devUrl } from './menus';
 import { dispose, focusSoon, startTail } from './terminals';
 
@@ -36,15 +37,8 @@ export function devState(server: DevServer | undefined) {
   return server?.state ?? 'stopped';
 }
 
-const DOT = { crashed: 'error', errors: 'warn' } as const;
-
 export function DevDot({ server }: { server: DevServer | undefined }) {
-  const health = devHealth(server);
-  return (
-    <span className={cn('wb-dv', `st-${health in DOT ? DOT[health as keyof typeof DOT] : health}`)}>
-      <i />
-    </span>
-  );
+  return <LiveIcon look={devLook(server)} size={18} className="wb-dv" />;
 }
 
 export function RestartDev({

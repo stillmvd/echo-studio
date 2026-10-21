@@ -272,7 +272,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
                     )}
                     {status === 'waiting' && (
                       <span className="wl-wait">
-                        <StatusIcon small session={{ status, phase: null, tool: null }} />
+                        <StatusIcon small session={{ status, phase: null }} />
                         {STATUS_LABEL.waiting}
                       </span>
                     )}

@@ -77,7 +77,7 @@ export function SessionStrip({ sessions, projects }: Props) {
                   )
                 }
               >
-                <StatusIcon small session={{ status, phase: s.phase, tool: s.tool }} />
+                <StatusIcon small session={{ status, phase: s.phase }} />
                 <b>{sessionPlace(s, projects)}</b>
                 <span className="wb-dim">{s.name || 'Claude'}</span>
               </button>

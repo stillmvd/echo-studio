@@ -76,10 +76,7 @@ function SessionRows({ group, on }: { group: SessionGroup; on: RowHandlers }) {
     <>
       <span className="wb-ps" title={group.sessionId}>
         {group.status ? (
-          <StatusIcon
-            session={{ status: group.status, phase: group.phase, tool: group.tool }}
-            small
-          />
+          <StatusIcon session={{ status: group.status, phase: group.phase }} small />
         ) : (
           <span className="wb-gl sm" />
         )}

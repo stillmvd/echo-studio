@@ -154,7 +154,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
           );
         }}
       >
-        <StatusIcon small session={{ status, phase: s.phase, tool: s.tool }} />
+        <StatusIcon small session={{ status, phase: s.phase }} />
         <span className="wb-run-n">
           {s.name || (external ? folderName(s.cwd) : null) || 'Claude'}
         </span>
