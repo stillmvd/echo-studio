@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { emptyCells } from '@/lib/workbench';
-import { useRecentStore } from './recent-store';
+import { seedRecent, useRecentStore } from './recent-store';
 import { devTabKey, useWorkbenchStore } from './workbench-store';
 
 const P = 'C:\\P\\A';
@@ -27,6 +27,25 @@ describe('recent sessions', () => {
     s.openTab(P, 'b');
     s.activate(P, 'a');
     expect(useRecentStore.getState().history).toEqual(['a', 'b']);
+  });
+
+  it('does not count closing a tab as a visit', () => {
+    const s = useWorkbenchStore.getState();
+    s.openTab(P, 'a');
+    s.openTab(P, 'b');
+    s.activate(P, 'a');
+    s.closeTab(P, 'a');
+    expect(useRecentStore.getState().history).toEqual(['a', 'b']);
+  });
+
+  it('seeds an empty history from the workbench recency once', () => {
+    useWorkbenchStore.setState({ recency: ['b', devTabKey(P), 'a'] });
+    useRecentStore.setState({ history: [] });
+    seedRecent();
+    expect(useRecentStore.getState().history).toEqual(['b', 'a']);
+    useWorkbenchStore.setState({ recency: ['c'] });
+    seedRecent();
+    expect(useRecentStore.getState().history).toEqual(['b', 'a']);
   });
 
   it('skips dev tabs', () => {

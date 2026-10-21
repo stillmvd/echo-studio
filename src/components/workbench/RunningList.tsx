@@ -189,7 +189,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
             </b>
             <span className="wb-run-t">
               {topIcon(g.top)}
-              {topLabel(g.top)}
+              <span className="wb-run-l">{topLabel(g.top)}</span>
             </span>
           </>
         );
