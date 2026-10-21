@@ -1,4 +1,4 @@
-import { type DragEvent, useState } from 'react';
+import { type DragEvent, useEffect, useState } from 'react';
 
 const TYPE = 'text/x-echo-tab';
 
@@ -62,6 +62,15 @@ export function useTabDrop({ path, cell, keys, accept, onDrop }: DropOptions) {
     setOver(false);
     setInsert(null);
   };
+  useEffect(() => {
+    if (!over && insert === null) return;
+    const off = () => {
+      setOver(false);
+      setInsert(null);
+    };
+    window.addEventListener('dragend', off);
+    return () => window.removeEventListener('dragend', off);
+  }, [over, insert]);
   const markerAt = (tab: DraggedTab, index: number | null) => {
     if (index === null || tab.path !== path) return null;
     const at = keys.indexOf(tab.key);
