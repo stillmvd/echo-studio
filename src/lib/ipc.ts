@@ -6,6 +6,7 @@ import type {
   DevServer,
   DisplayItem,
   DuplicatePair,
+  FocusResult,
   GitState,
   KillResult,
   KillTarget,
@@ -193,6 +194,14 @@ export type RawClaudeSession = Omit<ClaudeSession, 'projectPath'>;
 
 export async function listClaudeSessions(): Promise<RawClaudeSession[]> {
   return invoke<RawClaudeSession[]>('list_claude_sessions');
+}
+
+export async function focusSessionWindow(pid: number, sessionId: string): Promise<FocusResult> {
+  return invoke<FocusResult>('focus_session_window', { pid, sessionId });
+}
+
+export async function openInVscode(path: string): Promise<void> {
+  return invoke('open_in_vscode', { projectPath: path });
 }
 
 export async function setWorkbenchActive(active: boolean): Promise<void> {
