@@ -17,6 +17,7 @@ import { LayoutPicker, Wall } from './Wall';
 export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   const { data: tree, error, dataUpdatedAt } = useWorkbenchProjects();
   const sessions = useClaudeSessions(!hidden);
+  const live = useMemo(() => sessions.filter((s) => s.status !== 'exited'), [sessions]);
   const devServers = useDevServers();
   const view = useWorkbenchStore((s) => s.view);
   const tabs = useWorkbenchStore((s) => s.tabs);
@@ -54,7 +55,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
               tail={(paths) => {
                 const inside = (path: string | null) =>
                   !!path && paths.some((p) => samePath(p, path));
-                const own = sessions.filter((s) => inside(s.projectPath));
+                const own = live.filter((s) => inside(s.projectPath));
                 const devs = devServers.filter(
                   (d) => d.state !== 'stopped' && inside(d.projectPath),
                 );
@@ -70,7 +71,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
           {wall && (
             <Wall
               hidden={hidden}
-              sessions={sessions}
+              sessions={live}
               projects={byPath}
               busy={busy}
               devServers={devServers}
@@ -96,7 +97,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
                 >
                   <Cell
                     project={p}
-                    sessions={sessions}
+                    sessions={live}
                     server={devServers.find((d) => samePath(d.projectPath, p.path))}
                     visible={!hidden && isSelected}
                     busy={busy}
@@ -109,7 +110,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
         </div>
       </div>
       <SessionStrip sessions={sessions} projects={byPath} wall={wall} />
-      <QuickSwitch enabled={!hidden} sessions={sessions} projects={byPath} />
+      <QuickSwitch enabled={!hidden} sessions={live} projects={byPath} />
       {dialogs}
     </div>
   );

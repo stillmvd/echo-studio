@@ -21,8 +21,10 @@ export function externalTitle(s: ClaudeSession): string | undefined {
       ? 'Показать окно терминала'
       : 'Показать окно терминала. Папка не из списка проектов — продолжить в Echo нельзя';
   }
-  return undefined;
+  return s.kind === 'external' ? NOWHERE : undefined;
 }
+
+const NOWHERE = 'Завершена вне Echo · папка не из списка проектов, продолжить нельзя';
 
 export function useExternalSession() {
   const { start, dialogs } = useStartSession();
@@ -38,12 +40,19 @@ export function useExternalSession() {
   };
 
   const openExternal = async (s: ClaudeSession, anchor: HTMLElement) => {
+    if (isOpen && shown?.anchor === anchor) {
+      close();
+      return;
+    }
     const action = externalAction(s);
     if (action === 'resume' && s.projectPath) {
       await start(s.projectPath, s.sessionId);
       return;
     }
-    if (action !== 'focus') return;
+    if (action === 'none') {
+      if (s.kind === 'external') show(s, anchor);
+      return;
+    }
     if (s.pid === null) {
       show(s, anchor);
       return;
@@ -64,6 +73,7 @@ export function useExternalSession() {
 
   const s = shown?.session;
   const folder = s?.projectPath ?? s?.cwd ?? null;
+  const exited = s?.status === 'exited';
   const layer = (
     <>
       {dialogs}
@@ -74,8 +84,12 @@ export function useExternalSession() {
         label="Сессия вне Echo"
         className="wb-pop"
       >
-        <b>Сессия открыта в терминале вне Echo</b>
-        <p>Окно не нашлось — возможно, вкладка терминала закрыта, а процесс ещё жив.</p>
+        <b>{exited ? 'Сессия завершена вне Echo' : 'Сессия открыта в терминале вне Echo'}</b>
+        <p>
+          {exited
+            ? 'Папка не из списка проектов — продолжить её в Echo нельзя.'
+            : 'Окно не нашлось — возможно, вкладка терминала закрыта, а процесс ещё жив.'}
+        </p>
         {shown?.error && <p className="wb-pop-err">{shown.error}</p>}
         <div className="wb-pop-b">
           <button
@@ -90,7 +104,10 @@ export function useExternalSession() {
             }}
           >
             <Copy strokeWidth={2} />
-            {copied ? 'Скопировано' : 'Копировать id'}
+            <span className="wb-swap">
+              <span hidden={copied}>Копировать id</span>
+              <span hidden={!copied}>Скопировано</span>
+            </span>
           </button>
           {folder && (
             <button

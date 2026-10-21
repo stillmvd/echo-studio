@@ -287,3 +287,6 @@ fieldset.wl-seg { margin: 0; border: 0; min-width: 0; }
 .wb-term-note .wb-stop { background: var(--cosmic); }
 .wb-term-note .wb-stop:hover { background: var(--color-danger-soft); }
 .wb-tabs > .wb-btn { align-self: center; }
+.wb-swap { display: grid; }
+.wb-swap > span { grid-area: 1 / 1; }
+.wb-swap > span[hidden] { display: block; visibility: hidden; }

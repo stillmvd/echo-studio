@@ -32,19 +32,27 @@ export function Popover({ anchor, open, onClose, label, className, children }: P
   useLayoutEffect(() => {
     const el = ref.current;
     if (!open || !el || !anchor) return;
-    const r = anchor.getBoundingClientRect();
-    const { width, height } = el.getBoundingClientRect();
-    const left = Math.max(EDGE, Math.min(r.left, window.innerWidth - width - EDGE));
-    const flip = r.bottom + GAP + height > window.innerHeight - EDGE;
-    const top = flip ? Math.max(EDGE, r.top - GAP - height) : r.bottom + GAP;
-    above.current = flip;
-    el.style.left = `${left}px`;
-    el.style.top = `${top}px`;
-    el.style.transformOrigin = `${Math.min(width, Math.max(0, r.left + 16 - left))}px ${flip ? '100%' : '0'}`;
+    const place = () => {
+      const r = anchor.getBoundingClientRect();
+      const width = el.offsetWidth;
+      const height = el.offsetHeight;
+      const left = Math.max(EDGE, Math.min(r.left, window.innerWidth - width - EDGE));
+      const flip = r.bottom + GAP + height > window.innerHeight - EDGE;
+      const top = flip ? Math.max(EDGE, r.top - GAP - height) : r.bottom + GAP;
+      above.current = flip;
+      el.style.left = `${left}px`;
+      el.style.top = `${top}px`;
+      el.style.transformOrigin = `${Math.min(width, Math.max(0, r.left + 16 - left))}px ${flip ? '100%' : '0'}`;
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(el);
     el.querySelector<HTMLElement>('button, [href]')?.focus();
-    if (still()) return;
-    const a = el.animate(frames(flip), { duration: 200, easing: EASE });
-    return () => a.cancel();
+    const a = still() ? null : el.animate(frames(above.current), { duration: 200, easing: EASE });
+    return () => {
+      ro.disconnect();
+      a?.cancel();
+    };
   }, [open, anchor]);
 
   useEffect(() => {

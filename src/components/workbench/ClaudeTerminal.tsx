@@ -55,7 +55,12 @@ export function ClaudeTerminal({
 
   useEffect(() => {
     if (!shortId || !live) return;
-    if (state === 'idle' || (state === 'ended' && Date.now() - entry.attachedAt > 3000)) {
+    const respawned = (state === 'detached' || state === 'ended') && shortId !== entry.shortId;
+    if (
+      state === 'idle' ||
+      respawned ||
+      (state === 'ended' && Date.now() - entry.attachedAt > 3000)
+    ) {
       connect(sessionKey, shortId);
     }
   }, [shortId, live, state, entry, sessionKey]);
