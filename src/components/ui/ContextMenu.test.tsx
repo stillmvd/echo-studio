@@ -39,8 +39,8 @@ function setup(items: MenuItem[], onClose = vi.fn()) {
   const source = document.createElement('button');
   document.body.append(source);
   source.focus();
-  render(<ContextMenu x={40} y={50} items={items} onClose={onClose} />);
-  return { source, onClose };
+  const view = render(<ContextMenu x={40} y={50} items={items} onClose={onClose} />);
+  return { source, onClose, view };
 }
 
 const keydown = (key: string) =>
@@ -91,6 +91,7 @@ describe('ContextMenu', () => {
       () => keydown('Escape'),
       () => keydown('Tab'),
       () => fireEvent.pointerDown(document.body),
+      () => fireEvent.wheel(document.body),
       () => fireEvent.blur(window),
       () => fireEvent(window, new Event('resize')),
     ]) {
@@ -102,9 +103,11 @@ describe('ContextMenu', () => {
     }
   });
 
-  it('a click inside does not close', () => {
+  it('a click inside and a programmatic scroll outside do not close', () => {
     const { onClose } = setup([{ label: 'X', onSelect: () => {} }]);
     fireEvent.pointerDown(screen.getByRole('menu'));
+    fireEvent.wheel(screen.getByRole('menu'));
+    fireEvent.scroll(document.body);
     expect(animations).toHaveLength(1);
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -141,6 +144,34 @@ describe('ContextMenu', () => {
     expect(move).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('menuitem', { name: 'Cell 2' }));
     expect(move).toHaveBeenCalledOnce();
+  });
+
+  it('reopening at the same point with a new id is not closed by the old exit', async () => {
+    const items: MenuItem[] = [{ label: 'X', onSelect: () => {} }];
+    const { onClose, view } = setup(items);
+    fireEvent.pointerDown(document.body);
+    const exit = animations.at(-1);
+    view.rerender(<ContextMenu x={40} y={50} items={items} openId={2} onClose={onClose} />);
+    await act(async () => exit?.finish());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('menu').className).not.toContain('pointer-events-none');
+  });
+
+  it('a reopen elsewhere returns focus to the new source', () => {
+    const items: MenuItem[] = [{ label: 'X', onSelect: () => {} }];
+    const { onClose, view } = setup(items);
+    const second = document.createElement('button');
+    document.body.append(second);
+    second.focus();
+    view.rerender(<ContextMenu x={90} y={80} items={items} onClose={onClose} />);
+    keydown('Escape');
+    expect(document.activeElement).toBe(second);
+  });
+
+  it('renders into body, outside the caller', () => {
+    const { view } = setup([{ label: 'X', onSelect: () => {} }]);
+    expect(view.container.querySelector('[role="menu"]')).toBeNull();
+    expect(screen.getByRole('menu').parentElement).toBe(document.body);
   });
 
   it('shows the key hint on the right', () => {

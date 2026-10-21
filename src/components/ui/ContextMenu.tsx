@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
 import { menuPlacement, menuPoint, type Placement, submenuPlacement } from '@/lib/context-menu';
 
@@ -165,8 +166,12 @@ function Panel({ items, place, shared, focusFirst, onBack, panelRef }: PanelProp
               aria-expanded={isSub ? sub?.index === i : undefined}
               onPointerEnter={(e) => {
                 if (item.disabled) return;
-                if (isSub) openSub(i, e.currentTarget, false);
-                else setSub(null);
+                if (isSub) {
+                  openSub(i, e.currentTarget, false);
+                  return;
+                }
+                if (subPanel.current?.contains(document.activeElement)) e.currentTarget.focus();
+                setSub(null);
               }}
               onKeyDown={(e) => {
                 if (!isSub || (e.key !== 'ArrowRight' && e.key !== 'Enter' && e.key !== ' '))
@@ -299,21 +304,21 @@ function Root({ x, y, items, onClose, origin, returnTo }: Props & { returnTo: El
       if (!inside(e.target)) close();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' && e.key !== 'Tab') return;
+      if (closingRef.current || (e.key !== 'Escape' && e.key !== 'Tab')) return;
       e.preventDefault();
       e.stopPropagation();
       close();
     };
     window.addEventListener('pointerdown', onOutside, true);
     window.addEventListener('contextmenu', onOutside, true);
-    window.addEventListener('scroll', onOutside, true);
+    window.addEventListener('wheel', onOutside, { capture: true, passive: true });
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('blur', close);
     window.addEventListener('resize', close);
     return () => {
       window.removeEventListener('pointerdown', onOutside, true);
       window.removeEventListener('contextmenu', onOutside, true);
-      window.removeEventListener('scroll', onOutside, true);
+      window.removeEventListener('wheel', onOutside, true);
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('blur', close);
       window.removeEventListener('resize', close);
@@ -350,9 +355,16 @@ function Root({ x, y, items, onClose, origin, returnTo }: Props & { returnTo: El
   );
 }
 
-export function ContextMenu(props: Props) {
-  const [returnTo] = useState(() => document.activeElement);
-  return <Root key={`${props.x},${props.y}`} {...props} returnTo={returnTo} />;
+export function ContextMenu({ openId, ...props }: Props & { openId?: number }) {
+  const key = `${props.x},${props.y},${openId ?? 0}`;
+  const [opened, setOpened] = useState(() => ({ key, returnTo: document.activeElement }));
+  let { returnTo } = opened;
+  if (opened.key !== key) {
+    const active = document.activeElement;
+    returnTo = active?.closest('[role="menu"]') ? opened.returnTo : active;
+    setOpened({ key, returnTo });
+  }
+  return createPortal(<Root key={key} {...props} returnTo={returnTo} />, document.body);
 }
 
 type OpenMenu = (e: React.MouseEvent, items: MenuItem[]) => void;
@@ -366,13 +378,22 @@ export function useOpenMenu(): OpenMenu {
 }
 
 export function useContextMenu(): { open: OpenMenu; element: ReactNode } {
-  const [menu, setMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
+  const [menu, setMenu] = useState<{
+    x: number;
+    y: number;
+    items: MenuItem[];
+    id: number;
+  } | null>(null);
+  const seq = useRef(0);
   const open = useCallback<OpenMenu>((e, items) => {
     e.preventDefault();
     e.stopPropagation();
-    setMenu({ ...menuPoint(e), items });
+    seq.current += 1;
+    setMenu({ ...menuPoint(e), items, id: seq.current });
   }, []);
   const close = useCallback(() => setMenu(null), []);
-  const element = menu && <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={close} />;
+  const element = menu && (
+    <ContextMenu x={menu.x} y={menu.y} items={menu.items} openId={menu.id} onClose={close} />
+  );
   return { open, element };
 }
