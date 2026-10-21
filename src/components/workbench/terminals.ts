@@ -118,12 +118,10 @@ void listen<{ terminalId: string; code: number }>('workbench://terminal-exit', (
 }).catch(() => {});
 
 const AGENT_VIEW_DEBOUNCE_MS = 200;
-const AGENT_VIEW_LINES = 30;
-
-function tailLines(term: Terminal): string[] {
+function screenLines(term: Terminal): string[] {
   const buf = term.buffer.active;
   const lines: string[] = [];
-  for (let i = Math.max(0, buf.length - AGENT_VIEW_LINES); i < buf.length; i++) {
+  for (let i = Math.max(0, buf.length - term.rows); i < buf.length; i++) {
     lines.push(buf.getLine(i)?.translateToString(true) ?? '');
   }
   return lines;
@@ -133,7 +131,7 @@ function watchAgentView(entry: Entry) {
   clearTimeout(entry.agentCheck);
   entry.agentCheck = setTimeout(() => {
     const id = entry.terminalId;
-    if (!id || entry.state !== 'live' || !detectAgentView(tailLines(entry.term))) return;
+    if (!id || entry.state !== 'live' || !detectAgentView(screenLines(entry.term))) return;
     detach(id);
     entry.terminalId = null;
     entry.term.reset();
