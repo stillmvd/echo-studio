@@ -1,8 +1,11 @@
+import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
 import type { ClaudeSession, WorkbenchProject } from '@/lib/types';
 import { arrangeWall, byUrgency, CELL_COUNT, effectiveStatus, STATUS_LABEL } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
+import { useStopSession } from './Cell';
 import { externalTitle, useExternalSession } from './externalSession';
+import { canStopSession, copyText, runningMenu } from './menus';
 import { StatusIcon } from './StatusIcon';
 
 interface Props {
@@ -42,6 +45,8 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
   const inGrid = (s: ClaudeSession) => !off.has(s.sessionId);
   const pending = plan?.pendingCount ?? 0;
   const { openExternal, layer } = useExternalSession();
+  const openMenu = useOpenMenu();
+  const stop = useStopSession();
   const ended = (s: ClaudeSession) => s.kind === 'external' && s.status === 'exited';
   const sorted = byUrgency(sessions, seen);
   const live = sorted.filter((s) => !ended(s));
@@ -70,6 +75,21 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
           .filter(Boolean)
           .join(' · ')}
         onClick={(e) => (external ? void openExternal(s, e.currentTarget) : openSession(s))}
+        onContextMenu={(e) => {
+          const anchor = e.currentTarget;
+          openMenu(
+            e,
+            runningMenu({
+              external,
+              canStop: canStopSession(s),
+              actions: {
+                go: () => (external ? void openExternal(s, anchor) : openSession(s)),
+                copyId: () => copyText(s.sessionId),
+                stop: () => stop.ask(s.shortId),
+              },
+            }),
+          );
+        }}
       >
         <StatusIcon small session={{ status, phase: s.phase, tool: s.tool }} />
         <b>{sessionPlace(s, projects)}</b>
@@ -93,6 +113,7 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
         {gone.map((s) => chip(s, false))}
       </div>
       {layer}
+      {stop.dialog}
       {pending > 0 && <span className="wb-bar-note">ещё ждут: {pending}</span>}
       <span className="wb-kbd">Ctrl</span>
       <span className="wb-kbd">Tab</span>

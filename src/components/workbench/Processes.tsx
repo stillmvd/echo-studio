@@ -1,8 +1,10 @@
 import { CircleHelp, Cpu, FolderTree, Power } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { useKillProcesses } from '@/hooks/use-workbench-overview';
 import { cn } from '@/lib/cn';
+import { revealInExplorer } from '@/lib/ipc';
 import {
   describe,
   type GroupSession,
@@ -15,6 +17,7 @@ import {
 import type { KillResult, ProcessRow, WorkbenchProject } from '@/lib/types';
 import { samePath } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
+import { copyText, processMenu } from './menus';
 import { ProjectIcon } from './ProjectIcon';
 import { StatusIcon } from './StatusIcon';
 
@@ -35,17 +38,20 @@ function failures(result: KillResult): string | null {
   return result.failed.length ? `не завершено: ${result.failed.length}` : null;
 }
 
-function Row({
-  row,
-  onKill,
-  nested,
-}: {
-  row: ProcessRow;
-  onKill: (row: ProcessRow) => void;
-  nested?: boolean;
-}) {
+interface RowHandlers {
+  kill: (row: ProcessRow) => void;
+  menu: (e: React.MouseEvent, row: ProcessRow) => void;
+}
+
+function Row({ row, on, nested }: { row: ProcessRow; on: RowHandlers; nested?: boolean }) {
   return (
-    <span className={cn('wb-pr', nested && 'in', row.orphan && 'orphan')} title={row.commandLine}>
+    <span
+      role="toolbar"
+      aria-label={`${row.name} ${row.pid}`}
+      className={cn('wb-pr', nested && 'in', row.orphan && 'orphan')}
+      title={row.commandLine}
+      onContextMenu={(e) => on.menu(e, row)}
+    >
       <b>{row.name}</b>
       <span className="wb-dim">{describe(row)}</span>
       <span className="wb-mb">{mb(row.memory)}</span>
@@ -54,7 +60,7 @@ function Row({
         className="wb-ib wb-kill"
         title="Завершить"
         aria-label={`Завершить ${row.name} ${row.pid}`}
-        onClick={() => onKill(row)}
+        onClick={() => on.kill(row)}
       >
         <Power />
       </button>
@@ -62,13 +68,7 @@ function Row({
   );
 }
 
-function SessionRows({
-  group,
-  onKill,
-}: {
-  group: SessionGroup;
-  onKill: (row: ProcessRow) => void;
-}) {
+function SessionRows({ group, on }: { group: SessionGroup; on: RowHandlers }) {
   return (
     <>
       <span className="wb-ps" title={group.sessionId}>
@@ -84,7 +84,7 @@ function SessionRows({
         <span className="wb-mb">{mb(group.memory)}</span>
       </span>
       {group.rows.map((r) => (
-        <Row key={r.pid} row={r} onKill={onKill} nested />
+        <Row key={r.pid} row={r} on={on} nested />
       ))}
     </>
   );
@@ -102,6 +102,7 @@ export function Processes({
   sessions: GroupSession[];
 }) {
   const kill = useKillProcesses();
+  const openMenu = useOpenMenu();
   const seen = useWorkbenchStore((s) => s.seen);
   const [pending, setPending] = useState<Pending | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -118,6 +119,25 @@ export function Processes({
   const onKill = (row: ProcessRow) => {
     if (row.guard) setPending({ rows: [row], confirmed: true });
     else void run([row], false).catch((e) => setNote(String(e)));
+  };
+
+  const on: RowHandlers = {
+    kill: onKill,
+    menu: (e, row) =>
+      openMenu(
+        e,
+        processMenu({
+          row,
+          actions: {
+            copyCommand: () => copyText(row.commandLine),
+            openFolder: () => {
+              if (row.projectPath)
+                void revealInExplorer(row.projectPath).catch((err) => setNote(String(err)));
+            },
+            kill: () => onKill(row),
+          },
+        }),
+      ),
   };
 
   const single = pending?.rows.length === 1 ? pending.rows[0] : undefined;
@@ -155,7 +175,7 @@ export function Processes({
             <span className="wb-mb">{mb(strayMemory)}</span>
           </div>
           {stray.map((r) => (
-            <Row key={r.pid} row={r} onKill={onKill} />
+            <Row key={r.pid} row={r} on={on} />
           ))}
         </div>
       )}
@@ -177,10 +197,10 @@ export function Processes({
               <span className="wb-mb">{mb(g.memory)}</span>
             </div>
             {g.sessions.map((s) => (
-              <SessionRows key={s.sessionId} group={s} onKill={onKill} />
+              <SessionRows key={s.sessionId} group={s} on={on} />
             ))}
             {g.rows.map((r) => (
-              <Row key={r.pid} row={r} onKill={onKill} />
+              <Row key={r.pid} row={r} on={on} />
             ))}
           </div>
         );

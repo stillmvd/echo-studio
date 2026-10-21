@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { createElement, type ElementType } from 'react';
 import type { ContextMenuAction, MenuItem } from '@/components/ui/ContextMenu';
-import type { DevServer, ProcessRow, WorkbenchProject } from '@/lib/types';
+import type { ClaudeSession, DevServer, ProcessRow, WorkbenchProject } from '@/lib/types';
 
 const icon = (Icon: ElementType) => createElement(Icon, { strokeWidth: 2 });
 
@@ -32,6 +32,11 @@ const danger = (label: string, Icon: ElementType, onSelect: () => void): MenuIte
   'separator',
   action(label, Icon, onSelect, { danger: true }),
 ];
+
+export const copyText = (text: string) => void navigator.clipboard.writeText(text).catch(() => {});
+
+export const canStopSession = (s: ClaudeSession) =>
+  s.kind === 'shell' && !!s.shortId && !!s.projectPath && s.status !== 'exited';
 
 export const devUrl = (server: DevServer | undefined) =>
   server?.ports[0] ? `http://localhost:${server.ports[0]}` : null;
