@@ -74,7 +74,6 @@
 .wb-gl.st-idle, .wb-gl.st-exited { background: var(--hover-strong); color: var(--dim); }
 .wb-dv { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 999px; background: color-mix(in srgb, var(--ok) 24%, transparent); }
 .wb-dv i { width: 8px; height: 8px; border-radius: 999px; background: var(--ok); }
-.wb-dv.lg { width: 22px; height: 22px; }
 .wb-dv.st-starting i { background: var(--color-warning); }
 .wb-dv.st-starting { background: color-mix(in srgb, var(--color-warning) 24%, transparent); }
 .wb-dv.st-error i { background: var(--danger); }
@@ -116,7 +115,6 @@
 .wb-btn.p { background: var(--gb); color: var(--gb-ink); }
 .wb-btn.p:hover { background: var(--color-accent-hover); }
 .wb-btn svg { width: 16px; height: 16px; }
-.wb-btn.lg { height: 44px; padding: 0 20px; }
 
 .wb-area { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 0 12px 12px; }
 .wb-tabs { flex: none; display: flex; gap: 4px; padding: 0 2px; min-width: 0; overflow: hidden; }

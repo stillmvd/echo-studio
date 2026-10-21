@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Columns2, Grid2x2, Pin, Plus, Square } from 'lucide-react';
 import { type HTMLAttributes, type ReactNode, useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
-import { listWorkbenchProjects } from '@/lib/ipc';
+import { listClaudeSessions, listWorkbenchProjects } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import {
   arrangeWall,
@@ -154,15 +154,23 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
   const tabs = useWorkbenchStore((s) => s.tabs);
   const activeTab = useWorkbenchStore((s) => s.activeTab);
   const [tick, setTick] = useState(0);
+  const ready =
+    useQuery({
+      queryKey: ['workbench', 'sessions'],
+      queryFn: listClaudeSessions,
+      enabled: false,
+    }).isSuccess && projects.size > 0;
   const count = CELL_COUNT[layout];
   usePruneCells(projects);
 
   useEffect(() => {
     void tick;
-    const r = arrangeWall(cells, count, sessions, Date.now(), focusCell, seen, {
+    const now = Date.now();
+    const r = arrangeWall(cells, count, sessions, now, focusCell, seen, {
       tabsOf: (path) => tabs[path] ?? [],
       activeOf: (path) => activeTab[path],
       isFresh,
+      ready,
     });
     if (r.changed) {
       setCells(r.cells);
@@ -172,10 +180,16 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
         seen,
       );
     }
-    if (r.pendingCount === 0 || hidden) return;
-    const t = setTimeout(() => setTick((n) => n + 1), HANDS_ON_MS);
+    if (hidden) return;
+    const held = cells
+      .slice(0, count)
+      .map((c) => c.lastInputAt + HANDS_ON_MS - now)
+      .filter((ms) => ms > 0);
+    const delay = r.pendingCount > 0 ? HANDS_ON_MS : held.length ? Math.min(...held) + 50 : 0;
+    if (!delay) return;
+    const t = setTimeout(() => setTick((n) => n + 1), delay);
     return () => clearTimeout(t);
-  }, [cells, count, sessions, seen, focusCell, setCells, tick, hidden, tabs, activeTab]);
+  }, [cells, count, sessions, seen, focusCell, setCells, tick, hidden, tabs, activeTab, ready]);
 
   const shown = cells.slice(0, count);
   const activeOf = (path: string) => activeTab[path];

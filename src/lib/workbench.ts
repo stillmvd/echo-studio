@@ -273,6 +273,7 @@ export interface WallTabs {
   activeOf: (path: string) => string | undefined;
   pick?: TabPick;
   isFresh?: (key: string) => boolean;
+  ready?: boolean;
 }
 
 function shownKeys(visible: WallCell[], tabs: WallTabs): (string | null)[] {
@@ -322,6 +323,9 @@ export function arrangeWall(
   seen: Record<string, number>,
   wallTabs: WallTabs,
 ): WallArrangement {
+  if (wallTabs.ready === false) {
+    return { cells, moved: [], changed: false, offGrid: [], pendingCount: 0 };
+  }
   const tabs = { ...wallTabs, pick: wallTabs.pick ?? wallPick(sessions, seen, wallTabs.activeOf) };
   const hot = sessions.filter(
     (s) => s.kind === 'shell' && WALL_STATUSES.includes(effectiveStatus(s, seen)),
@@ -423,7 +427,8 @@ export function arrangeWall(
     moved,
     changed,
     offGrid: off.map((s) => s.sessionId),
-    pendingCount: off.filter((s) => effectiveStatus(s, seen) === 'waiting').length,
+    pendingCount: off.filter((s) => s.kind === 'shell' && effectiveStatus(s, seen) === 'waiting')
+      .length,
   };
 }
 
@@ -451,7 +456,13 @@ export function placeProject(
   const shown = cells.slice(0, count);
   const holds = (c: WallCell) => c.projectPath !== null && samePath(c.projectPath, path);
   const already = shown.find(holds);
-  if (already) return { cells, focus: already.id };
+  if (already?.pinned || already?.manual) return { cells, focus: already.id };
+  if (already) {
+    return {
+      cells: cells.map((c) => (c.id === already.id ? { ...c, manual: true } : c)),
+      focus: already.id,
+    };
+  }
   const target =
     shown.find((c) => c.id === focus && !c.pinned) ??
     shown.find((c) => c.projectPath === null) ??

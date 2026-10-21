@@ -122,8 +122,58 @@ describe('workbench store', () => {
     st.select({ kind: 'project', path: P });
     const s = useWorkbenchStore.getState();
     expect(s.cells[0]?.projectPath).toBe(P);
-    expect(s.cells[0]?.activeTab).toBeUndefined();
+    expect(s.cells[0]).toMatchObject({ activeTab: 't2', manual: true });
+    expect(s.cells[2]?.projectPath).toBeNull();
     expect(s.activeTab[P]).toBe('t2');
+  });
+
+  it('an explicit tab choice holds an automatic cell', () => {
+    useWorkbenchStore.setState({
+      mode: 'wall',
+      layout: '2x2',
+      cells: emptyCells().map((c) => (c.id === 'c2' ? { ...c, projectPath: P } : c)),
+      focusCell: 'c1',
+      tabs: { [P]: ['a', `dev:${P}`] },
+      activeTab: { [P]: 'a' },
+    });
+    const st = useWorkbenchStore.getState();
+    st.activateCell('c2', 'a');
+    expect(useWorkbenchStore.getState().cells[1]).toMatchObject({ activeTab: 'a', manual: true });
+    useWorkbenchStore.setState({
+      cells: emptyCells().map((c) => (c.id === 'c2' ? { ...c, projectPath: P } : c)),
+    });
+    st.openTab(P, `dev:${P}`);
+    expect(useWorkbenchStore.getState().cells[1]).toMatchObject({
+      activeTab: `dev:${P}`,
+      manual: true,
+    });
+    useWorkbenchStore.setState({
+      cells: emptyCells().map((c) => (c.id === 'c2' ? { ...c, projectPath: P, pinned: true } : c)),
+    });
+    st.activateCell('c2', 'a');
+    expect(useWorkbenchStore.getState().cells[1]).toMatchObject({ pinned: true, manual: false });
+  });
+
+  it('migration resets unpinned restored cells and keeps pinned ones', () => {
+    const state = migrateWorkbench({
+      mode: 'wall',
+      layout: '2x2',
+      view: { kind: 'overview' },
+      cells: [
+        { id: 'c1', projectPath: 'B', manual: true, activeTab: 'b-old' },
+        { id: 'c2', projectPath: 'S', activeTab: `dev:S` },
+        { id: 'c3', projectPath: P, pinned: true, activeTab: 'p1' },
+      ],
+      tabs: { B: ['b-old'], S: ['dev:S'], [P]: ['p1'] },
+    });
+    expect(state.cells?.[0]).toMatchObject({
+      projectPath: 'B',
+      manual: false,
+      activeTab: undefined,
+    });
+    expect(state.cells?.[1]).toMatchObject({ projectPath: 'S', activeTab: undefined });
+    expect(state.cells?.[2]).toMatchObject({ pinned: true, activeTab: 'p1' });
+    expect(state.cells?.[3]?.projectPath).toBeNull();
   });
 
   it('ignores a cell activation with a tab of another project', () => {

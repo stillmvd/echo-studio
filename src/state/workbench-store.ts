@@ -66,16 +66,24 @@ interface WorkbenchState {
   unhideProject: (path: string) => void;
 }
 
-function showInCell(s: WorkbenchState, path: string, key: string): WallCell[] {
-  const id = cellShowing(s.cells, s.layout, s.focusCell, path);
-  if (!id) return s.cells;
-  return s.cells.map((c) =>
+const chooseInCell = (cells: WallCell[], id: string, key: string): WallCell[] =>
+  cells.map((c) =>
     c.id === id
-      ? { ...c, activeTab: key }
+      ? { ...c, activeTab: key, manual: !c.pinned }
       : c.activeTab === key
         ? { ...c, activeTab: undefined }
         : c,
   );
+
+function showInCell(
+  s: WorkbenchState,
+  path: string,
+  key: string,
+): Pick<WorkbenchState, 'cells' | 'focusCell'> {
+  const id = cellShowing(s.cells, s.layout, s.focusCell, path);
+  if (id) return { cells: chooseInCell(s.cells, id, key), focusCell: s.focusCell };
+  const placed = placeProject(s.cells, s.layout, s.focusCell, path);
+  return { cells: chooseInCell(placed.cells, placed.focus, key), focusCell: placed.focus };
 }
 
 const NO_TABS: string[] = [];
@@ -267,7 +275,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
             tabs: { ...s.tabs, [path]: tabs },
             activeTab: { ...s.activeTab, [path]: key },
             recency: bump(s.recency, key),
-            cells: s.mode === 'wall' ? showInCell(s, path, key) : s.cells,
+            ...(s.mode === 'wall' ? showInCell(s, path, key) : {}),
             projectLayouts: {
               ...s.projectLayouts,
               [path]: s.mode === 'project' ? showTabInLayout(placed, key) : placed,
@@ -307,7 +315,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
             activeTab: { ...s.activeTab, [path]: key },
             recency: bump(s.recency, key),
           };
-          if (s.mode === 'wall') return { ...base, cells: showInCell(s, path, key) };
+          if (s.mode === 'wall') return { ...base, ...showInCell(s, path, key) };
           return {
             ...base,
             projectLayouts: {
@@ -337,13 +345,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
           const path = s.cells.find((c) => c.id === id)?.projectPath;
           if (!path || !(s.tabs[path] ?? []).includes(key)) return {};
           return {
-            cells: s.cells.map((c) =>
-              c.id === id
-                ? { ...c, activeTab: key }
-                : c.activeTab === key
-                  ? { ...c, activeTab: undefined }
-                  : c,
-            ),
+            cells: chooseInCell(s.cells, id, key),
             activeTab: path ? { ...s.activeTab, [path]: key } : s.activeTab,
             recency: bump(s.recency, key),
           };

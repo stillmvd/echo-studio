@@ -37,9 +37,9 @@ export function devState(server: DevServer | undefined) {
   return server?.state ?? 'stopped';
 }
 
-export function DevDot({ server, large }: { server: DevServer | undefined; large?: boolean }) {
+export function DevDot({ server }: { server: DevServer | undefined }) {
   return (
-    <span className={cn('wb-dv', `st-${devState(server)}`, large && 'lg')}>
+    <span className={cn('wb-dv', `st-${devState(server)}`)}>
       <i />
     </span>
   );
@@ -116,11 +116,9 @@ export function useDevControl() {
 export function DevCapsule({
   project,
   server,
-  large,
 }: {
   project: WorkbenchProject;
   server: DevServer | undefined;
-  large?: boolean;
 }) {
   const openTab = useWorkbenchStore((s) => s.openTab);
   const openMenu = useOpenMenu();
@@ -139,13 +137,13 @@ export function DevCapsule({
       <>
         <button
           type="button"
-          className={cn('wb-btn', large && 'lg')}
+          className="wb-btn"
           title={project.dev.command}
           onClick={start}
           onContextMenu={onContextMenu}
         >
           <Play strokeWidth={2} />
-          {large ? project.dev.command : 'dev'}
+          dev
         </button>
         {dialogs}
       </>
