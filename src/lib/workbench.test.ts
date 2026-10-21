@@ -250,6 +250,9 @@ describe('urgency', () => {
     };
     expect(statusView(bg, {})).toBe('new');
     expect(statusView({ ...bg, name: '  ' }, {})).toBe('new');
+    const dead = { ...session('deadbeef-0000-0000-0000-000000000000', 'idle', null), name: 'dead' };
+    expect(statusView(dead, {})).toBe('idle');
+    expect(statusView({ ...dead, name: 'Add' }, {})).toBe('idle');
     expect(statusView(session('b', 'done', 1_000), { b: 2_000 })).toBe('idle');
     expect(statusView(session('c', 'done', 1_000), {})).toBe('done');
     expect(STATUS_LABEL[statusView(fresh, {})]).toBe('новая · ждёт задачу');

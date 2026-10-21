@@ -133,7 +133,7 @@ export function statusView(
 
 export function hasTitle(session: Pick<ClaudeSession, 'sessionId' | 'name'>): boolean {
   const name = session.name?.trim().toLowerCase();
-  return !!name && !session.sessionId.toLowerCase().startsWith(name);
+  return !!name && name !== session.sessionId.slice(0, 8).toLowerCase();
 }
 
 function sinceKey(since: number | null): number {
