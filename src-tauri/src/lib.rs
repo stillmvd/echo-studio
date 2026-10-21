@@ -116,6 +116,8 @@ pub fn run() {
             commands::workbench::list_processes,
             commands::workbench::kill_processes,
             commands::workbench::list_claude_sessions,
+            commands::workbench::focus_session_window,
+            commands::workbench::open_in_vscode,
             commands::workbench::set_workbench_active,
             commands::workbench::start_claude_session,
             commands::workbench::stop_claude_session,

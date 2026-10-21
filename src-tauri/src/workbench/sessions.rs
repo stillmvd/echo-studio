@@ -3,13 +3,15 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::{mpsc, Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 
 use super::{child_command, projects, projects_root};
 
+const EXITED_WINDOW_MS: u64 = 3_600_000;
 const CLAUDE_TIMEOUT: Duration = Duration::from_secs(20);
 const START_TIMEOUT: Duration = Duration::from_secs(60);
 const PIPE_GRACE: Duration = Duration::from_millis(500);
@@ -37,6 +39,8 @@ pub struct HookState {
     pub tool: Option<String>,
     pub since: Option<u64>,
     pub transcript: Option<String>,
+    pub updated_at: Option<u64>,
+    pub task: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -47,6 +51,7 @@ pub enum Status {
     Working,
     Done,
     Idle,
+    Exited,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -70,6 +75,7 @@ pub struct ClaudeSession {
     pub since: Option<u64>,
     pub pid: Option<u32>,
     pub transcript: Option<String>,
+    pub exited_at: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -292,16 +298,135 @@ pub fn merge(agents: &[AgentEntry], hooks: &HashMap<String, HookState>) -> Vec<C
                 since: hook.and_then(|h| h.since),
                 pid: a.pid.or_else(|| hook.and_then(|h| h.claude_pid)),
                 transcript: hook.and_then(|h| h.transcript.clone()),
+                exited_at: None,
                 session_id,
             })
         })
         .collect()
 }
 
+pub fn exited_external(
+    hooks: &HashMap<String, HookState>,
+    agents: &[AgentEntry],
+    tree: &projects::ProjectTree,
+    now: u64,
+    alive: impl Fn(u32) -> bool,
+) -> Vec<ClaudeSession> {
+    let mut list: Vec<ClaudeSession> = hooks
+        .values()
+        .filter(|h| {
+            h.updated_at
+                .is_some_and(|t| t.saturating_add(EXITED_WINDOW_MS) >= now)
+        })
+        .filter(|h| {
+            !agents
+                .iter()
+                .any(|a| a.session_id.is_some() && a.session_id == h.session_id)
+        })
+        .filter(|h| h.claude_pid.is_none_or(|pid| !alive(pid)))
+        .filter(|h| {
+            h.project_dir
+                .as_deref()
+                .is_some_and(|d| projects::project_for(tree, d).is_some())
+        })
+        .filter_map(|h| {
+            let session_id = h.session_id.clone().filter(|id| is_session_id(id))?;
+            Some(ClaudeSession {
+                session_id,
+                short_id: None,
+                kind: Kind::External,
+                cwd: h.project_dir.clone(),
+                name: h.task.clone(),
+                status: Status::Exited,
+                phase: None,
+                tool: None,
+                since: h.updated_at,
+                pid: None,
+                transcript: h.transcript.clone(),
+                exited_at: h.updated_at,
+            })
+        })
+        .collect();
+    list.sort_by_key(|s| std::cmp::Reverse(s.exited_at));
+    list
+}
+
+fn alive_claudes(pids: &[u32]) -> Vec<u32> {
+    if pids.is_empty() {
+        return Vec::new();
+    }
+    let list: Vec<Pid> = pids.iter().map(|p| Pid::from_u32(*p)).collect();
+    let mut sys = System::new();
+    sys.refresh_processes_specifics(
+        ProcessesToUpdate::Some(&list),
+        true,
+        ProcessRefreshKind::nothing(),
+    );
+    pids.iter()
+        .copied()
+        .filter(|pid| {
+            sys.process(Pid::from_u32(*pid))
+                .is_some_and(|p| p.name().eq_ignore_ascii_case("claude.exe"))
+        })
+        .collect()
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
 pub fn list() -> Result<Vec<ClaudeSession>, String> {
     let agents = run_agents()?;
     let hooks = hooks_dir().map(|d| read_hooks(&d)).unwrap_or_default();
-    Ok(merge(&agents, &hooks))
+    let mut list = merge(&agents, &hooks);
+    if let Some(root) = projects_root() {
+        let tree = projects::scan(&root);
+        let pids: Vec<u32> = hooks.values().filter_map(|h| h.claude_pid).collect();
+        let alive = alive_claudes(&pids);
+        list.extend(exited_external(&hooks, &agents, &tree, now_ms(), |pid| {
+            alive.contains(&pid)
+        }));
+    }
+    Ok(list)
+}
+
+pub fn session_pid(session_id: &str) -> Result<u32, String> {
+    if !is_session_id(session_id) {
+        return Err(format!("invalid session id: {session_id}"));
+    }
+    let agents = run_agents();
+    let from_agents = agents.as_ref().ok().and_then(|list| {
+        list.iter()
+            .find(|a| a.session_id.as_deref() == Some(session_id))
+            .and_then(|a| a.pid)
+    });
+    let pid = from_agents
+        .or_else(|| hook_pid(session_id))
+        .ok_or_else(|| match &agents {
+            Err(e) => format!("no claude pid for session {session_id}: {e}"),
+            Ok(_) => format!("no claude pid for session {session_id}"),
+        })?;
+    ensure_claude(pid)
+}
+
+fn hook_pid(session_id: &str) -> Option<u32> {
+    let file = hooks_dir()?.join(format!("{session_id}.json"));
+    std::fs::read_to_string(file)
+        .ok()
+        .and_then(|t| serde_json::from_str::<HookState>(&t).ok())
+        .filter(|h| h.session_id.as_deref() == Some(session_id))
+        .and_then(|h| h.claude_pid)
+}
+
+fn ensure_claude(pid: u32) -> Result<u32, String> {
+    if pid != 0 && alive_claudes(&[pid]) == [pid] {
+        Ok(pid)
+    } else {
+        Err("session process is not running".to_owned())
+    }
 }
 
 pub fn parse_backgrounded(text: &str) -> Option<String> {
@@ -500,6 +625,111 @@ mod tests {
         assert!(is_session_id("b4eda7ff-5f54-42a6-bd10-eada7ec3c0f4"));
         assert!(!is_session_id("b4eda7ff-5f54-42a6-bd10"));
         assert!(!is_session_id("b4eda7ff-5f54-42a6-bd10-eada7ec3c0fz"));
+    }
+
+    fn tree() -> projects::ProjectTree {
+        projects::ProjectTree {
+            groups: Vec::new(),
+            roots: vec![projects::Project {
+                path: r"C:\P\Echo".into(),
+                name: "Echo".into(),
+                group: None,
+                icon: None,
+                dev: None,
+                mcp: None,
+                has_claude_md: false,
+            }],
+            root: r"C:\P".into(),
+        }
+    }
+
+    fn ended(id: &str, pid: u32, dir: &str, updated_at: u64) -> (String, HookState) {
+        (
+            id.into(),
+            HookState {
+                session_id: Some(id.into()),
+                claude_pid: Some(pid),
+                project_dir: Some(dir.into()),
+                state: Some("done".into()),
+                updated_at: Some(updated_at),
+                task: Some(format!("task {pid}")),
+                ..Default::default()
+            },
+        )
+    }
+
+    #[test]
+    fn exited_external_from_fresh_hook_files() {
+        const NOW: u64 = 10_000_000;
+        let fresh = "11111111-0000-4000-8000-000000000000";
+        let hooks: HashMap<_, _> = [
+            ended(fresh, 1, "C:/P/Echo/.claude/worktrees/x", NOW - 60_000),
+            ended(
+                "22222222-0000-4000-8000-000000000000",
+                2,
+                r"C:\P\Echo",
+                NOW - EXITED_WINDOW_MS - 1,
+            ),
+            ended("33333333-0000-4000-8000-000000000000", 3, r"C:\P\Echo", NOW),
+            ended(
+                "44444444-0000-4000-8000-000000000000",
+                4,
+                r"D:\elsewhere",
+                NOW,
+            ),
+            ended("55555555-0000-4000-8000-000000000000", 5, r"C:\P\Echo", NOW),
+            ended("not-a-uuid", 6, r"C:\P\Echo", NOW),
+        ]
+        .into();
+        let agents = parse_agents(
+            r#"[{"id":"55555555","kind":"background","sessionId":"55555555-0000-4000-8000-000000000000"}]"#,
+        )
+        .unwrap();
+        let list = exited_external(&hooks, &agents, &tree(), NOW, |pid| pid == 3);
+        assert_eq!(list.len(), 1, "{list:?}");
+        let s = &list[0];
+        assert_eq!(s.session_id, fresh);
+        assert_eq!(s.kind, Kind::External);
+        assert_eq!(s.status, Status::Exited);
+        assert_eq!(s.exited_at, Some(NOW - 60_000));
+        assert_eq!(s.short_id, None);
+        assert_eq!(s.pid, None);
+        assert_eq!(s.cwd.as_deref(), Some("C:/P/Echo/.claude/worktrees/x"));
+        assert_eq!(s.name.as_deref(), Some("task 1"));
+    }
+
+    #[test]
+    fn exited_session_serializes_as_contract() {
+        let hooks: HashMap<_, _> = [ended(
+            "11111111-0000-4000-8000-000000000000",
+            1,
+            r"C:\P\Echo",
+            5,
+        )]
+        .into();
+        let list = exited_external(&hooks, &[], &tree(), 5, |_| false);
+        let v = serde_json::to_value(&list[0]).unwrap();
+        assert_eq!(v["status"], "exited");
+        assert_eq!(v["exitedAt"], 5);
+        assert_eq!(v["kind"], "external");
+    }
+
+    #[test]
+    fn only_a_running_claude_pid_is_accepted() {
+        assert!(ensure_claude(0).is_err());
+        assert!(ensure_claude(u32::MAX - 1).is_err());
+        assert!(
+            ensure_claude(std::process::id()).is_err(),
+            "a live process that is not claude.exe"
+        );
+    }
+
+    #[test]
+    #[ignore]
+    fn session_pid_live() {
+        let id = std::env::var("SESSION_ID").unwrap();
+        let pid = session_pid(&id).unwrap();
+        assert!(pid > 0);
     }
 
     #[test]

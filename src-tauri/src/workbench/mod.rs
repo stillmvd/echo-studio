@@ -7,6 +7,7 @@ pub mod sessions;
 pub mod terminal;
 pub mod usage;
 pub mod watch;
+pub mod window;
 
 use std::path::PathBuf;
 use std::process::Command;

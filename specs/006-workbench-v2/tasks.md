@@ -23,7 +23,7 @@
 
 ## Phase 2: Foundational — контракт IPC (R1, блокирует п. 1 и п. 6 на фронте)
 
-- [ ] T002 [R1] Добавить в `src/lib/types.ts`: `exitedAt: number | null` в `ClaudeSession`, `root: string` в
+- [X] T002 [R1] Добавить в `src/lib/types.ts`: `exitedAt: number | null` в `ClaudeSession`, `root: string` в
       `ProjectTree`, `type FocusResult = 'focused' | 'vscode' | 'not-found'`; в `src/lib/ipc.ts`:
       `focusSessionWindow(pid, sessionId): Promise<FocusResult>` (`invoke('focus_session_window', { pid, sessionId })`),
       `openInVscode(path): Promise<void>`. Закоммитить отдельным коммитом `feat(workbench): IPC contract for v2`
@@ -39,21 +39,21 @@
 
 **Independent Test**: quickstart.md §1.
 
-- [ ] T003 [P] [US1] [R1] `src-tauri/src/workbench/window.rs` (новый, `pub mod window` в `workbench/mod.rs`):
+- [X] T003 [P] [US1] [R1] `src-tauri/src/workbench/window.rs` (новый, `pub mod window` в `workbench/mod.rs`):
       `pub fn focus(pid: u32) -> Focus` (`enum Focus { Focused, Vscode, NotFound }`, `Serialize` kebab-case):
       предки через `sysinfo` (`parent()`, ≤ 30) содержат `code.exe` → `Vscode`; иначе `AttachConsole(pid)` →
       `GetConsoleWindow()` → `GetAncestor(hwnd, GA_ROOTOWNER)` → `FreeConsole()`; владелец `NULL` или равен исходному
       окну → `NotFound`; `IsIconic` → `ShowWindow(SW_RESTORE)`; `SetForegroundWindow` вернул 0 → `NotFound`. Фичи
       `windows-sys` в `src-tauri/Cargo.toml`: `Win32_System_Console`, `Win32_UI_WindowsAndMessaging`. Тест: `focus`
       на `std::process::id()` своего теста не паникует и возвращает `NotFound` или `Focused`
-- [ ] T004 [US1] [R1] `src-tauri/src/workbench/sessions.rs`: `pub fn session_pid(session_id) -> Result<u32>` — pid из
+- [X] T004 [US1] [R1] `src-tauri/src/workbench/sessions.rs`: `pub fn session_pid(session_id) -> Result<u32>` — pid из
       `run_agents()` (по `sessionId`) или файла хука (`claudePid`), сверка `is_session_id`; `exited_external(hooks,
       agents, tree, now) -> Vec<ClaudeSession>` — файлы хука с `updatedAt ≥ now − 3600 с`, `sessionId` нет среди живых
       agents, `claudePid` не жив (`sysinfo::System::process`), `projectDir` внутри проекта дерева (`project_for`) →
       `kind: External`, `status: Exited` (новый вариант `Status::Exited`), `exited_at: Some(updatedAt)`, `short_id:
       None`, `pid: None`, `cwd: projectDir`; `list()` = `merge(...)` + `exited_external(...)`. `HookState` += `updated_at`.
       Тесты: `exited_external` на фикстурах (свежий/старый/живой pid/вне проектов)
-- [ ] T005 [US1] [R1] `src-tauri/src/commands/workbench.rs`: `focus_session_window(pid: u32, session_id: String) ->
+- [X] T005 [US1] [R1] `src-tauri/src/commands/workbench.rs`: `focus_session_window(pid: u32, session_id: String) ->
       Result<window::Focus>`: `blocking` → `sessions::session_pid(&session_id)? == pid` иначе ошибка «pid is not the
       session's claude», затем `window::focus(pid)`; регистрация в `src-tauri/src/lib.rs`
 - [X] T006 [P] [US1] [F1] `src/components/ui/Popover.tsx` (новый): `Popover({ anchor: HTMLElement | null, open,
@@ -127,7 +127,7 @@
 
 **Independent Test**: quickstart.md §2.
 
-- [ ] T017 [P] [US2] [R1] `src-tauri/src/workbench/projects.rs`: в `visible_dirs` пропускать папки, где
+- [X] T017 [P] [US2] [R1] `src-tauri/src/workbench/projects.rs`: в `visible_dirs` пропускать папки, где
       `p.join(".git").is_file()`; `ProjectTree` += `root: String`; тест `worktree_folder_is_skipped` (файл `.git` →
       нет; каталог `.git` → проект)
 - [X] T018 [P] [US2] [F2] `src/state/workbench-store.ts`: `hiddenProjects: string[]` (persist), `hideProject(path)`,
@@ -164,7 +164,7 @@
 
 **Independent Test**: quickstart.md §5.
 
-- [ ] T026 [P] [US5] [R1] `src-tauri/src/workbench/processes.rs`: в `Classifier` поле `root_path: String`
+- [X] T026 [P] [US5] [R1] `src-tauri/src/workbench/processes.rs`: в `Classifier` поле `root_path: String`
       (нормализованный корень); `project_of(path)`: `normalized(path) == root` → `Some(root как в snapshot)` — применимо
       и к `live.dir`, и к `cwd`; правило `rule: "projects-root"` для ветки `cwd`; фикстуры
       `specs/005-workbench/fixtures/expected.json` не менять — добавить юнит-тест `root_cwd_is_projects_root_group`
@@ -250,7 +250,7 @@ quickstart §1–§6, сообщение пользователю «пачка 1
       (вкладки сессии и dev), `DevCapsule.tsx` (капсула), `Processes.tsx` (строка), `RunningList.tsx` (строка),
       `SessionStrip.tsx` (чип) — один хост меню в `WorkbenchLayout.tsx` (`useContextMenu` из `context-menu.ts`:
       состояние `{ items, x, y, source }`), чтобы не плодить порталы
-- [ ] T042 [US9] [R1→E] `src-tauri/src/commands/workbench.rs`: `open_in_vscode(project_path)` — `ensure_project` →
+- [X] T042 [US9] [R1→E] `src-tauri/src/commands/workbench.rs`: `open_in_vscode(project_path)` — `ensure_project` →
       `child_command("cmd.exe").args(["/c", "code", path])` или поиск `code.cmd` в PATH; ошибка «VS Code не найден в
       PATH»; регистрация в `lib.rs` (делает R1 в пачке 1 вместе с T005, E только использует)
 - [ ] T043 [US9] [E] Правило из памяти `desktop-app-peeves`: пункты меню не выделяют текст (`user-select: none` уже
@@ -331,3 +331,23 @@ F2: T018, T021, T023, T024 [P] → T019, T020, T022, T025 → merge → T027, T0
   настоящих строк.
 - T006: фокус возвращается на якорь, только если он был внутри поповера (клик мимо по другому элементу фокус не
   отнимает).
+
+- T002 (R1): в коммит контракта вошли две строки фикстур `src/lib/workbench.test.ts` (файл F1) — `root` в дереве и
+  `exitedAt: null` в фабрике сессии, иначе `tsc` красный.
+- T003 (R1): окно консоли не класса `PseudoConsoleWindow` (классический conhost, Claude в окне cmd) — само видимое окно
+  консоли и выводится вперёд, а не `NotFound`. Если у Echo была своя консоль (dev), после `FreeConsole` она
+  возвращается `AttachConsole(ATTACH_PARENT_PROCESS)`; вызовы `focus` идут по очереди (мьютекс) — консоль одна на
+  процесс.
+- T004 (R1): завершённой считается сессия, которой нет в `agents --json` вообще (а не только среди живых): мёртвые
+  записи там — фоновые сессии Echo, им не место среди внешних. `claudePid` жив — только если процесс с этим pid
+  называется `claude.exe` (pid переиспользуются). `name` — поле `task` файла хука, `since` = `updatedAt`; список
+  завершённых — от свежих к старым. Сессии с `projectDir` = корень Projects в завершённые не попадают (`project_for` корня
+  не знает): «Продолжить в Echo» для корня не предлагается (US1 п. 5). `session_pid` принимает pid только живого
+  `claude.exe` (pid переиспользуются), иначе «session process is not running»; при сбое `agents --json` берётся файл
+  хука, ошибка agents — в тексте отказа.
+- T026 (R1): правило `projects-root` стоит после `inherited`, а не перед `cwd`: иначе `conhost.exe` живой сессии с
+  `cwd` = корень терял сессию и защиту (в фикстуре — pid 35324). Фикстура 005 не изменена, но в ней живые сессии с
+  `projectDir` = корень — их строки теперь в группе корня (так требует R-08). `fixture_matches_expected` для строк
+  таких сессий ждёт `projectPath` = корень вместо `null`; остальные поля сверяются как раньше.
+- T042 (R1): `code.cmd` ищется в PATH и запускается напрямую, а не `cmd /c code <path>`: std экранирует аргументы
+  `.cmd` сам, а через `cmd /c` путь с `&` без пробелов ушёл бы в cmd без кавычек.
