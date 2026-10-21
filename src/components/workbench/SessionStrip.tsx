@@ -1,4 +1,3 @@
-import { useLayoutEffect, useRef } from 'react';
 import { cn } from '@/lib/cn';
 import type { ClaudeSession, WorkbenchProject } from '@/lib/types';
 import { arrangeWall, byUrgency, CELL_COUNT, effectiveStatus, STATUS_LABEL } from '@/lib/workbench';
@@ -31,28 +30,6 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
   const layout = useWorkbenchStore((s) => s.layout);
   const cells = useWorkbenchStore((s) => s.cells);
   const focusCell = useWorkbenchStore((s) => s.focusCell);
-  const bar = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    const el = bar.current;
-    if (!el) return;
-    const clear = () => {
-      const pill = document.querySelector<HTMLElement>('[role="status"]');
-      const margin = Number.parseFloat(el.style.marginRight) || 0;
-      if (!pill) {
-        el.style.marginRight = '';
-        return;
-      }
-      const a = el.getBoundingClientRect();
-      const b = pill.getBoundingClientRect();
-      const overlaps = b.top < a.bottom && b.bottom > a.top;
-      el.style.marginRight = `${overlaps ? Math.max(0, a.right + margin - b.left + 8) : 0}px`;
-    };
-    clear();
-    const ro = new ResizeObserver(clear);
-    if (el.parentElement) ro.observe(el.parentElement);
-    return () => ro.disconnect();
-  }, []);
 
   const plan = wall
     ? arrangeWall(cells, CELL_COUNT[layout], sessions, Date.now(), focusCell, seen, {
@@ -89,7 +66,7 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
   };
 
   return (
-    <div ref={bar} className="wb-bar2" role="toolbar" aria-label="Сессии">
+    <div className="wb-bar2" role="toolbar" aria-label="Сессии">
       <div
         className="wb-bar-list"
         onWheel={(e) => {
@@ -104,6 +81,7 @@ export function SessionStrip({ sessions, projects, wall }: Props) {
       {pending > 0 && <span className="wb-bar-note">ещё ждут: {pending}</span>}
       <span className="wb-kbd">Ctrl</span>
       <span className="wb-kbd">Tab</span>
+      <span className="wb-watch" title="Слежу за конфигом Claude — изменения подхватываются сами" />
     </div>
   );
 }

@@ -262,3 +262,4 @@ fieldset.wl-seg { margin: 0; border: 0; min-width: 0; }
 .wb-bar-list .wb-bp b { max-width: 140px; }
 .wb-bar-list .wb-bp .wb-dim { max-width: 140px; }
 .wb-bar2 > .wb-bar-note, .wb-bar2 > .wb-kbd { flex: none; }
+.wb-watch { flex: none; width: 8px; height: 8px; margin: 0 4px 0 8px; border-radius: 999px; background: var(--ok); box-shadow: 0 0 8px color-mix(in srgb, var(--ok) 55%, transparent); }
