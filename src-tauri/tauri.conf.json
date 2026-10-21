@@ -58,6 +58,9 @@
     }
   },
   "plugins": {
+    "shell": {
+      "open": "(((mailto:\\w+)|(tel:\\w+)|(https?://\\w+)).+|vscode://stillmvd\\.claude-session-focus/focus\\?session=[0-9A-Za-z-]+)"
+    },
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNGNjAyNzAxRkVGMjk3OEEKUldTS2wvTCtBU2RnUDJJdmk4MkI2Z1hoMGlNS3lYMFFKdWdRWWVBcWpTQURpUTArcU81MnUvOVQK",
       "endpoints": ["https://github.com/stillmvd/echo-studio/releases/latest/download/latest.json"],

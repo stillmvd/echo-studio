@@ -110,11 +110,13 @@ export function LiveIcon({
   size,
   title,
   className,
+  dim = false,
 }: {
   look: LiveLook;
   size?: number;
   title?: string;
   className?: string;
+  dim?: boolean;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const glOff = useGlOff();
@@ -127,14 +129,14 @@ export function LiveIcon({
     let gone = false;
     loadEngine()
       .then((e) => {
-        if (!gone) unregister = e.register(el, look);
+        if (!gone) unregister = e.register(el, look, dim);
       })
       .catch(() => {});
     return () => {
       gone = true;
       unregister?.();
     };
-  }, [flat, look]);
+  }, [flat, look, dim]);
 
   return (
     <span

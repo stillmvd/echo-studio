@@ -65,8 +65,8 @@
 .wb-dv { flex: none; width: 18px; height: 18px; }
 
 @property --wb-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
-.wb-runs { flex: none; display: flex; flex-direction: column; gap: 10px; max-height: 45%; overflow-y: auto; overflow-x: hidden; user-select: none; }
-.wb-pc { position: relative; isolation: isolate; flex: none; display: flex; flex-direction: column; gap: 12px; padding: 14px 12px 12px; border-radius: 18px; background: var(--raised); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 5%); overflow: hidden; }
+.wb-runs { flex: none; display: flex; flex-direction: column; gap: 8px; max-height: 45%; overflow-y: auto; overflow-x: hidden; user-select: none; }
+.wb-pc { position: relative; isolation: isolate; flex: none; display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 18px; background: var(--raised); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 5%); overflow: hidden; }
 .wb-pc::before { content: ""; position: absolute; inset: -30%; z-index: -1; pointer-events: none; background: var(--card-bg); filter: blur(28px); opacity: .55; animation: wb-drift 14s ease-in-out infinite alternate; }
 @keyframes wb-drift { 0% { transform: translate(-6%, -4%) rotate(0deg); } 100% { transform: translate(6%, 5%) rotate(25deg); } }
 .wb-pc-h { display: block; min-width: 0; padding: 0 6px; color: var(--fg); font-size: 20px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

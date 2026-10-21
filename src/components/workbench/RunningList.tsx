@@ -171,7 +171,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
           );
         }}
       >
-        <LiveIcon look={look} />
+        <LiveIcon look={look} dim={external ? status === 'exited' : !s.projectPath} />
         <span className="wb-rt-l" data-live-cut>
           <span>{s.name || (external ? folderName(s.cwd) : null) || 'Claude'}</span>
           <small>{label}</small>

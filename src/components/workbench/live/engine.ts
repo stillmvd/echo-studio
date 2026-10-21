@@ -16,6 +16,7 @@ type Built = [T.Object3D, Tick];
 const STILL_T = 1.3;
 const UNFOCUSED_GAP_MS = 33;
 const REDUCED_GAP_MS = 500;
+const DIM_ALPHA = 0.55;
 
 const canvas = document.createElement('canvas');
 canvas.className = 'live-gl';
@@ -241,7 +242,23 @@ const BUILD: Record<SolidLook, (c: string) => Built> = {
   },
 };
 
-const scenes = new Map<LiveLook, { scene: T.Scene; tick: Tick }>();
+interface Made {
+  scene: T.Scene;
+  tick: Tick;
+  materials: T.Material[];
+  alpha: number;
+}
+
+const scenes = new Map<LiveLook, Made>();
+
+function setAlpha(s: Made, alpha: number) {
+  if (s.alpha === alpha) return;
+  for (const m of s.materials) {
+    m.transparent = alpha < 1;
+    m.opacity = alpha;
+  }
+  s.alpha = alpha;
+}
 
 function sceneOf(look: LiveLook) {
   const found = scenes.get(look);
@@ -257,7 +274,11 @@ function sceneOf(look: LiveLook) {
   fit.scale.setScalar(SOLID_SCALE[solid]);
   fit.add(obj);
   scene.add(fit);
-  const made = { scene, tick };
+  const materials: T.Material[] = [];
+  fit.traverse((o) => {
+    if (o instanceof T.Mesh) materials.push(o.material as T.Material);
+  });
+  const made = { scene, tick, materials, alpha: 1 };
   scenes.set(look, made);
   return made;
 }
@@ -266,6 +287,7 @@ interface Slot {
   look: LiveLook;
   clips: HTMLElement[];
   cut: Element | null;
+  dim: boolean;
 }
 
 const slots = new Map<Element, Slot>();
@@ -334,6 +356,7 @@ function draw(t: number) {
       s.tick(t);
       ticked.add(slot.look);
     }
+    setAlpha(s, slot.dim ? DIM_ALPHA : 1);
     renderer.setViewport(r.left, h - r.bottom, r.width, r.height);
     renderer.setScissor(box.left, h - box.bottom, box.right - box.left, box.bottom - box.top);
     renderer.render(s.scene, camera);
@@ -365,9 +388,10 @@ for (const type of ['scroll', 'pointerover', 'pointerout', 'focusin', 'focusout'
   document.addEventListener(type, () => reduce.matches && wake(), { capture: true, passive: true });
 }
 
-export function register(el: HTMLElement, look: LiveLook): () => void {
+export function register(el: HTMLElement, look: LiveLook, dim = false): () => void {
   slots.set(el, {
     look,
+    dim,
     clips: clipsOf(el),
     cut: el.parentElement?.querySelector(':scope > [data-live-cut]') ?? null,
   });
