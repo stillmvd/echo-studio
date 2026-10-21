@@ -397,23 +397,36 @@ pub fn session_pid(session_id: &str) -> Result<u32, String> {
     if !is_session_id(session_id) {
         return Err(format!("invalid session id: {session_id}"));
     }
-    let from_agents = run_agents().ok().and_then(|list| {
-        list.into_iter()
+    let agents = run_agents();
+    let from_agents = agents.as_ref().ok().and_then(|list| {
+        list.iter()
             .find(|a| a.session_id.as_deref() == Some(session_id))
             .and_then(|a| a.pid)
     });
-    if let Some(pid) = from_agents {
-        return Ok(pid);
-    }
-    let file = hooks_dir()
-        .ok_or("cannot resolve hooks dir")?
-        .join(format!("{session_id}.json"));
+    let pid = from_agents
+        .or_else(|| hook_pid(session_id))
+        .ok_or_else(|| match &agents {
+            Err(e) => format!("no claude pid for session {session_id}: {e}"),
+            Ok(_) => format!("no claude pid for session {session_id}"),
+        })?;
+    ensure_claude(pid)
+}
+
+fn hook_pid(session_id: &str) -> Option<u32> {
+    let file = hooks_dir()?.join(format!("{session_id}.json"));
     std::fs::read_to_string(file)
         .ok()
         .and_then(|t| serde_json::from_str::<HookState>(&t).ok())
         .filter(|h| h.session_id.as_deref() == Some(session_id))
         .and_then(|h| h.claude_pid)
-        .ok_or_else(|| format!("no claude pid for session {session_id}"))
+}
+
+fn ensure_claude(pid: u32) -> Result<u32, String> {
+    if pid != 0 && alive_claudes(&[pid]) == [pid] {
+        Ok(pid)
+    } else {
+        Err("session process is not running".to_owned())
+    }
 }
 
 pub fn parse_backgrounded(text: &str) -> Option<String> {
@@ -699,6 +712,24 @@ mod tests {
         assert_eq!(v["status"], "exited");
         assert_eq!(v["exitedAt"], 5);
         assert_eq!(v["kind"], "external");
+    }
+
+    #[test]
+    fn only_a_running_claude_pid_is_accepted() {
+        assert!(ensure_claude(0).is_err());
+        assert!(ensure_claude(u32::MAX - 1).is_err());
+        assert!(
+            ensure_claude(std::process::id()).is_err(),
+            "a live process that is not claude.exe"
+        );
+    }
+
+    #[test]
+    #[ignore]
+    fn session_pid_live() {
+        let id = std::env::var("SESSION_ID").unwrap();
+        let pid = session_pid(&id).unwrap();
+        assert!(pid > 0);
     }
 
     #[test]

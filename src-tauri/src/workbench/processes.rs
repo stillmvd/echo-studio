@@ -461,6 +461,7 @@ impl<'a> Classifier<'a> {
         } else if let Some(root) = self.project_of(p.cwd.as_deref()) {
             Class {
                 project_path: Some(root),
+                guard: self.working(pid, &anc).then_some(Guard::RunningDev),
                 rule: "projects-root",
                 ..Class::default()
             }
@@ -1088,17 +1089,21 @@ mod tests {
         let (fx, classes) = fixture();
         let expected: Vec<Value> = serde_json::from_str(EXPECTED).unwrap();
         let root = normalized(&fx.projects_root);
+        let running = |pid: Option<u32>| {
+            pid.is_some_and(|pid| fx.snapshot.processes.iter().any(|p| p.pid == pid))
+        };
+        let in_root = |dir: Option<&str>| dir.map(normalized) == Some(root.clone());
         let root_sessions: HashSet<&str> = fx
             .snapshot
             .hook_sessions
             .iter()
-            .filter(|s| s.project_dir.as_deref().map(normalized) == Some(root.clone()))
+            .filter(|s| in_root(s.project_dir.as_deref()) && running(s.claude_pid))
             .map(|s| s.session_id.as_str())
             .chain(
                 fx.snapshot
                     .agents
                     .iter()
-                    .filter(|a| a.cwd.as_deref().map(normalized) == Some(root.clone()))
+                    .filter(|a| in_root(a.cwd.as_deref()) && running(a.pid))
                     .filter_map(|a| a.session_id.as_deref()),
             )
             .collect();
@@ -1272,6 +1277,25 @@ mod tests {
             Some(OrphanReason::NoProject),
             "a group folder is not the root"
         );
+    }
+
+    #[test]
+    fn serving_process_in_root_keeps_its_guard() {
+        let snap = Snapshot {
+            processes: vec![
+                proc(80, 2, "node.exe", "node server.js", r"C:\P"),
+                proc(81, 2, "node.exe", "node idle.js", r"C:\P"),
+            ],
+            outside_parents: vec![proc(2, 1, "sh.exe", "sh", r"D:\")],
+            listening: vec![80],
+            ..Snapshot::default()
+        };
+        let classes = classify(&snap, &[], r"C:\P");
+        let server = &classes[&80];
+        assert_eq!(server.rule, "projects-root");
+        assert_eq!(server.project_path.as_deref(), Some(r"C:\P"));
+        assert_eq!(server.guard, Some(Guard::RunningDev));
+        assert_eq!(classes[&81].guard, None);
     }
 
     #[test]
