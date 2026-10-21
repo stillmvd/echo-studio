@@ -6,9 +6,8 @@
 
 ## 0. Подготовка
 
-- Dev из worktree на свободных портах (1420/9222 заняты пользователем): `pnpm tauri dev --config <json>` с
-  `{"identifier":"com.stillmvd.echo-studio.check","build":{"devUrl":"http://localhost:1425","beforeDevCommand":"pnpm dev
-  --port 1425 --strictPort"}}`, `ECHO_BACKGROUND_DEV=1` и `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9226
+- Dev из worktree на свободных портах (1420/9222 заняты пользователем): `pnpm tauri dev --config
+  specs/006-workbench-v2/dev-check.json` (свой identifier, порт 1425, окно с `focus: false`), `ECHO_BACKGROUND_DEV=1` и `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9226
   --disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows"`. Свой identifier — своё
   состояние окна и профиль WebView2 (не трогают Echo пользователя); `ECHO_BACKGROUND_DEV` (только debug) — без заставки,
   окно за пределами экрана, без кнопки на панели задач и без фокуса; без флагов occlusion WebView2 за экраном не рисует.

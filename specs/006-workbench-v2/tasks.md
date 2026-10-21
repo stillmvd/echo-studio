@@ -16,7 +16,7 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 Создать ветки исполнителей от `workbench-v2`: `v2-rust`, `v2-front-sessions`, `v2-front-controls` в
+- [X] T001 Создать ветки исполнителей от `workbench-v2`: `v2-rust`, `v2-front-sessions`, `v2-front-controls` в
       worktree `.claude/worktrees/v2-<имя>`; записать в `.planning/ORCHESTRATION-006.md` раздел «Журнал» (координатор)
 
 ---
@@ -294,12 +294,12 @@ quickstart §1–§6, сообщение пользователю «пачка 1
 
 ## Phase 11: Polish
 
-- [ ] T044 Координатор: полный quickstart.md §1–§8 на dev из `v2-integration`; результаты — в раздел «Живые проверки»
+- [X] T044 Координатор: полный quickstart.md §1–§8 на dev из `v2-integration`; результаты — в раздел «Живые проверки»
       `.planning/WORKBENCH.md`
 - [X] T045 Координатор: `CLAUDE.md` проекта — инварианты v2 (внешние сессии: фокус окна по pid из свежего списка;
       worktree не проект; режимы Проект/Пульт; меню одно на приложение) — патч в `specs/006-workbench-v2/claude-md-patch.md`
       (сам CLAUDE.md правит пользователь, как в 005)
-- [ ] T046 Координатор: итоговый отчёт сессии `projects-19`, уборка сессий, worktree исполнителей, cron
+- [X] T046 Координатор: итоговый отчёт сессии `projects-19`, уборка сессий, worktree исполнителей, cron
 
 ---
 

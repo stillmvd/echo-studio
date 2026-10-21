@@ -1,0 +1,26 @@
+{
+  "identifier": "com.stillmvd.echo-studio.check",
+  "build": {
+    "devUrl": "http://localhost:1425",
+    "beforeDevCommand": "pnpm dev --port 1425 --strictPort"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Echo Studio",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "visible": false,
+        "focus": false,
+        "decorations": false,
+        "transparent": false,
+        "resizable": true,
+        "shadow": true,
+        "theme": "Dark",
+        "dragDropEnabled": false
+      }
+    ]
+  }
+}

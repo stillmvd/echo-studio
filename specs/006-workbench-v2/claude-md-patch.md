@@ -30,8 +30,8 @@
 ```
 Скрытая проверка из worktree (без окна на экране, без фокуса и кнопки на панели задач, только debug):
 `ECHO_BACKGROUND_DEV=1 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9226
---disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows" pnpm tauri dev --config <json>`
-с `{"identifier":"com.stillmvd.echo-studio.check","build":{"devUrl":"http://localhost:1425","beforeDevCommand":"pnpm
-dev --port 1425 --strictPort"}}` — свой identifier не делит состояние окна и профиль WebView2 с Echo пользователя.
+--disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows" pnpm tauri dev --config
+specs/006-workbench-v2/dev-check.json` — свой identifier не делит состояние окна и профиль WebView2 с Echo
+пользователя, `focus: false` у окна — WebView2 при создании не забирает передний план.
 Управление — CDP 9226; закрыть сразу после проверки (`WM_CLOSE` окну).
 ```
