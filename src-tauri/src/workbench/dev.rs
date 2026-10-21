@@ -6,7 +6,7 @@ use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
@@ -135,12 +135,19 @@ static TAILS: LazyLock<Mutex<HashMap<u32, Arc<AtomicBool>>>> =
 static NEXT_TAIL: AtomicU32 = AtomicU32::new(1);
 static FILES: Mutex<()> = Mutex::new(());
 
+const MAIN_ID: &str = "com.stillmvd.echo-studio";
+static APP_ID: OnceLock<String> = OnceLock::new();
+
+pub fn set_app_id(identifier: &str) {
+    let _ = APP_ID.set(identifier.to_owned());
+}
+
+fn app_id() -> &'static str {
+    APP_ID.get().map_or(MAIN_ID, String::as_str)
+}
+
 pub fn state_dir() -> Option<PathBuf> {
-    dirs::data_local_dir().map(|d| {
-        d.join("com.stillmvd.echo-studio")
-            .join("workbench")
-            .join("dev")
-    })
+    dirs::data_local_dir().map(|d| d.join(app_id()).join("workbench").join("dev"))
 }
 
 pub fn slug(project_path: &str) -> String {
@@ -158,10 +165,18 @@ pub fn slug(project_path: &str) -> String {
 }
 
 fn job_name(slug: &str) -> Vec<u16> {
-    format!("Local\\EchoStudio.dev.{slug}")
+    job_name_in(app_id(), slug)
         .encode_utf16()
         .chain(Some(0))
         .collect()
+}
+
+fn job_name_in(identifier: &str, slug: &str) -> String {
+    if identifier == MAIN_ID {
+        format!("Local\\EchoStudio.dev.{slug}")
+    } else {
+        format!("Local\\EchoStudio.dev.{identifier}.{slug}")
+    }
 }
 
 fn now_ms() -> u64 {
@@ -1601,6 +1616,15 @@ mod tests {
         assert_eq!(log.matches("код 3").count(), 1, "{log}");
         assert_eq!(list_in(&dir)[0].state, DevState::Error);
         let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn job_names_are_per_app_and_the_main_app_keeps_its_old_ones() {
+        assert_eq!(job_name_in(MAIN_ID, "ab"), "Local\\EchoStudio.dev.ab");
+        assert_eq!(
+            job_name_in("com.stillmvd.echo-studio.check", "ab"),
+            "Local\\EchoStudio.dev.com.stillmvd.echo-studio.check.ab"
+        );
     }
 
     #[test]

@@ -31,6 +31,7 @@ fn toasts_muted() -> bool {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let context = tauri::generate_context!();
+    workbench::dev::set_app_id(&context.config().identifier);
     let splash = splash::show(&context.config().identifier);
     let builder = tauri::Builder::default();
     #[cfg(not(debug_assertions))]
