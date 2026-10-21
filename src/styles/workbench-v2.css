@@ -10,3 +10,10 @@
 .wb-ph .wl-seg button.on::before, .wl-tb .wl-seg button.on::before, .wb-ph .wl-seg button.on + button::before, .wl-tb .wl-seg button.on + button::before { opacity: 0; }
 .wb-ph .wl-seg button.on, .wl-tb .wl-seg button.on { background: var(--color-bg-primary); box-shadow: 0 0 0 1px var(--color-border), 0 1px 2px var(--color-press-shade); }
 .wb-ph .wl-seg svg, .wl-tb .wl-seg svg { width: 16px; height: 16px; }
+
+.wb-ps { display: flex; align-items: center; gap: 8px; height: 30px; padding-left: 30px; font-size: 12.5px; min-width: 0; }
+.wb-ps b { min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb-ps .wb-mb { width: 64px; margin-right: 38px; font-weight: 500; color: var(--dim); }
+.wb-pr.in { padding-left: 50px; grid-template-columns: 108px minmax(0, 1fr) 64px 28px; }
+.wb-pr.orphan > span.wb-dim { color: var(--color-danger); }
+.wb-phint { flex: none; width: 14px; height: 14px; color: var(--dim); cursor: help; }
