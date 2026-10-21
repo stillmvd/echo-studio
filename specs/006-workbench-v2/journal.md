@@ -74,3 +74,12 @@
   `@tauri-apps/plugin-notification` 2.3.3 (npm) — тем же упал бы `pnpm release`; npm закреплён на `~2.5.1`.
 - 5б §6, визуальный проход: `shots/final-{project,overview,empty}-{1920,900}.png` — дефектов не найдено; пульт не
   снимался (см. §2).
+- 5б, adversary по всей ветке от b30eff7: 2 MAJOR + 3 MINOR. «Регулярка `plugins.shell.open` без якорей» — ложная:
+  плагин сам оборачивает свою регулярку в `^…$` (`tauri-plugin-shell` `lib.rs`, `format!("^{validator}$")`), примеры
+  `file:///…?u=https://…` и `vscode://evil/https://…` отклоняются. Kill процессов брал «живые сессии» из кэша
+  `claude agents` до 3 с — сессия, запущенная не из Echo, могла уйти без `ConfirmDialog`; теперь `kill_processes`
+  спрашивает `agents` заново (список процессов — по-прежнему с кэшем). Гонка авто-перезапуска dev со «Стопом»: флаг
+  `stopping` мог сброситься повторным `launch` — теперь проверка и вставка под одним захватом, тест
+  `a_restart_gives_up_when_stop_came_first`. MINOR: `emptyLayout`/`seedRecent` не мёртвые (эталон теста, вызов при
+  загрузке); пропуск папок с файлом `.git` — на машине это только worktree ProHouse; «Отклонения» фаз 3б–5б внесены в
+  tasks.md. Проверки: biome, tsc, vitest, build, cargo clippy, cargo test 144 + 2 ignored.

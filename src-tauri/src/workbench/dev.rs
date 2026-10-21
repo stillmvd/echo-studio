@@ -707,7 +707,16 @@ fn launch(
         let _ = child.kill();
         return Err(e);
     }
-    runtime().insert(slug.clone(), Runtime::default());
+    {
+        let mut rt = runtime();
+        if after_crash.is_some() && rt.get(&slug).is_some_and(|r| r.stopping) {
+            drop(rt);
+            job.terminate();
+            let _ = child.kill();
+            return Err("dev server was stopped during the restart".into());
+        }
+        rt.insert(slug.clone(), Runtime::default());
+    }
     let watched = slug.clone();
     let state = dir.to_path_buf();
     let (project, cwd, args) = (project_path.to_owned(), cwd.to_path_buf(), args.to_vec());
@@ -1591,6 +1600,27 @@ mod tests {
         assert_eq!(log.matches("run").count(), 2, "{log}");
         assert_eq!(log.matches("код 3").count(), 1, "{log}");
         assert_eq!(list_in(&dir)[0].state, DevState::Error);
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn a_restart_gives_up_when_stop_came_first() {
+        let base = std::env::temp_dir().join(format!("echo-dev-stopped-{}", std::process::id()));
+        let project = base.join("project");
+        let dir = base.join("state");
+        fs::create_dir_all(&project).unwrap();
+        let project_path = project.to_string_lossy().into_owned();
+        let args = ["ping -n 30 127.0.0.1 > nul".to_owned()];
+        runtime().entry(slug(&project_path)).or_default().stopping = true;
+        let on_exit: OnExit = Arc::new(|| {});
+        let result = launch(&dir, &project_path, &project, &args, on_exit, Some(3), 0);
+        assert!(result.is_err());
+        let gone = (0..30).any(|_| {
+            std::thread::sleep(Duration::from_millis(100));
+            running_members(&slug(&project_path), 0).is_empty()
+        });
+        assert!(gone);
+        runtime().remove(&slug(&project_path));
         let _ = fs::remove_dir_all(&base);
     }
 }

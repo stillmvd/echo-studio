@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
+use std::time::Duration;
 
 use serde::Serialize;
 use tauri::ipc::{Channel, Response};
@@ -44,7 +45,7 @@ pub async fn list_processes() -> Result<Vec<processes::ProcessRow>, String> {
     blocking(move || {
         Ok(processes::list_processes(
             &projects::scan(&root),
-            live_agents()?,
+            live_agents(sessions::AGENTS_FRESH)?,
             dev::jobs(),
             &root,
         ))
@@ -52,8 +53,8 @@ pub async fn list_processes() -> Result<Vec<processes::ProcessRow>, String> {
     .await?
 }
 
-fn live_agents() -> Result<Vec<processes::AgentRef>, String> {
-    Ok(sessions::run_agents_cached(sessions::AGENTS_FRESH)?
+fn live_agents(max_age: Duration) -> Result<Vec<processes::AgentRef>, String> {
+    Ok(sessions::run_agents_cached(max_age)?
         .into_iter()
         .filter(sessions::is_live)
         .map(|a| processes::AgentRef {
@@ -76,7 +77,7 @@ pub async fn kill_processes(
             &targets,
             confirmed,
             &projects::scan(&root),
-            live_agents()?,
+            live_agents(Duration::ZERO)?,
             dev::jobs(),
             &root,
         ))
