@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
 import { splitTitle } from '@/lib/sessions';
 
@@ -93,7 +94,7 @@ export function ConfirmDialog({
 
   const [lead, last] = splitTitle(title);
 
-  return (
+  return createPortal(
     // biome-ignore lint/a11y/useKeyWithClickEvents: ESC closes via keydown handler above
     <div
       className={cn(
@@ -186,7 +187,8 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

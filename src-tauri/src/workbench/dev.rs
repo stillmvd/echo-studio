@@ -165,7 +165,11 @@ pub fn slug(project_path: &str) -> String {
 }
 
 fn job_name(slug: &str) -> Vec<u16> {
-    job_name_in(app_id(), slug)
+    job_name_wide(app_id(), slug)
+}
+
+fn job_name_wide(identifier: &str, slug: &str) -> Vec<u16> {
+    job_name_in(identifier, slug)
         .encode_utf16()
         .chain(Some(0))
         .collect()
@@ -219,7 +223,11 @@ impl Job {
     }
 
     fn open(slug: &str) -> Option<Self> {
-        let name = job_name(slug);
+        Self::open_in(app_id(), slug)
+    }
+
+    fn open_in(identifier: &str, slug: &str) -> Option<Self> {
+        let name = job_name_wide(identifier, slug);
         let handle = unsafe {
             OpenJobObjectW(
                 JOB_OBJECT_QUERY | JOB_OBJECT_TERMINATE,
@@ -609,6 +617,33 @@ pub fn jobs() -> Vec<processes::DevJob> {
         .map(|s| processes::DevJob {
             project_path: s.project_path,
             pids: s.pids,
+        })
+        .chain(main_app_jobs())
+        .collect()
+}
+
+fn main_app_jobs() -> Vec<processes::DevJob> {
+    if app_id() == MAIN_ID {
+        return Vec::new();
+    }
+    let Some(dir) = dirs::data_local_dir().map(|d| d.join(MAIN_ID).join("workbench").join("dev"))
+    else {
+        return Vec::new();
+    };
+    let Ok(entries) = fs::read_dir(&dir) else {
+        return Vec::new();
+    };
+    entries
+        .flatten()
+        .filter_map(|e| {
+            let name = e.file_name();
+            let slug = name.to_str()?.strip_suffix(".json")?.to_owned();
+            let file = read_file(&dir, &slug)?;
+            let pids = Job::open_in(MAIN_ID, &slug)?.pids();
+            (!pids.is_empty()).then_some(processes::DevJob {
+                project_path: file.project_path,
+                pids,
+            })
         })
         .collect()
 }
