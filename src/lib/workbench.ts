@@ -462,6 +462,95 @@ export function pruneCells(cells: WallCell[], exists: (path: string) => boolean)
   );
 }
 
+export interface ProjectCell {
+  tabs: string[];
+  active?: string;
+}
+
+export interface ProjectLayout {
+  layout: WallLayout;
+  cells: ProjectCell[];
+  focus: number;
+}
+
+const PROJECT_CELLS = 4;
+
+export function emptyLayout(): ProjectLayout {
+  return {
+    layout: '1x1',
+    cells: Array.from({ length: PROJECT_CELLS }, () => ({ tabs: [] })),
+    focus: 0,
+  };
+}
+
+export function isLayout(value: unknown): value is WallLayout {
+  return typeof value === 'string' && Object.hasOwn(CELL_COUNT, value);
+}
+
+export function normalizeLayout(raw: unknown, tabs: string[]): ProjectLayout {
+  const src = (raw && typeof raw === 'object' ? raw : {}) as Partial<ProjectLayout>;
+  const layout = isLayout(src.layout) ? src.layout : '1x1';
+  const count = CELL_COUNT[layout];
+  const focus =
+    typeof src.focus === 'number' && Number.isInteger(src.focus)
+      ? Math.min(Math.max(src.focus, 0), count - 1)
+      : 0;
+  const rawCells = Array.isArray(src.cells) ? src.cells : [];
+  const open = new Set(tabs);
+  const used = new Set<string>();
+  const lists: string[][] = Array.from({ length: PROJECT_CELLS }, () => []);
+  for (let i = 0; i < PROJECT_CELLS; i++) {
+    const list = (rawCells[i] as Partial<ProjectCell> | undefined)?.tabs;
+    if (!Array.isArray(list)) continue;
+    const target = lists[Math.min(i, count - 1)] as string[];
+    for (const key of list) {
+      if (typeof key !== 'string' || !open.has(key) || used.has(key)) continue;
+      used.add(key);
+      target.push(key);
+    }
+  }
+  const fresh = tabs.filter((k) => !used.has(k));
+  (lists[focus] as string[]).push(...new Set(fresh));
+  return {
+    layout,
+    focus,
+    cells: lists.map((list, i) => {
+      const prev = (rawCells[i] as Partial<ProjectCell> | undefined)?.active;
+      const active = typeof prev === 'string' && list.includes(prev) ? prev : list[list.length - 1];
+      return active ? { tabs: list, active } : { tabs: list };
+    }),
+  };
+}
+
+export function cellOfTab(layout: ProjectLayout, key: string): number {
+  return layout.cells.findIndex((c) => c.tabs.includes(key));
+}
+
+export function moveTabInLayout(
+  layout: ProjectLayout,
+  key: string,
+  toCell: number,
+  index?: number,
+): ProjectLayout {
+  const from = cellOfTab(layout, key);
+  const to = Math.min(Math.max(toCell, 0), CELL_COUNT[layout.layout] - 1);
+  if (from < 0) return layout;
+  const source = layout.cells[from]?.tabs ?? [];
+  const at = source.indexOf(key);
+  const cells = layout.cells.map((c, i) => {
+    if (i !== from) return c;
+    const tabs = c.tabs.filter((k) => k !== key);
+    const active = c.active === key ? tabs[tabs.length - 1] : c.active;
+    return active ? { tabs, active } : { tabs };
+  });
+  const target = cells[to]?.tabs ?? [];
+  let pos = index ?? target.length;
+  if (from === to && index !== undefined && at < index) pos -= 1;
+  pos = Math.min(Math.max(pos, 0), target.length);
+  cells[to] = { tabs: [...target.slice(0, pos), key, ...target.slice(pos)], active: key };
+  return { ...layout, cells, focus: to };
+}
+
 export function urgentTab(
   sessions: ClaudeSession[],
   path: string,

@@ -12,15 +12,19 @@ import {
   assignTabs,
   byRecency,
   byUrgency,
+  cellOfTab,
   detectAgentView,
   effectiveStatus,
   emptyCells,
+  emptyLayout,
   externalAction,
   HANDS_ON_MS,
   isPathTitle,
   type KeyInput,
+  moveTabInLayout,
   nextInRecency,
   normalizeCells,
+  normalizeLayout,
   placeProject,
   projectOf,
   pruneCells,
@@ -642,5 +646,69 @@ describe('Ctrl+Tab order', () => {
     expect(nextInRecency(['A'], 'A')).toBe('A');
     expect(nextInRecency(['A', 'B'], null)).toBe('B');
     expect(nextInRecency(['A', 'B'], 'gone')).toBe('B');
+  });
+});
+
+describe('project layout', () => {
+  const cell = (tabs: string[], active?: string) => (active ? { tabs, active } : { tabs });
+
+  it('starts empty with one visible cell', () => {
+    expect(normalizeLayout(undefined, [])).toEqual(emptyLayout());
+    expect(normalizeLayout('junk', ['a']).cells[0]).toEqual(cell(['a'], 'a'));
+  });
+
+  it('keeps every open tab in exactly one cell and drops closed ones', () => {
+    const l = normalizeLayout(
+      {
+        layout: '2x1',
+        focus: 1,
+        cells: [cell(['a', 'gone', 'b'], 'gone'), cell(['b', 'c'], 'c'), cell([]), cell([])],
+      },
+      ['a', 'b', 'c', 'd'],
+    );
+    expect(l.cells.map((c) => c.tabs)).toEqual([['a', 'b'], ['c', 'd'], [], []]);
+    expect(l.cells[0]?.active).toBe('b');
+    expect(l.cells[1]?.active).toBe('c');
+    expect(l.cells[2]?.active).toBeUndefined();
+  });
+
+  it('moves tabs of hidden cells into the last visible one', () => {
+    const l = normalizeLayout(
+      {
+        layout: '2x1',
+        focus: 3,
+        cells: [cell(['a']), cell(['b'], 'b'), cell(['c']), cell(['d'])],
+      },
+      ['a', 'b', 'c', 'd'],
+    );
+    expect(l.focus).toBe(1);
+    expect(l.cells.map((c) => c.tabs)).toEqual([['a'], ['b', 'c', 'd'], [], []]);
+    expect(l.cells[1]?.active).toBe('b');
+  });
+
+  it('moves a tab between cells and inside a cell', () => {
+    const base = normalizeLayout(
+      { layout: '2x1', focus: 0, cells: [cell(['claude', 'dev'], 'claude')] },
+      ['claude', 'dev'],
+    );
+    const right = moveTabInLayout(base, 'dev', 1);
+    expect(right.cells.map((c) => c.tabs)).toEqual([['claude'], ['dev'], [], []]);
+    expect(right.cells[1]?.active).toBe('dev');
+    expect(right.focus).toBe(1);
+    expect(cellOfTab(right, 'dev')).toBe(1);
+
+    const back = moveTabInLayout(right, 'dev', 0, 0);
+    expect(back.cells[0]).toEqual(cell(['dev', 'claude'], 'dev'));
+    expect(back.cells[1]).toEqual(cell([]));
+
+    const after = moveTabInLayout(back, 'dev', 0, 2);
+    expect(after.cells[0]?.tabs).toEqual(['claude', 'dev']);
+    expect(moveTabInLayout(after, 'dev', 0, 1).cells[0]?.tabs).toEqual(['claude', 'dev']);
+  });
+
+  it('ignores unknown tabs and clamps the target cell to the layout', () => {
+    const l = normalizeLayout({ layout: '1x1' }, ['a']);
+    expect(moveTabInLayout(l, 'nope', 0)).toBe(l);
+    expect(cellOfTab(moveTabInLayout(l, 'a', 3), 'a')).toBe(0);
   });
 });
