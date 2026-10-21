@@ -9,3 +9,4 @@
 - Сессия пользователя — `projects-19` (не `projects-99`).
 - Контракт IPC R1 (c602ebb) → workbench-v2 как 75e0940 (cherry-pick); F1/F2 уведомлены.
 - F2 (v2-front-controls) принята после ревью (регресс kill-all исправлен d42f414) → merge 08ba01a.
+- F1 (v2-front-sessions) принята после ревью (автоподключение при смене shortId, live-фильтр exited в WorkbenchLayout, поповер) → merge ea9fbc9.
