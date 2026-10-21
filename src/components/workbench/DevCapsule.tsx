@@ -9,7 +9,7 @@ import type { DevServer, WorkbenchProject } from '@/lib/types';
 import { devHealth, devStatusLabel } from '@/lib/workbench';
 import { devTabKey, useWorkbenchStore } from '@/state/workbench-store';
 import { copyText, devRuns, devTabMenu, devUrl } from './menus';
-import { dispose, startTail } from './terminals';
+import { dispose, focusSoon, startTail } from './terminals';
 
 export function closeDevLog(path: string) {
   const key = devTabKey(path);
@@ -200,7 +200,13 @@ export function DevCapsule({
       onContextMenu={onContextMenu}
     >
       <DevDot server={server} />
-      <button type="button" onClick={() => openTab(project.path, key)}>
+      <button
+        type="button"
+        onClick={() => {
+          openTab(project.path, key);
+          focusSoon(key);
+        }}
+      >
         <b>dev</b>
       </button>
       <span>{server ? devStatusLabel(server) : ''}</span>

@@ -6,7 +6,7 @@ import { type Marks, marksOf, pickToasts, rememberToast, takeActivation } from '
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { useWorkbenchStore } from '@/state/workbench-store';
-import { isShown } from './terminals';
+import { focusSoon, isShown } from './terminals';
 
 const muted = toastsMuted().catch(() => true);
 const folder = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
@@ -49,5 +49,6 @@ export function useToasts(
     const wb = useWorkbenchStore.getState();
     wb.openTab(target.path, target.tab);
     wb.select({ kind: 'project', path: target.path });
+    focusSoon(target.tab);
   });
 }

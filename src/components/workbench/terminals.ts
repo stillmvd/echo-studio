@@ -14,7 +14,13 @@ import {
   terminalWrite,
   untailDevLog,
 } from '@/lib/ipc';
-import { detectAgentView, isPathTitle, terminalKey } from '@/lib/workbench';
+import {
+  detectAgentView,
+  IMAGE_PASTE,
+  isImagePaste,
+  isPathTitle,
+  terminalKey,
+} from '@/lib/workbench';
 
 export type TermState = 'idle' | 'attaching' | 'live' | 'ended' | 'detached' | 'error';
 
@@ -32,6 +38,9 @@ interface Entry {
   agentCheck: ReturnType<typeof setTimeout> | undefined;
   version: number;
   listeners: Set<() => void>;
+  pasteImage: (() => void) | null;
+  resetCaret: () => void;
+  placeCaret: () => void;
 }
 
 const entries = new Map<string, Entry>();
@@ -128,6 +137,7 @@ function watchAgentView(entry: Entry) {
     detach(id);
     entry.terminalId = null;
     entry.term.reset();
+    entry.resetCaret();
     setState(entry, 'detached');
   }, AGENT_VIEW_DEBOUNCE_MS);
 }
@@ -172,6 +182,9 @@ function create(options: Partial<ITerminalOptions>): Entry {
     agentCheck: undefined,
     version: 0,
     listeners: new Set(),
+    pasteImage: null,
+    resetCaret: () => {},
+    placeCaret: () => {},
   };
   term.onTitleChange((t) => {
     const title = t.trim();
@@ -182,10 +195,60 @@ function create(options: Partial<ITerminalOptions>): Entry {
   return entry;
 }
 
+const CARET_HIDE_MS = 200;
+
+function attachCaret(entry: Entry) {
+  const { term } = entry;
+  const el = document.createElement('div');
+  el.className = 'wb-caret';
+  el.hidden = true;
+  let at: { x: number; y: number } | null = null;
+  let hiding: ReturnType<typeof setTimeout> | undefined;
+  const place = () => {
+    const screen = term.element?.querySelector<HTMLElement>('.xterm-screen');
+    if (!screen || !at || term.cols === 0 || term.rows === 0) return;
+    if (el.parentElement !== screen) screen.appendChild(el);
+    const w = screen.clientWidth / term.cols;
+    const h = screen.clientHeight / term.rows;
+    el.style.transform = `translate(${Math.min(at.x, term.cols - 1) * w}px, ${at.y * h}px)`;
+    el.style.height = `${h}px`;
+  };
+  term.parser.registerCsiHandler({ prefix: '?', final: 'h' }, (params) => {
+    if (!params.includes(25)) return false;
+    clearTimeout(hiding);
+    at = { x: term.buffer.active.cursorX, y: term.buffer.active.cursorY };
+    el.hidden = false;
+    place();
+    return false;
+  });
+  term.parser.registerCsiHandler({ prefix: '?', final: 'l' }, (params) => {
+    if (!params.includes(25)) return false;
+    clearTimeout(hiding);
+    hiding = setTimeout(() => {
+      el.hidden = true;
+    }, CARET_HIDE_MS);
+    return false;
+  });
+  term.onResize(place);
+  entry.placeCaret = place;
+  entry.resetCaret = () => {
+    clearTimeout(hiding);
+    at = null;
+    el.hidden = true;
+  };
+}
+
 function claudeEntry(key: string): Entry {
   const existing = entries.get(key);
   if (existing) return existing;
-  const entry = create({});
+  const entry = create({
+    cursorBlink: false,
+    cursorStyle: 'bar',
+    cursorWidth: 1,
+    cursorInactiveStyle: 'none',
+    theme: { ...theme(), cursor: 'transparent' },
+  });
+  attachCaret(entry);
   const { term } = entry;
   term.attachCustomKeyEventHandler((ev) => {
     const action = terminalKey(ev, term.hasSelection());
@@ -206,6 +269,9 @@ function claudeEntry(key: string): Entry {
   term.onData((data) => {
     if (entry.terminalId) void terminalWrite(entry.terminalId, data);
   });
+  entry.pasteImage = () => {
+    if (entry.terminalId) void terminalWrite(entry.terminalId, IMAGE_PASTE);
+  };
   entries.set(key, entry);
   return entry;
 }
@@ -260,6 +326,16 @@ export function mount(entry: Entry, container: HTMLElement) {
   container.appendChild(entry.host);
   if (entry.opened) return;
   entry.term.open(entry.host);
+  entry.term.element?.addEventListener(
+    'paste',
+    (e) => {
+      if (!entry.pasteImage || !isImagePaste(e.clipboardData)) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      entry.pasteImage();
+    },
+    true,
+  );
   try {
     const gl = new WebglAddon();
     gl.onContextLoss(() => gl.dispose());
@@ -275,6 +351,7 @@ export function unmount(entry: Entry) {
 export function fitTerm(entry: Entry) {
   if (!entry.opened || entry.host.clientWidth === 0 || entry.host.clientHeight === 0) return;
   entry.fit.fit();
+  entry.placeCaret();
   if (entry.terminalId) {
     void terminalResize(entry.terminalId, entry.term.cols, entry.term.rows).catch(() => {});
   }
@@ -297,6 +374,7 @@ export function connect(key: string, shortId: string) {
   entry.attachedAt = Date.now();
   setState(entry, 'attaching');
   entry.term.reset();
+  entry.resetCaret();
   fitTerm(entry);
   const channel = new Channel<ArrayBuffer | number[]>();
   channel.onmessage = (chunk) => {
@@ -426,6 +504,15 @@ export function revealText(key: string, needle: string): boolean {
 
 export function focus(key: string) {
   entries.get(key)?.term.focus();
+}
+
+export function focusSoon(key: string) {
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const entry = entries.get(key);
+      if (entry?.host.isConnected && entry.host.offsetParent) entry.term.focus();
+    }),
+  );
 }
 
 export function useClaudeTerm(key: string) {

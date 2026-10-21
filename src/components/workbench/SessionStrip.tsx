@@ -7,6 +7,7 @@ import { useWorkbenchStore } from '@/state/workbench-store';
 import { useStopSession } from './Cell';
 import { canStopSession, copyText, runningMenu } from './menus';
 import { StatusIcon } from './StatusIcon';
+import { focusSoon } from './terminals';
 
 interface Props {
   sessions: ClaudeSession[];
@@ -18,6 +19,7 @@ export function openSession(s: ClaudeSession) {
   const { openTab, select } = useWorkbenchStore.getState();
   if (s.kind === 'shell') openTab(s.projectPath, s.sessionId);
   select({ kind: 'project', path: s.projectPath });
+  focusSoon(s.sessionId);
 }
 
 export function sessionPlace(s: ClaudeSession, projects: Map<string, WorkbenchProject>): string {

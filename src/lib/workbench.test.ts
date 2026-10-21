@@ -20,6 +20,7 @@ import {
   endedTabs,
   externalAction,
   HANDS_ON_MS,
+  isImagePaste,
   isPathTitle,
   type KeyInput,
   moveTabInLayout,
@@ -72,6 +73,18 @@ describe('isPathTitle', () => {
     expect(isPathTitle('/review src/x.ts')).toBe(false);
     expect(isPathTitle('/add-dir foo/bar')).toBe(false);
     expect(isPathTitle('/compact')).toBe(false);
+  });
+});
+
+describe('isImagePaste', () => {
+  const data = (text: string, types: string[]) => ({ getData: () => text, types });
+
+  it('hands an image without text to Claude and leaves text to xterm', () => {
+    expect(isImagePaste(data('', ['Files']))).toBe(true);
+    expect(isImagePaste(data('', ['image/png']))).toBe(true);
+    expect(isImagePaste(data('hello', ['text/plain', 'Files']))).toBe(false);
+    expect(isImagePaste(data('', ['text/html']))).toBe(false);
+    expect(isImagePaste(null)).toBe(false);
   });
 });
 

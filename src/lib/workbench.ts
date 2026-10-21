@@ -124,11 +124,18 @@ export function isPathTitle(title: string): boolean {
   );
 }
 
+export const IMAGE_PASTE = '\x1bv';
+
+export function isImagePaste(data: Pick<DataTransfer, 'getData' | 'types'> | null): boolean {
+  if (!data || data.getData('text/plain')) return false;
+  return Array.from(data.types).some((t) => t === 'Files' || t.startsWith('image/'));
+}
+
 export function terminalKey(e: KeyInput, hasSelection: boolean): KeyAction {
   if (e.type !== 'keydown' || e.metaKey) return null;
   if (e.ctrlKey && e.code === 'Tab') return { pass: true };
   if (e.key === 'Enter' && !e.ctrlKey && (e.shiftKey || e.altKey)) return { send: '\x1b\r' };
-  if (e.altKey && !e.ctrlKey && !e.shiftKey && e.code === 'KeyV') return { send: '\x1bv' };
+  if (e.altKey && !e.ctrlKey && !e.shiftKey && e.code === 'KeyV') return { send: IMAGE_PASTE };
   if (e.ctrlKey && !e.altKey && !e.shiftKey && e.code === 'KeyC' && hasSelection) {
     return { copy: true };
   }

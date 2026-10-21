@@ -72,7 +72,6 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
     state.current.open = null;
     setOpen(null);
     openSession(target);
-    requestAnimationFrame(() => focusTerminal(target.sessionId));
   };
   const actions = useRef({ cancel, jump });
   actions.current = { cancel, jump };

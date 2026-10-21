@@ -18,7 +18,9 @@ import { externalTitle, useExternalSession } from './externalSession';
 import { canStopSession, copyText, devUrl, runningDevMenu, runningMenu } from './menus';
 import { ProjectIcon } from './ProjectIcon';
 import { useProjectMenu } from './ProjectTree';
+import { openSession } from './SessionStrip';
 import { StatusIcon } from './StatusIcon';
+import { focusSoon } from './terminals';
 
 interface Props {
   sessions: ClaudeSession[];
@@ -61,9 +63,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
       void openExternal(s, anchor);
       return;
     }
-    if (!s.projectPath) return;
-    openTab(s.projectPath, s.sessionId);
-    select({ kind: 'project', path: s.projectPath });
+    openSession(s);
   };
 
   const topLabel = (item: RunningItem) =>
@@ -79,6 +79,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
     const go = () => {
       openTab(d.projectPath, key);
       select({ kind: 'project', path: d.projectPath });
+      focusSoon(key);
     };
     const url = devUrl(d);
     const health = devHealth(d);

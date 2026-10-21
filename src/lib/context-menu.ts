@@ -62,7 +62,8 @@ export function installNativeMenuGuard(allowWithShift: boolean): () => void {
   const onContextMenu = (e: MouseEvent) => {
     if (allowWithShift && e.shiftKey) return;
     const target = e.target instanceof Element ? e.target : null;
-    if (target?.closest('input, textarea, [contenteditable="true"], [contenteditable=""]')) return;
+    if (target?.closest('input, textarea, .xterm, [contenteditable="true"], [contenteditable=""]'))
+      return;
     if (window.getSelection()?.toString()) return;
     e.preventDefault();
   };

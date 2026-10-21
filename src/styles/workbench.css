@@ -196,6 +196,9 @@ div.wb-run:hover { background: none; }
 .wb-devbar .wb-btn:not(.p) { background: var(--cosmic); }
 .wb-term { position: relative; flex: 1; min-height: 0; min-width: 0; padding: 12px 4px 8px 16px; }
 .wb-term .xterm { height: 100%; }
+.wb-caret { position: absolute; top: 0; left: 0; z-index: 5; width: 2px; background: var(--fg); opacity: .4; pointer-events: none; }
+.wb-caret[hidden] { display: none; }
+.xterm.focus .wb-caret { opacity: 1; }
 .wb-term .xterm-viewport { background: transparent !important; }
 .wb-term-note { position: absolute; z-index: 2; left: 50%; bottom: 16px; translate: -50% 0; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 24px); height: 44px; padding: 0 6px 0 16px; border-radius: 999px; background: var(--raised); box-shadow: 0 0 0 1px var(--line), 0 12px 32px rgb(0 0 0 / 35%); font-size: 13px; font-weight: 500; white-space: nowrap; }
 .wb-term-note > span:first-child { min-width: 0; margin-right: 4px; overflow: hidden; text-overflow: ellipsis; }

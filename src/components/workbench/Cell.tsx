@@ -28,7 +28,15 @@ import { EmptyProject } from './EmptyProject';
 import { LogTerminal } from './LogTerminal';
 import { copyText, devTabMenu, type MoveTargets, sessionTabMenu } from './menus';
 import { StatusIcon } from './StatusIcon';
-import { dispose, isFresh, reattach, rememberShort, shortOf, useClaudeTerm } from './terminals';
+import {
+  dispose,
+  focusSoon,
+  isFresh,
+  reattach,
+  rememberShort,
+  shortOf,
+  useClaudeTerm,
+} from './terminals';
 import { type DraggedTab, tabDragProps, useTabDrop } from './useTabDrag';
 
 const NO_TABS: string[] = [];
@@ -279,8 +287,11 @@ export function Cell({
   const active = activeKey ?? projectActive;
   const seen = useWorkbenchStore((s) => s.seen);
   const activateInProject = useWorkbenchStore((s) => s.activate);
-  const activate = (key: string) =>
-    onActivate ? onActivate(key) : activateInProject(project.path, key);
+  const activate = (key: string) => {
+    if (onActivate) onActivate(key);
+    else activateInProject(project.path, key);
+    focusSoon(key);
+  };
   const startHere = async (resumeSessionId?: string) => {
     const key = await onStart(resumeSessionId);
     if (key && onActivate) onActivate(key);
