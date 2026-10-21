@@ -29,6 +29,7 @@ interface ProcessGroup { key: string | null; rows: ProcessRow[]; sessions: Sessi
 ```
 
 `stray` — только `orphan.reason === 'no-project'`; `session-closed` и `duplicate` — в группе своего проекта с пометкой.
+`orphans(rows)` — все `orphan && !guard` по всем группам: цель «Завершить все висящие».
 
 ## WorkbenchState v3
 

@@ -106,8 +106,10 @@ Array<{ tabs: string[]; active?: string }> (длина 4), focus: number }`; с�
 пользователя в корне). Фронт: `groupProcesses(rows, sessions)` → группы `{ key, name, memory, sessions:
 Array<{ sessionId, name, status, rows }>, rows }`; строки с `row.session` — под сессией (имя/статус из
 `useClaudeSessions`, нет в списке — «сессия <id8>»), остальные — плоско; группа с `key === root` подписана
-«Projects (корень)». «Без проекта» — только `orphan.reason === 'no-project'`; `session-closed`/`duplicate` остаются
-«висящими» в своей группе проекта, как было в 005 (в `stray`), с причиной.
+«Projects (корень)». «Без проекта» — только `orphan.reason === 'no-project'`; `session-closed`/`duplicate` показываются
+«висящими» внутри группы своего проекта с причиной (в 005 они лежали в общем `stray`). «Завершить все висящие» —
+полоса над списком, берёт все `orphan && !guard` из всех групп (US7 из 005 сохраняется: закрытая сессия → её MCP и
+rust-analyzer убираются одной кнопкой).
 
 **Rationale**: пользователь не понимал, чьи процессы — имя сессии отвечает на вопрос прямо.
 
