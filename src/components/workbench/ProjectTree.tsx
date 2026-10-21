@@ -2,6 +2,7 @@ import { ChevronRight, LayoutDashboard } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import type { ProjectTree as Tree, WorkbenchProject } from '@/lib/types';
+import { samePath } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { ProjectIcon } from './ProjectIcon';
 
@@ -35,6 +36,9 @@ export function ProjectTree({ tree, tail }: Props) {
   const select = useWorkbenchStore((s) => s.select);
   const openGroups = useWorkbenchStore((s) => s.openGroups);
   const toggleGroup = useWorkbenchStore((s) => s.toggleGroup);
+  const hidden = useWorkbenchStore((s) => s.hiddenProjects);
+  const shown = (list: WorkbenchProject[]) =>
+    hidden.length ? list.filter((p) => !hidden.some((h) => samePath(h, p.path))) : list;
 
   return (
     <div className="wb-tree">
@@ -50,12 +54,14 @@ export function ProjectTree({ tree, tail }: Props) {
           <b>Обзор</b>
         </span>
       </button>
-      {tree.roots.map((p) => (
+      {shown(tree.roots).map((p) => (
         <ProjectRow key={p.path} project={p} tail={tail} />
       ))}
       {tree.groups.map((g) => {
+        const projects = shown(g.projects);
+        if (!projects.length) return null;
         const open = openGroups.includes(g.name);
-        const chips = open ? null : tail?.(g.projects.map((p) => p.path));
+        const chips = open ? null : tail?.(projects.map((p) => p.path));
         return (
           <div key={g.name} className="contents">
             <button
@@ -69,10 +75,10 @@ export function ProjectTree({ tree, tail }: Props) {
               <span className="wb-tn">
                 <b>{g.name}</b>
               </span>
-              {chips || <span className="wb-cnt">{g.projects.length}</span>}
+              {chips || <span className="wb-cnt">{projects.length}</span>}
             </button>
             {open &&
-              g.projects.map((p) => (
+              projects.map((p) => (
                 <span key={p.path} className="wb-ind">
                   <ProjectRow project={p} tail={tail} />
                 </span>

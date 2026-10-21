@@ -141,6 +141,18 @@ describe('workbench store', () => {
     expect(migrateWorkbench(null).cells).toHaveLength(4);
   });
 
+  it('hides and unhides projects by path', () => {
+    useWorkbenchStore.setState({ hiddenProjects: [] });
+    const st = useWorkbenchStore.getState();
+    st.hideProject(P);
+    st.hideProject('c:/p/a/');
+    expect(useWorkbenchStore.getState().hiddenProjects).toEqual([P]);
+    st.unhideProject('c:/P/a');
+    expect(useWorkbenchStore.getState().hiddenProjects).toEqual([]);
+    expect(migrateWorkbench({}).hiddenProjects).toEqual([]);
+    expect(migrateWorkbench({ hiddenProjects: [P, 3] }).hiddenProjects).toEqual([P]);
+  });
+
   it('migrates v1 with a wall layout and a selected project into the first cell', () => {
     const state = migrateWorkbench({ layout: '2x2', view: { kind: 'project', path: P } });
     expect(state.cells?.map((c) => c.projectPath)).toEqual([P, null, null, null]);

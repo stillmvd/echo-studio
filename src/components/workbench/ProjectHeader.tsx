@@ -1,5 +1,6 @@
-import { ArrowUp, GitBranch, Globe, Plus } from 'lucide-react';
+import { ArrowUp, GitBranch, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { ChromeIcon } from '@/components/ui/ChromeIcon';
 import { useGitStates } from '@/hooks/use-workbench-overview';
 import { isStatus } from '@/lib/overview';
 import type { DevServer, WorkbenchProject } from '@/lib/types';
@@ -43,13 +44,14 @@ export function ProjectHeader({ project, server, busy, onClaude, extra }: Props)
         )}
         {project.mcp && (
           <span className="wb-chip" title="Профиль chrome-devtools MCP">
-            <Globe />
+            <ChromeIcon />
             {project.mcp.profile ?? 'общий профиль'}
             <i>{project.mcp.headless ? 'фоновый' : 'видимый'}</i>
           </span>
         )}
       </span>
       <DevCapsule project={project} server={server} />
+      {project.dev && extra && <span className="wb-ph-sep" aria-hidden="true" />}
       {extra}
       <button type="button" className="wb-btn p" disabled={busy} onClick={onClaude}>
         <Plus strokeWidth={2} />

@@ -1,6 +1,6 @@
 import { Bot, Server } from 'lucide-react';
 import { useMemo } from 'react';
-import { useWorkbenchProjects } from '@/hooks/use-workbench';
+import { useClaudeSessions, useWorkbenchProjects } from '@/hooks/use-workbench';
 import {
   useGitStates,
   useProcesses,
@@ -34,6 +34,7 @@ export function Overview() {
   const limits = useRateLimits().data ?? null;
   const { data: usage, isLoading: usagePending } = useUsage();
   const rows = useProcesses().data ?? [];
+  const liveSessions = useClaudeSessions();
 
   const projects = useMemo(() => new Map((tree ? all(tree) : []).map((p) => [p.path, p])), [tree]);
   const top = useMemo(() => topUsage(usage, new Set(projects.keys())), [usage, projects]);
@@ -134,7 +135,12 @@ export function Overview() {
                 <span className="wb-dim">{mb(memory)}</span>
               </div>
               <div className="wb-scroll">
-                <Processes rows={rows} projects={projects} />
+                <Processes
+                  rows={rows}
+                  projects={projects}
+                  root={tree?.root ?? ''}
+                  sessions={liveSessions}
+                />
               </div>
             </div>
           </div>

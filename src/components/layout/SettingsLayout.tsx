@@ -5,8 +5,10 @@ import {
   ChevronDown,
   Database,
   Download,
+  EyeOff,
   FileCog,
   Folder,
+  LayoutGrid,
   type LucideIcon,
   MessageSquare,
   RefreshCw,
@@ -19,6 +21,8 @@ import { revealInExplorer } from '@/lib/ipc';
 import { formatBytes } from '@/lib/projects';
 import { dayLabel, formatTime } from '@/lib/sessions';
 import type { ConfigBackup } from '@/lib/types';
+import { shortPath } from '@/lib/workbench';
+import { useWorkbenchStore } from '@/state/workbench-store';
 import { version } from '../../../package.json';
 import { panelCard } from './panels';
 import { EchoMark } from './Titlebar';
@@ -27,6 +31,7 @@ const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'claude', label: 'Claude config', icon: FileCog },
   { id: 'backups', label: 'Config backups', icon: Database },
   { id: 'conversations', label: 'Conversations', icon: MessageSquare },
+  { id: 'workbench', label: 'Рабочее место', icon: LayoutGrid },
   { id: 'updates', label: 'Updates', icon: Download },
 ];
 
@@ -207,6 +212,14 @@ export function SettingsLayout() {
               </Section>
 
               <Section
+                id="workbench"
+                title="Рабочее место"
+                subtitle="Скрытые проекты не показываются в дереве; их сессии, dev-серверы и процессы по-прежнему видны в «Запущено» и «Процессах»."
+              >
+                <HiddenProjects />
+              </Section>
+
+              <Section
                 id="updates"
                 title="Updates"
                 subtitle="New versions download in the background from GitHub releases. Restart installs them: Windows asks for admin rights once, then the app reopens."
@@ -333,6 +346,47 @@ function Updates() {
           </span>
         </Row>
       )}
+    </Rows>
+  );
+}
+
+function HiddenProjects() {
+  const hidden = useWorkbenchStore((s) => s.hiddenProjects);
+  const unhide = useWorkbenchStore((s) => s.unhideProject);
+  return (
+    <Rows>
+      <Row label="Скрытые проекты">
+        {hidden.length === 0 ? (
+          <span className="text-xs font-medium text-[var(--color-text-muted)]">
+            Скрытых проектов нет. Скрыть можно из меню проекта в дереве
+          </span>
+        ) : (
+          <ul className="flex w-full min-w-0 flex-col gap-1.5">
+            {hidden.map((path) => (
+              <li key={path} className="flex min-w-0 items-center gap-2">
+                <EyeOff
+                  className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]"
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                />
+                <PathValue path={shortPath(path)} />
+                <button
+                  type="button"
+                  onClick={() => unhide(path)}
+                  title={`Вернуть ${path} в дерево`}
+                  className={cn(
+                    'ml-auto inline-flex h-8 shrink-0 items-center rounded-full px-3 text-xs font-medium whitespace-nowrap text-[var(--color-text-primary)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] active:scale-[.96]',
+                    softFill,
+                    focusRing,
+                  )}
+                >
+                  Вернуть
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Row>
     </Rows>
   );
 }

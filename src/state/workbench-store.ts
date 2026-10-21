@@ -9,6 +9,7 @@ import {
   normalizeCells,
   placeProject,
   pruneCells,
+  samePath,
   type WallCell,
   type WallLayout,
 } from '@/lib/workbench';
@@ -30,6 +31,7 @@ interface WorkbenchState {
   layout: WallLayout;
   cells: WallCell[];
   focusCell: string | null;
+  hiddenProjects: string[];
 
   select: (view: WorkbenchView) => void;
   toggleGroup: (name: string) => void;
@@ -43,6 +45,8 @@ interface WorkbenchState {
   touchCell: (id: string) => void;
   activateCell: (id: string, key: string) => void;
   pruneCells: (exists: (path: string) => boolean) => void;
+  hideProject: (path: string) => void;
+  unhideProject: (path: string) => void;
 }
 
 function showInCell(s: WorkbenchState, path: string, key: string): WallCell[] {
@@ -75,7 +79,10 @@ export function migrateWorkbench(persisted: unknown): Partial<WorkbenchState> {
     typeof state.focusCell === 'string' && cells.some((c) => c.id === state.focusCell)
       ? state.focusCell
       : null;
-  const base = { ...state, layout, view, cells, focusCell };
+  const hiddenProjects = Array.isArray(state.hiddenProjects)
+    ? state.hiddenProjects.filter((p): p is string => typeof p === 'string')
+    : [];
+  const base = { ...state, layout, view, cells, focusCell, hiddenProjects };
   if (view.kind === 'project' && !cells.some((c) => c.projectPath)) {
     const placed = placeProject(cells, layout, null, view.path);
     return { ...base, cells: placed.cells, focusCell: placed.focus };
@@ -97,6 +104,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       layout: '1x1',
       cells: emptyCells(),
       focusCell: null,
+      hiddenProjects: [],
 
       select: (view) =>
         set((s) => {
@@ -204,6 +212,14 @@ export const useWorkbenchStore = create<WorkbenchState>()(
           const cells = pruneCells(s.cells, exists);
           return cells === s.cells ? {} : { cells };
         }),
+      hideProject: (path) =>
+        set((s) =>
+          s.hiddenProjects.some((p) => samePath(p, path))
+            ? {}
+            : { hiddenProjects: [...s.hiddenProjects, path] },
+        ),
+      unhideProject: (path) =>
+        set((s) => ({ hiddenProjects: s.hiddenProjects.filter((p) => !samePath(p, path)) })),
     }),
     {
       name: 'echo-workbench',
@@ -220,6 +236,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
         layout: s.layout,
         cells: s.cells,
         focusCell: s.focusCell,
+        hiddenProjects: s.hiddenProjects,
       }),
     },
   ),

@@ -118,11 +118,11 @@ export function DevCapsule({
           {!!server?.pids.length && (
             <button
               type="button"
-              className="wb-cap-i"
-              title="Остановить"
+              className="wb-cap-i wb-stop"
+              title="Остановить dev-сервер"
               onClick={() => setConfirmStop(true)}
             >
-              <Square strokeWidth={2} />
+              <Square fill="currentColor" strokeWidth={2} />
             </button>
           )}
         </>
@@ -143,11 +143,11 @@ export function DevCapsule({
           </button>
           <button
             type="button"
-            className="wb-cap-i"
-            title="Остановить"
+            className="wb-cap-i wb-stop"
+            title="Остановить dev-сервер"
             onClick={() => setConfirmStop(true)}
           >
-            <Square strokeWidth={2} />
+            <Square fill="currentColor" strokeWidth={2} />
           </button>
         </>
       )}

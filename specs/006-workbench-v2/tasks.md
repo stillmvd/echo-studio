@@ -130,11 +130,11 @@
 - [ ] T017 [P] [US2] [R1] `src-tauri/src/workbench/projects.rs`: в `visible_dirs` пропускать папки, где
       `p.join(".git").is_file()`; `ProjectTree` += `root: String`; тест `worktree_folder_is_skipped` (файл `.git` →
       нет; каталог `.git` → проект)
-- [ ] T018 [P] [US2] [F2] `src/state/workbench-store.ts`: `hiddenProjects: string[]` (persist), `hideProject(path)`,
+- [X] T018 [P] [US2] [F2] `src/state/workbench-store.ts`: `hiddenProjects: string[]` (persist), `hideProject(path)`,
       `unhideProject(path)`; `migrateWorkbench` даёт `[]`; тест в `src/state/workbench-store.test.ts`
-- [ ] T019 [US2] [F2] `src/components/workbench/ProjectTree.tsx`: фильтр `hiddenProjects` (через `samePath`) для
+- [X] T019 [US2] [F2] `src/components/workbench/ProjectTree.tsx`: фильтр `hiddenProjects` (через `samePath`) для
       `roots` и `g.projects`; группа без видимых проектов не показывается
-- [ ] T020 [US2] [F2] `src/components/layout/SettingsLayout.tsx`: раздел «Рабочее место» → «Скрытые проекты»: список
+- [X] T020 [US2] [F2] `src/components/layout/SettingsLayout.tsx`: раздел «Рабочее место» → «Скрытые проекты»: список
       путей (`shortPath`) с кнопкой «Вернуть» (`unhideProject`); пусто — «Скрытых проектов нет. Скрыть можно из меню
       проекта в дереве»
 
@@ -146,16 +146,16 @@
 
 **Independent Test**: quickstart.md §4.
 
-- [ ] T021 [P] [US4] [F2] `src/components/ui/ChromeIcon.tsx` (новый): inline SVG 14×14, три сектора `#DB4437`
+- [X] T021 [P] [US4] [F2] `src/components/ui/ChromeIcon.tsx` (новый): inline SVG 14×14, три сектора `#DB4437`
       `#F4B400` `#0F9D58` + центр `#4285F4` с белым кольцом, `aria-hidden`
-- [ ] T022 [P] [US4] [F2] `src/components/workbench/ProjectHeader.tsx`: `Globe` → `ChromeIcon` в чипе MCP; между
+- [X] T022 [P] [US4] [F2] `src/components/workbench/ProjectHeader.tsx`: `Globe` → `ChromeIcon` в чипе MCP; между
       `DevCapsule` и `extra` — класс-зазор `.wb-ph-sep` (вертикальная линия 1px, отступ 8)
-- [ ] T023 [P] [US4] [F2] `src/components/workbench/DevCapsule.tsx`: обе кнопки «Остановить» → `<Square
+- [X] T023 [P] [US4] [F2] `src/components/workbench/DevCapsule.tsx`: обе кнопки «Остановить» → `<Square
       fill="currentColor" />` с классом `wb-cap-i stop`, `title="Остановить dev-сервер"`; крупный режим (`large`) — то же
-- [ ] T024 [P] [US4] [F2] `src/components/workbench/Wall.tsx`: только `LayoutPicker` — `fieldset.wl-seg` → сегмент:
+- [X] T024 [P] [US4] [F2] `src/components/workbench/Wall.tsx`: только `LayoutPicker` — `fieldset.wl-seg` → сегмент:
       фон `--color-bg-tertiary`, капсула, кнопки с разделителями `1px` между (`.wl-seg > button + button::before`),
       активная — `--color-bg-primary` + тень; `aria-label` на fieldset «Раскладка проекта»
-- [ ] T025 [US4] [F2] `src/styles/workbench-v2.css` (новый, `@import "./workbench-v2.css"` в `src/styles/globals.css`):
+- [X] T025 [US4] [F2] `src/styles/workbench-v2.css` (новый, `@import "./workbench-v2.css"` в `src/styles/globals.css`):
       `.wb-cap-i.stop`, `.wl-seg` сегмент, `.wb-ph-sep`, стили группировки процессов (T028)
 
 ---
@@ -168,12 +168,12 @@
       (нормализованный корень); `project_of(path)`: `normalized(path) == root` → `Some(root как в snapshot)` — применимо
       и к `live.dir`, и к `cwd`; правило `rule: "projects-root"` для ветки `cwd`; фикстуры
       `specs/005-workbench/fixtures/expected.json` не менять — добавить юнит-тест `root_cwd_is_projects_root_group`
-- [ ] T027 [P] [US5] [F2] `src/lib/overview.ts`: `groupProcesses(rows, root, sessions)` → `{ stray, groups }` по
+- [X] T027 [P] [US5] [F2] `src/lib/overview.ts`: `groupProcesses(rows, root, sessions)` → `{ stray, groups }` по
       data-model.md: `stray` — только `orphan.reason === 'no-project'`; группы по `projectPath` (включая `root`),
       внутри — `sessions: SessionGroup[]` по `row.session` (имя из `sessions.find(sessionId).name` или
       `Claude <id8>`, статус `effectiveStatus` или `null`), `rows` — без сессии; «висящие» `session-closed`/`duplicate`
       остаются в группе проекта; `nameOf(root) === 'Projects (корень)'`; тесты в `src/lib/overview.test.ts`
-- [ ] T028 [US5] [F2] `src/components/workbench/Processes.tsx`: внутри группы — подзаголовок сессии `.wb-ps`
+- [X] T028 [US5] [F2] `src/components/workbench/Processes.tsx`: внутри группы — подзаголовок сессии `.wb-ps`
       (`StatusIcon small`, имя, память) и её строки с отступом; «Без проекта» — `title` у заголовка «Процессы, которые не
       удалось отнести ни к проекту, ни к живой сессии Claude — их можно завершать»; `ProjectIcon` для корня — lucide
       `FolderTree`; `sessions` — проп из `Overview.tsx` (`useClaudeSessions`)
@@ -290,3 +290,20 @@ F2: T018, T021, T023, T024 [P] → T019, T020, T022, T025 → merge → T027, T0
 ## Отклонения от формулировок
 
 (заполняется по ходу: что решили иначе и почему)
+
+### F2 «front-controls»
+
+- T023: класс кнопки «Стоп» — `wb-cap-i wb-stop` (как в разделе «Решения» spec.md), а не `wb-cap-i stop`.
+- T022: разделитель `.wb-ph-sep` рисуется только когда в шапке есть и капсула dev, и `extra` (сегмент раскладки);
+  без dev линия не висит в пустоте. Отступ — по брифу: 6 px с каждой стороны (`gap` шапки 12 минус `margin` −6).
+- T024: в `.wl-seg` активная кнопка гасит соседние разделители, чтобы подсветка не резалась линией. Тень активной —
+  `--color-press-shade` (в `workbench.css` у `.wl-seg button.on` стоит `--press-shade`, которого нет — это F1/D).
+- T027: подпись корня — `groupName(path, root)` (новая функция), а не `nameOf(root)`: `nameOf` не знает корня и
+  используется в `describe`. Сигнатура — `groupProcesses(rows, root, sessions, seen = {})`: `seen` нужен для
+  `effectiveStatus`. `SessionGroup` дополнен `phase` и `tool` — их требует `StatusIcon`. Сессии сортируются по
+  `urgency(status)` (неизвестные — в конце), при равенстве — по памяти: `byUrgency` требует полный `ClaudeSession`.
+  Висящие `session-closed`/`duplicate` идут в `rows` группы проекта (не под сессией) и подсвечены цветом опасности
+  (`.wb-pr.orphan`). «Завершить все висящие» — полоса над списком (`orphans(rows)`: все `orphan && !guard` из
+  всех групп, как в US7 005); из заголовка «Без проекта» кнопка убрана (решение координатора по ревью).
+- T028: подсказка «Без проекта» — `title` на всём заголовке и значок `CircleHelp` рядом (`title` новичок не найдёт
+  без видимого значка).
