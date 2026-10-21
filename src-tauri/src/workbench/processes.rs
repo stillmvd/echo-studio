@@ -198,6 +198,8 @@ struct Classifier<'a> {
     hooks: &'a [HookSession],
     projects: &'a [ProjectRef],
     root: String,
+    root_path: String,
+    root_raw: String,
     rows: HashMap<u32, Class>,
 }
 
@@ -305,12 +307,17 @@ impl<'a> Classifier<'a> {
             hooks: &snap.hook_sessions,
             projects,
             root: root.to_lowercase(),
+            root_path: normalized(root),
+            root_raw: root.to_owned(),
             rows: HashMap::new(),
         }
     }
 
     fn project_of(&self, path: Option<&str>) -> Option<String> {
         let path = path?;
+        if !self.root_path.is_empty() && normalized(path) == self.root_path {
+            return Some(self.root_raw.clone());
+        }
         self.projects
             .iter()
             .filter(|p| is_within(path, &p.path))
@@ -434,7 +441,10 @@ impl<'a> Classifier<'a> {
             }
         } else if is_session_tool(p) {
             self.tool_class(p, &anc)
-        } else if let Some(project) = self.project_of(p.cwd.as_deref()) {
+        } else if let Some(project) = self
+            .project_of(p.cwd.as_deref())
+            .filter(|p| *p != self.root_raw)
+        {
             Class {
                 project_path: Some(project),
                 rule: "cwd",
@@ -447,6 +457,12 @@ impl<'a> Classifier<'a> {
             Class {
                 rule: "inherited",
                 ..self.classify(p.ppid, depth + 1)
+            }
+        } else if let Some(root) = self.project_of(p.cwd.as_deref()) {
+            Class {
+                project_path: Some(root),
+                rule: "projects-root",
+                ..Class::default()
             }
         } else if self.working(pid, &anc) {
             Class {
@@ -1069,8 +1085,23 @@ mod tests {
 
     #[test]
     fn fixture_matches_expected() {
-        let (_, classes) = fixture();
+        let (fx, classes) = fixture();
         let expected: Vec<Value> = serde_json::from_str(EXPECTED).unwrap();
+        let root = normalized(&fx.projects_root);
+        let root_sessions: HashSet<&str> = fx
+            .snapshot
+            .hook_sessions
+            .iter()
+            .filter(|s| s.project_dir.as_deref().map(normalized) == Some(root.clone()))
+            .map(|s| s.session_id.as_str())
+            .chain(
+                fx.snapshot
+                    .agents
+                    .iter()
+                    .filter(|a| a.cwd.as_deref().map(normalized) == Some(root.clone()))
+                    .filter_map(|a| a.session_id.as_deref()),
+            )
+            .collect();
         let mut mismatches = Vec::new();
         for e in &expected {
             let pid = e["pid"].as_u64().unwrap() as u32;
@@ -1081,7 +1112,13 @@ mod tests {
             let guard: Option<Guard> = e
                 .get("guard")
                 .map(|g| serde_json::from_value(g.clone()).unwrap());
-            let same = c.project_path.as_deref() == e.get("projectPath").and_then(Value::as_str)
+            let session = e.get("session").and_then(Value::as_str);
+            let project = e.get("projectPath").and_then(Value::as_str).or_else(|| {
+                session
+                    .filter(|s| root_sessions.contains(s))
+                    .map(|_| fx.projects_root.as_str())
+            });
+            let same = c.project_path.as_deref() == project
                 && c.session.as_deref() == e.get("session").and_then(Value::as_str)
                 && c.orphan == orphan
                 && c.guard == guard
@@ -1199,6 +1236,42 @@ mod tests {
         let c = &classify(&snap, &[], r"C:\P")[&50];
         assert_eq!(c.orphan, None, "{c:?}");
         assert_eq!(c.rule, "no-project-ports-unknown");
+    }
+
+    #[test]
+    fn root_cwd_is_projects_root_group() {
+        let snap = Snapshot {
+            processes: vec![
+                proc(70, 2, "node.exe", "node script.js", r"c:/p/"),
+                proc(71, 2, "claude.exe", "claude.exe", r"C:\P"),
+                proc(72, 2, "node.exe", "node other.js", r"C:\P\Windows Apps"),
+            ],
+            outside_parents: vec![proc(2, 1, "sh.exe", "sh", r"D:\")],
+            hook_sessions: vec![HookSession {
+                session_id: "7a7a7a7a-0000-4000-8000-000000000000".into(),
+                claude_pid: Some(71),
+                project_dir: Some("C:/P".into()),
+                updated_at: Some(1),
+            }],
+            ..Snapshot::default()
+        };
+        let projects = [ProjectRef {
+            path: r"C:\P\AM".into(),
+            profile: None,
+        }];
+        let classes = classify(&snap, &projects, r"C:\P");
+        let script = &classes[&70];
+        assert_eq!(script.project_path.as_deref(), Some(r"C:\P"));
+        assert_eq!(script.rule, "projects-root");
+        assert_eq!(script.orphan, None);
+        let claude = &classes[&71];
+        assert_eq!(claude.project_path.as_deref(), Some(r"C:\P"));
+        assert_eq!(claude.guard, Some(Guard::LiveSession));
+        assert_eq!(
+            classes[&72].orphan.as_ref().map(|o| o.reason),
+            Some(OrphanReason::NoProject),
+            "a group folder is not the root"
+        );
     }
 
     #[test]
