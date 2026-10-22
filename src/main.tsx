@@ -1,6 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from '@/App';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
@@ -15,6 +15,10 @@ installNativeMenuGuard(import.meta.env.DEV);
 installMouseNavigation();
 installKeyboardMode();
 
+const Feedback = import.meta.env.DEV
+  ? lazy(() => import('agentation').then((m) => ({ default: m.Agentation })))
+  : null;
+
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('root element not found');
 
@@ -23,6 +27,11 @@ ReactDOM.createRoot(rootEl).render(
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <App />
+        {Feedback && (
+          <Suspense>
+            <Feedback appName="Echo Studio" endpoint="http://localhost:4748" />
+          </Suspense>
+        )}
       </QueryClientProvider>
     </ErrorBoundary>
   </React.StrictMode>,
