@@ -13,6 +13,7 @@ use super::{child_command, projects, projects_root};
 
 const EXITED_WINDOW_MS: u64 = 3_600_000;
 const CLAUDE_TIMEOUT: Duration = Duration::from_secs(20);
+const RESTART_WAIT: Duration = Duration::from_secs(15);
 const START_TIMEOUT: Duration = Duration::from_secs(60);
 const PIPE_GRACE: Duration = Duration::from_millis(500);
 const DAEMON_LOG_TAIL: u64 = 256 * 1024;
@@ -27,6 +28,7 @@ pub struct AgentEntry {
     pub session_id: Option<String>,
     pub name: Option<String>,
     pub status: Option<String>,
+    pub state: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -77,6 +79,7 @@ pub struct ClaudeSession {
     pub pid: Option<u32>,
     pub transcript: Option<String>,
     pub exited_at: Option<u64>,
+    pub shells: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -273,7 +276,7 @@ fn shell_agent(short_id: &str, max_age: Duration) -> Result<Option<AgentEntry>, 
     let inside = agent
         .cwd
         .as_deref()
-        .is_some_and(|cwd| projects::project_for(&tree, cwd).is_some());
+        .is_some_and(|cwd| projects::place_for(&tree, cwd).is_some());
     if !inside {
         return Err(format!("session {short_id} is outside known projects"));
     }
@@ -294,10 +297,14 @@ pub fn read_hooks(dir: &Path) -> HashMap<String, HookState> {
         .collect()
 }
 
+fn turn_over(agent: &AgentEntry) -> bool {
+    agent.state.as_deref().is_some_and(|s| s != "working")
+}
+
 fn status_of(agent: &AgentEntry, hook: Option<&HookState>) -> Status {
     match agent.status.as_deref() {
         Some("waiting") => Status::Waiting,
-        Some("busy") => Status::Working,
+        Some("busy") if !turn_over(agent) => Status::Working,
         _ => match hook.and_then(|h| h.state.as_deref()) {
             Some("error") => Status::Error,
             Some("done") => Status::Done,
@@ -336,6 +343,7 @@ pub fn merge(agents: &[AgentEntry], hooks: &HashMap<String, HookState>) -> Vec<C
                 pid: a.pid.or_else(|| hook.and_then(|h| h.claude_pid)),
                 transcript: hook.and_then(|h| h.transcript.clone()),
                 exited_at: None,
+                shells: a.status.as_deref() == Some("busy") && turn_over(a),
                 session_id,
             })
         })
@@ -364,7 +372,7 @@ pub fn exited_external(
         .filter(|h| {
             h.project_dir
                 .as_deref()
-                .is_some_and(|d| projects::project_for(tree, d).is_some())
+                .is_some_and(|d| projects::place_for(tree, d).is_some())
         })
         .filter_map(|h| {
             let session_id = h.session_id.clone().filter(|id| is_session_id(id))?;
@@ -381,6 +389,7 @@ pub fn exited_external(
                 pid: None,
                 transcript: h.transcript.clone(),
                 exited_at: h.updated_at,
+                shells: false,
             })
         })
         .collect();
@@ -452,22 +461,6 @@ pub fn drop_spares(list: &mut Vec<ClaudeSession>, spares: &HashSet<String>) {
         !s.short_id.as_ref().is_some_and(|id| spares.contains(id))
             || has_transcript(s.transcript.as_deref())
     });
-}
-
-pub fn empty_sessions(projects_dir: &Path, ids: &[String]) -> Vec<String> {
-    let Ok(entries) = std::fs::read_dir(projects_dir) else {
-        return Vec::new();
-    };
-    let dirs: Vec<PathBuf> = entries
-        .filter_map(|e| e.ok())
-        .map(|e| e.path())
-        .filter(|p| p.is_dir())
-        .collect();
-    ids.iter()
-        .filter(|id| is_session_id(id))
-        .filter(|id| !dirs.iter().any(|d| d.join(format!("{id}.jsonl")).is_file()))
-        .cloned()
-        .collect()
 }
 
 pub fn list() -> Result<Vec<ClaudeSession>, String> {
@@ -603,6 +596,29 @@ pub fn stop(short_id: &str) -> Result<(), String> {
     }
 }
 
+pub fn restart(project: &Path, session_id: &str, short_id: &str) -> Result<Started, String> {
+    let pid = shell_agent(short_id, Duration::ZERO)?
+        .filter(|a| a.session_id.as_deref() == Some(session_id))
+        .ok_or_else(|| format!("no session {short_id}"))?
+        .pid;
+    stop(short_id)?;
+    let deadline = Instant::now() + RESTART_WAIT;
+    loop {
+        let listed = run_agents()?
+            .iter()
+            .any(|a| is_live(a) && a.session_id.as_deref() == Some(session_id));
+        let running = pid.is_some_and(|p| !alive_claudes(&[p]).is_empty());
+        if !listed && !running {
+            break;
+        }
+        if Instant::now() >= deadline {
+            return Err(format!("session {short_id} did not stop in time"));
+        }
+        std::thread::sleep(Duration::from_millis(300));
+    }
+    start(project, Some(session_id))
+}
+
 pub fn forget(short_id: &str) -> Result<(), String> {
     match shell_agent(short_id, Duration::ZERO)? {
         None => Ok(()),
@@ -670,6 +686,7 @@ mod tests {
             pid: Some(1),
             transcript: transcript.map(|p| p.to_string_lossy().into_owned()),
             exited_at: None,
+            shells: false,
         };
         let mut list = vec![
             session("c99985cc", Some(&tmp.path().join("missing.jsonl"))),
@@ -682,25 +699,6 @@ mod tests {
         let mut used = vec![session("c99985cc", Some(&written))];
         drop_spares(&mut used, &spares);
         assert_eq!(used.len(), 1);
-    }
-
-    #[test]
-    fn empty_sessions_are_those_without_a_transcript_in_any_project() {
-        let tmp = tempfile::tempdir().unwrap();
-        let used = "11111111-2222-3333-4444-555555555555";
-        let empty = "aaaaaaaa-2222-3333-4444-555555555555";
-        std::fs::create_dir_all(tmp.path().join("C--P-A")).unwrap();
-        std::fs::create_dir_all(tmp.path().join("C--P-A-worktree")).unwrap();
-        std::fs::write(
-            tmp.path()
-                .join("C--P-A-worktree")
-                .join(format!("{used}.jsonl")),
-            "{}",
-        )
-        .unwrap();
-        let ids = vec![used.to_owned(), empty.to_owned(), "../evil".to_owned()];
-        assert_eq!(empty_sessions(tmp.path(), &ids), vec![empty.to_owned()]);
-        assert!(empty_sessions(&tmp.path().join("nope"), &ids).is_empty());
     }
 
     #[test]
@@ -752,6 +750,24 @@ mod tests {
     }
 
     #[test]
+    fn finished_turn_with_background_shell_is_done() {
+        let agents = parse_agents(
+            r#"[{"pid":9,"id":"aaaaaaaa","kind":"background","sessionId":"aaaaaaaa-0000-0000-0000-000000000000","status":"busy","state":"done"},
+                {"pid":8,"id":"bbbbbbbb","kind":"background","sessionId":"bbbbbbbb-0000-0000-0000-000000000000","status":"busy","state":"working"},
+                {"pid":7,"id":"cccccccc","kind":"background","sessionId":"cccccccc-0000-0000-0000-000000000000","status":"busy","state":"blocked"}]"#,
+        )
+        .unwrap();
+        let hooks: HashMap<_, _> = [hook("aaaaaaaa-0000-0000-0000-000000000000", "done")].into();
+        let list = merge(&agents, &hooks);
+        assert_eq!(list[0].status, Status::Done);
+        assert!(list[0].shells);
+        assert_eq!(list[1].status, Status::Working);
+        assert!(!list[1].shells);
+        assert_ne!(list[2].status, Status::Working);
+        assert!(list[2].shells);
+    }
+
+    #[test]
     fn hook_error_wins_when_idle() {
         let agents = parse_agents(
             r#"[{"pid":9,"id":"aaaaaaaa","kind":"background","sessionId":"aaaaaaaa-0000-0000-0000-000000000000","status":"idle"}]"#,
@@ -800,7 +816,9 @@ mod tests {
                 dev: None,
                 mcp: None,
                 has_claude_md: false,
+                folder: false,
             }],
+            folders: Vec::new(),
             root: r"C:\P".into(),
         }
     }

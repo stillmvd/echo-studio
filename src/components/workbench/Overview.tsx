@@ -9,7 +9,7 @@ import {
 } from '@/hooks/use-workbench-overview';
 import { gitText, mb, mt, percent, resetText, topUsage } from '@/lib/overview';
 import type { Limit } from '@/lib/types';
-import { all } from '@/lib/workbench';
+import { places } from '@/lib/workbench';
 import { Processes } from './Processes';
 import { ProjectIcon } from './ProjectIcon';
 
@@ -36,7 +36,10 @@ export function Overview() {
   const rows = useProcesses().data ?? [];
   const liveSessions = useClaudeSessions();
 
-  const projects = useMemo(() => new Map((tree ? all(tree) : []).map((p) => [p.path, p])), [tree]);
+  const projects = useMemo(
+    () => new Map((tree ? places(tree) : []).map((p) => [p.path, p])),
+    [tree],
+  );
   const top = useMemo(() => topUsage(usage, new Set(projects.keys())), [usage, projects]);
   const git = useGitStates(top.map(([path]) => path)).data;
 

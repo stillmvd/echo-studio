@@ -1,38 +1,50 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import { emptyClaudeSessions, forgetClaudeSession, listClaudeSessions } from '@/lib/ipc';
-import type { ClaudeSession } from '@/lib/types';
-import { endedTabs, tabsToClose } from '@/lib/workbench';
+import { useEffect, useRef } from 'react';
+import { forgetClaudeSession, listClaudeSessions, listDevServers } from '@/lib/ipc';
+import type { ClaudeSession, DevServer } from '@/lib/types';
+import { endedTabs, misplacedTabs, movedTabs, stoppedDevTabs } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
-import { dispose, isFresh, shortOf } from './terminals';
-
-const NONE: string[] = [];
+import { dispose, isFresh, rememberShort, shortOf } from './terminals';
 
 export function useEndedTabs(sessions: ClaudeSession[]) {
   const tabs = useWorkbenchStore((s) => s.tabs);
-  const autoTabs = useWorkbenchStore((s) => s.autoTabs);
   const closeTab = useWorkbenchStore((s) => s.closeTab);
   const ready = useQuery({
     queryKey: ['workbench', 'sessions'],
     queryFn: listClaudeSessions,
     enabled: false,
   }).isSuccess;
-  const live = new Set(sessions.filter((s) => s.status !== 'exited').map((s) => s.sessionId));
+  const running = sessions.filter((s) => s.status !== 'exited');
+  for (const s of running) if (s.shortId) rememberShort(s.sessionId, s.shortId);
+  const live = new Set(running.map((s) => s.sessionId));
   const ended = ready ? endedTabs(tabs, live, isFresh) : [];
-  const ids = ended
-    .map((t) => t.key)
-    .sort()
-    .join('\n');
-  const empty = useQuery({
-    queryKey: ['workbench', 'empty-sessions', ids],
-    queryFn: () => emptyClaudeSessions(ids.split('\n')),
-    enabled: ids !== '',
-    staleTime: Number.POSITIVE_INFINITY,
-    retry: false,
-  }).data;
-  const close = tabsToClose(ended, autoTabs, empty ?? NONE)
+  const moved = movedTabs(ended, running, shortOf);
+  const movedKeys = new Set(moved.map((t) => t.key));
+  const close = ended
+    .filter((t) => !movedKeys.has(t.key))
     .map((t) => `${t.path}\n${t.key}`)
     .join('\n\n');
+  const move = moved.map((t) => `${t.path}\n${t.key}\n${t.to}`).join('\n\n');
+  const rehome = misplacedTabs(tabs, running)
+    .map((t) => `${t.from}\n${t.key}\n${t.to}`)
+    .join('\n\n');
+
+  useEffect(() => {
+    if (!rehome) return;
+    for (const triple of rehome.split('\n\n')) {
+      const [from, key, to] = triple.split('\n');
+      if (!from || !key || !to) continue;
+      const st = useWorkbenchStore.getState();
+      if (!st.tabs[to]?.includes(key)) {
+        const prev = st.activeTab[to];
+        const { cells, focusCell } = st;
+        st.openTab(to, key);
+        if (prev) st.activate(to, prev);
+        if (st.mode === 'wall') useWorkbenchStore.setState({ cells, focusCell });
+      }
+      st.closeTab(from, key);
+    }
+  }, [rehome]);
 
   useEffect(() => {
     if (!close) return;
@@ -45,4 +57,37 @@ export function useEndedTabs(sessions: ClaudeSession[]) {
       closeTab(path, key);
     }
   }, [close, closeTab]);
+
+  useEffect(() => {
+    if (!move) return;
+    for (const triple of move.split('\n\n')) {
+      const [path, key, to] = triple.split('\n');
+      if (!path || !key || !to) continue;
+      const st = useWorkbenchStore.getState();
+      const prev = st.activeTab[path];
+      if (!st.tabs[path]?.includes(to)) st.openTab(path, to);
+      dispose(key);
+      st.closeTab(path, key);
+      if (prev && prev !== key) st.activate(path, prev);
+    }
+  }, [move]);
+}
+
+export function useStoppedDevTabs(devs: DevServer[]) {
+  const done = useRef(false);
+  const loaded = useQuery({
+    queryKey: ['workbench', 'dev'],
+    queryFn: listDevServers,
+    enabled: false,
+  }).isSuccess;
+
+  useEffect(() => {
+    if (!loaded || done.current) return;
+    done.current = true;
+    const st = useWorkbenchStore.getState();
+    for (const { path, key } of stoppedDevTabs(st.tabs, devs)) {
+      dispose(key);
+      st.closeTab(path, key);
+    }
+  }, [loaded, devs]);
 }

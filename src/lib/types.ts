@@ -253,10 +253,12 @@ export interface WorkbenchProject {
   dev: { command: string; kind: DevKind } | null;
   mcp: { profile: string | null; headless: boolean } | null;
   hasClaudeMd: boolean;
+  folder: boolean;
 }
 
 export interface WorkbenchGroup {
   name: string;
+  path: string;
   icon: string | null;
   projects: WorkbenchProject[];
 }
@@ -264,6 +266,7 @@ export interface WorkbenchGroup {
 export interface ProjectTree {
   groups: WorkbenchGroup[];
   roots: WorkbenchProject[];
+  folders: WorkbenchProject[];
   root: string;
 }
 
@@ -283,6 +286,7 @@ export interface ClaudeSession {
   pid: number | null;
   transcript: string | null;
   exitedAt: number | null;
+  shells: boolean;
 }
 
 export type FocusResult = 'focused' | 'vscode' | 'not-found';

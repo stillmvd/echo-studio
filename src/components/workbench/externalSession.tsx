@@ -13,19 +13,6 @@ interface Shown {
   error: string | null;
 }
 
-export function externalTitle(s: ClaudeSession): string | undefined {
-  const action = externalAction(s);
-  if (action === 'resume') return 'Продолжить в Echo';
-  if (action === 'focus') {
-    return s.projectPath
-      ? 'Показать окно терминала'
-      : 'Показать окно терминала. Папка не из списка проектов — продолжить в Echo нельзя';
-  }
-  return s.kind === 'external' ? NOWHERE : undefined;
-}
-
-const NOWHERE = 'Завершена вне Echo · папка не из списка проектов, продолжить нельзя';
-
 export function useExternalSession() {
   const { start, dialogs } = useStartSession();
   const [shown, setShown] = useState<Shown | null>(null);

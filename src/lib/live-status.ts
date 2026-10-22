@@ -112,29 +112,3 @@ export function cardGlow(colors: string[]): string {
     })
     .join(',');
 }
-
-export interface Box {
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
-}
-
-export function clipBox(slot: Box, clips: Box[], width: number, height: number): Box | null {
-  const box = { left: Math.max(slot.left, 0), top: Math.max(slot.top, 0) };
-  let right = Math.min(slot.right, width);
-  let bottom = Math.min(slot.bottom, height);
-  for (const c of clips) {
-    box.left = Math.max(box.left, c.left);
-    box.top = Math.max(box.top, c.top);
-    right = Math.min(right, c.right);
-    bottom = Math.min(bottom, c.bottom);
-  }
-  return right > box.left && bottom > box.top ? { ...box, right, bottom } : null;
-}
-
-export function underCover(slot: Box, covers: Box[]): boolean {
-  return covers.some(
-    (c) => slot.left < c.right && slot.right > c.left && slot.top < c.bottom && slot.bottom > c.top,
-  );
-}

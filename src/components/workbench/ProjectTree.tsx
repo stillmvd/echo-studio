@@ -74,6 +74,10 @@ export function ProjectTree({ tree, devServers, busy, onStart }: Props) {
   const { menu, dev } = useProjectMenu(devServers, busy, onStart);
   const shown = (list: WorkbenchProject[]) =>
     hidden.length ? list.filter((p) => !hidden.some((h) => samePath(h, p.path))) : list;
+  const folderMenu = (e: React.MouseEvent, path: string) => {
+    const folder = tree.folders.find((f) => samePath(f.path, path));
+    if (folder) menu(e, folder);
+  };
 
   return (
     <div className="wb-tree">
@@ -81,6 +85,7 @@ export function ProjectTree({ tree, devServers, busy, onStart }: Props) {
         type="button"
         className={cn('wb-tr', view.kind === 'overview' && 'on')}
         onClick={() => select({ kind: 'overview' })}
+        onContextMenu={(e) => folderMenu(e, tree.root)}
       >
         <span className="wb-pi none">
           <LayoutDashboard strokeWidth={1.75} />
@@ -94,15 +99,16 @@ export function ProjectTree({ tree, devServers, busy, onStart }: Props) {
       ))}
       {tree.groups.map((g) => {
         const projects = shown(g.projects);
-        if (!projects.length) return null;
         const open = openGroups.includes(g.name);
+        const here = view.kind === 'project' && samePath(view.path, g.path);
         return (
           <div key={g.name} className="contents">
             <button
               type="button"
-              className={cn('wb-tr grp', open && 'open')}
+              className={cn('wb-tr grp', open && 'open', here && 'on')}
               aria-expanded={open}
               onClick={() => toggleGroup(g.name)}
+              onContextMenu={(e) => folderMenu(e, g.path)}
             >
               <ChevronRight className="wb-chev" strokeWidth={2} />
               {g.icon && <ProjectIcon svg={g.icon} />}

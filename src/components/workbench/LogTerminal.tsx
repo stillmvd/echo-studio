@@ -30,7 +30,7 @@ export function LogTerminal({ tabKey, projectPath, visible, server, onRestart }:
     ro.observe(el);
     return () => {
       ro.disconnect();
-      unmount(entry);
+      unmount(entry, el);
     };
   }, [entry]);
 

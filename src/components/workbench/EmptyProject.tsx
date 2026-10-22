@@ -1,11 +1,18 @@
+import { useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronRight, MessageSquare, Plus } from 'lucide-react';
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { useConversationProjects, useConversationSessions } from '@/hooks/use-conversations';
+import { useDeleteSession } from '@/hooks/use-session-actions';
+import { listClaudeSessions } from '@/lib/ipc';
+import { sessionSubject } from '@/lib/sessions';
 import type { DevServer, SessionMeta, WorkbenchProject } from '@/lib/types';
 import { sessionDisplayTitle } from '@/lib/types';
-import { samePath } from '@/lib/workbench';
+import { samePath, shortPath } from '@/lib/workbench';
 import { DevCapsule } from './DevCapsule';
+import { conversationMenu } from './menus';
 import { ProjectIcon } from './ProjectIcon';
 
 const ROW = 42;
@@ -62,12 +69,27 @@ export function EmptyProject({ project, server, visible, busy, onStart }: Props)
     estimateSize: () => ROW,
   });
   const now = new Date();
+  const openMenu = useOpenMenu();
+  const del = useDeleteSession();
+  const [removing, setRemoving] = useState<SessionMeta | null>(null);
+  const live = useQuery({
+    queryKey: ['workbench', 'sessions'],
+    queryFn: listClaudeSessions,
+    enabled: false,
+  }).data;
+  const isLive = (id: string) => !!live?.some((s) => s.sessionId === id && s.status !== 'exited');
 
   return (
     <div className="wb-area">
       <div className="wb-empty">
         <div className="wb-eh">
-          <ProjectIcon svg={project.icon} size="xl" />
+          <ProjectIcon svg={project.icon} size="hero" />
+          <div className="wb-et">
+            <b title={project.name}>{project.name}</b>
+            <span className="wb-path" title={project.path}>
+              {shortPath(project.path)}
+            </span>
+          </div>
           <div className="wb-eb">
             <button type="button" className="wb-btn p" disabled={busy} onClick={() => onStart()}>
               <Plus strokeWidth={2} />
@@ -106,6 +128,19 @@ export function EmptyProject({ project, server, visible, busy, onStart }: Props)
                       disabled={busy}
                       title={title(s)}
                       onClick={() => onStart(s.sessionId)}
+                      onContextMenu={(e) =>
+                        openMenu(
+                          e,
+                          conversationMenu({
+                            live: isLive(s.sessionId),
+                            busy,
+                            actions: {
+                              resume: () => onStart(s.sessionId),
+                              remove: () => setRemoving(s),
+                            },
+                          }),
+                        )
+                      }
                     >
                       <MessageSquare strokeWidth={2} />
                       <b>{title(s)}</b>
@@ -119,6 +154,21 @@ export function EmptyProject({ project, server, visible, busy, onStart }: Props)
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={!!removing}
+        danger
+        title="Удалить разговор?"
+        description="Файл .jsonl удалится с диска, вернуть его из Echo нельзя."
+        subject={removing ? sessionSubject(removing) : null}
+        confirmLabel="Удалить"
+        busy={del.isPending}
+        onCancel={() => setRemoving(null)}
+        onConfirm={async () => {
+          if (!removing) return;
+          await del.mutateAsync(removing.filePath);
+          setRemoving(null);
+        }}
+      />
     </div>
   );
 }

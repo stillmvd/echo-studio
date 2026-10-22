@@ -219,12 +219,16 @@ export async function startClaudeSession(
   return invoke('start_claude_session', { projectPath, resumeSessionId });
 }
 
-export async function stopClaudeSession(shortId: string): Promise<void> {
-  return invoke('stop_claude_session', { shortId });
+export async function restartClaudeSession(
+  projectPath: string,
+  sessionId: string,
+  shortId: string,
+): Promise<{ sessionId: string | null; shortId: string }> {
+  return invoke('restart_claude_session', { projectPath, sessionId, shortId });
 }
 
-export async function emptyClaudeSessions(sessionIds: string[]): Promise<string[]> {
-  return invoke('empty_claude_sessions', { sessionIds });
+export async function stopClaudeSession(shortId: string): Promise<void> {
+  return invoke('stop_claude_session', { shortId });
 }
 
 export async function forgetClaudeSession(shortId: string): Promise<void> {

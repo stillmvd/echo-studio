@@ -1,7 +1,8 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ContextMenuProvider, useContextMenu } from '@/components/ui/ContextMenu';
 import { useClaudeSessions, useDevServers, useWorkbenchProjects } from '@/hooks/use-workbench';
-import { all, samePath } from '@/lib/workbench';
+import { cn } from '@/lib/cn';
+import { places, samePath } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { ProjectGrid } from './Cell';
 import { ModeSwitch } from './ModeSwitch';
@@ -11,8 +12,9 @@ import { ProjectTree } from './ProjectTree';
 import { QuickSwitch } from './QuickSwitch';
 import { RunningList } from './RunningList';
 import { SessionStrip } from './SessionStrip';
+import { TreeCard } from './TreeCard';
 import { pruneMissing } from './terminals';
-import { useEndedTabs } from './useEndedTabs';
+import { useEndedTabs, useStoppedDevTabs } from './useEndedTabs';
 import { useStartSession } from './useStartSession';
 import { useToasts } from './useToasts';
 import { LayoutPicker, Wall } from './Wall';
@@ -26,9 +28,15 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   const tabs = useWorkbenchStore((s) => s.tabs);
   const { start, busy, dialogs } = useStartSession();
   const menu = useContextMenu();
+  const [treeOpen, setTreeOpen] = useState(false);
+  const hiddenProjects = useWorkbenchStore((s) => s.hiddenProjects);
+  useEffect(() => {
+    if (hidden) setTreeOpen(false);
+  }, [hidden]);
   useEndedTabs(sessions);
+  useStoppedDevTabs(devServers);
 
-  const projects = useMemo(() => (tree ? all(tree) : []), [tree]);
+  const projects = useMemo(() => (tree ? places(tree) : []), [tree]);
   const byPath = useMemo(() => new Map(projects.map((p) => [p.path, p])), [projects]);
   useToasts(sessions, devServers, byPath);
   useEffect(() => {
@@ -53,24 +61,36 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
             <h2 className="wb-title">
               Рабочее <b>место</b>
             </h2>
-            <div className="wb-sl">Запущено</div>
-            <RunningList
-              sessions={sessions}
-              devServers={devServers}
-              projects={byPath}
-              busy={busy}
-              onStart={(path) => void start(path)}
-            />
-            <div className="wb-sl">Проекты</div>
-            {tree && (
-              <ProjectTree
-                tree={tree}
+            <div className={cn('wb-side-c', treeOpen && 'dim')} inert={treeOpen}>
+              <div className="wb-sl">Запущено</div>
+              <RunningList
+                sessions={sessions}
                 devServers={devServers}
+                projects={byPath}
                 busy={busy}
                 onStart={(path) => void start(path)}
               />
-            )}
-            {error && <p className="wb-dim px-3.5 py-2 text-xs">{String(error)}</p>}
+            </div>
+            <TreeCard
+              open={treeOpen}
+              onOpen={setTreeOpen}
+              current={selected}
+              total={
+                projects.filter(
+                  (p) => !p.folder && !hiddenProjects.some((h) => samePath(h, p.path)),
+                ).length
+              }
+            >
+              {tree && (
+                <ProjectTree
+                  tree={tree}
+                  devServers={devServers}
+                  busy={busy}
+                  onStart={(path) => void start(path)}
+                />
+              )}
+              {error && <p className="wb-dim px-3.5 py-2 text-xs">{String(error)}</p>}
+            </TreeCard>
           </div>
           <div className="wb-card wb-pv">
             {!selected && <Overview />}

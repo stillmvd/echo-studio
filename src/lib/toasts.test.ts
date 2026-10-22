@@ -25,6 +25,7 @@ const session = (id: string, status: SessionStatus, kind: ClaudeSession['kind'] 
     pid: null,
     transcript: null,
     exitedAt: null,
+    shells: false,
   }) satisfies ClaudeSession;
 
 const dev = (over: Partial<DevServer> = {}): DevServer => ({

@@ -4,10 +4,11 @@ import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
-import { forgetClaudeSession, stopClaudeSession } from '@/lib/ipc';
+import { forgetClaudeSession, restartClaudeSession, stopClaudeSession } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import {
   CELL_COUNT,
+  devHealth,
   type ProjectCell,
   type StatusView,
   samePath,
@@ -29,11 +30,13 @@ import { LogTerminal } from './LogTerminal';
 import { copyText, devTabMenu, type MoveTargets, sessionTabMenu } from './menus';
 import { StatusIcon } from './StatusIcon';
 import {
+  connect,
   dispose,
   focusSoon,
   isFresh,
   reattach,
   rememberShort,
+  restarting,
   shortOf,
   useClaudeTerm,
 } from './terminals';
@@ -62,6 +65,68 @@ export function useStopSession() {
     />
   );
   return { ask: (shortId: string | null) => setStopping(shortId), dialog };
+}
+
+interface Restart {
+  path: string;
+  key: string;
+  shortId: string;
+  risky: boolean;
+}
+
+function useRestartSession() {
+  const qc = useQueryClient();
+  const [asking, setAsking] = useState<Restart | null>(null);
+  const [running, setRunning] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const run = async (r: Restart) => {
+    setRunning(r.key);
+    restarting.add(r.key);
+    try {
+      const next = await restartClaudeSession(r.path, r.key, r.shortId);
+      if (next.sessionId) rememberShort(next.sessionId, next.shortId, true);
+      if (next.sessionId && next.sessionId !== r.key) {
+        const st = useWorkbenchStore.getState();
+        st.openTab(r.path, next.sessionId);
+        dispose(r.key);
+        st.closeTab(r.path, r.key);
+      } else connect(r.key, next.shortId);
+    } finally {
+      restarting.delete(r.key);
+      setRunning(null);
+      void qc.invalidateQueries({ queryKey: ['workbench', 'sessions'] });
+    }
+  };
+  const dialog = (
+    <>
+      <ConfirmDialog
+        open={asking !== null}
+        title="Перезапустить сессию?"
+        description="Claude сейчас работает или держит фоновые команды (например, dev-сервер) — они остановятся. Разговор продолжится в новом процессе Claude."
+        confirmLabel="Перезапустить"
+        cancelLabel="Отмена"
+        onConfirm={async () => {
+          if (asking) await run(asking);
+          setAsking(null);
+        }}
+        onCancel={() => setAsking(null)}
+      />
+      <ConfirmDialog
+        open={failed !== null}
+        title="Сессия не перезапустилась"
+        description={failed ?? ''}
+        confirmLabel="Понятно"
+        cancelLabel="Закрыть"
+        onConfirm={() => setFailed(null)}
+        onCancel={() => setFailed(null)}
+      />
+    </>
+  );
+  const ask = (r: Restart) => {
+    if (r.risky) setAsking(r);
+    else run(r).catch((e) => setFailed(String(e)));
+  };
+  return { ask, running, dialog };
 }
 
 function useMoveTargets(path: string, cellId: string | undefined) {
@@ -292,6 +357,7 @@ export function Cell({
   const openMenu = useOpenMenu();
   const dev = useDevControl();
   const stop = useStopSession();
+  const restart = useRestartSession();
   const moveTargets = useMoveTargets(project.path, cellId);
   const projectTabs = useWorkbenchStore((s) => s.tabs[project.path]) ?? NO_TABS;
   const tabs = keys ?? projectTabs;
@@ -326,8 +392,8 @@ export function Cell({
       };
     });
   const devKey = devTabKey(project.path);
-  const hasDev = tabs.includes(devKey);
-  const order = tabs.filter((key) => key === devKey || !isDevTab(key));
+  const hasDev = tabs.includes(devKey) && devHealth(server) !== 'stopped';
+  const order = tabs.filter((key) => (key === devKey ? hasDev : !isDevTab(key)));
   const devOn = hasDev && (active === devKey || infos.length === 0);
   const current = devOn ? undefined : (infos.find((i) => i.key === active) ?? infos[0]);
 
@@ -363,10 +429,11 @@ export function Cell({
       e,
       sessionTabMenu({
         live: info.live,
-        canStop: info.live && !!info.shortId,
+        canStop: info.live && !!info.shortId && restart.running !== info.key,
         cells: moveTargets(info.key),
         actions: {
-          reconnect: () => info.shortId && reattach(info.key, info.shortId),
+          reconnect: () =>
+            restart.running !== info.key && info.shortId && reattach(info.key, info.shortId),
           copyId: () => copyText(info.key),
           hide: () => close(info),
           stop: () => stop.ask(info.shortId),
@@ -449,6 +516,7 @@ export function Cell({
                       status: info.status,
                       phase: info.session?.phase ?? null,
                     }}
+                    seed={info.key}
                   />
                   <TabTitle info={info} projectName={project.name} />
                 </button>
@@ -483,8 +551,17 @@ export function Cell({
             <button
               type="button"
               className="wb-ib"
-              title="Переподключить"
-              onClick={() => current.shortId && reattach(current.key, current.shortId)}
+              title="Перезапустить сессию — Claude подхватит новые MCP-серверы и настройки"
+              disabled={restart.running === current.key}
+              onClick={() =>
+                current.shortId &&
+                restart.ask({
+                  path: project.path,
+                  key: current.key,
+                  shortId: current.shortId,
+                  risky: current.session?.status === 'working' || !!current.session?.shells,
+                })
+              }
             >
               <RotateCcw strokeWidth={2} />
             </button>
@@ -492,6 +569,7 @@ export function Cell({
               type="button"
               className="wb-btn sm wb-stop"
               title="Завершить сессию Claude (с подтверждением)"
+              disabled={restart.running === current.key}
               onClick={() => stop.ask(current.shortId)}
             >
               <Square fill="currentColor" strokeWidth={2} />
@@ -524,6 +602,7 @@ export function Cell({
         />
       ))}
       {stop.dialog}
+      {restart.dialog}
       {dev.dialogs}
     </div>
   );

@@ -95,6 +95,7 @@ export function useDevControl() {
     const key = devTabKey(path);
     try {
       await startDevServer(path);
+      await qc.invalidateQueries({ queryKey: ['workbench', 'dev'] });
       startTail(key, path, true);
       openTab(path, key);
     } catch (e) {

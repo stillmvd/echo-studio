@@ -1,3 +1,4 @@
+import { SquareTerminal } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
@@ -11,18 +12,16 @@ import {
 } from '@/lib/live-status';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import {
-  devHealth,
   devStatusLabel,
   EXTERNAL_LABEL,
   runningGroups,
   STATUS_LABEL,
-  statusTitle,
   statusView,
 } from '@/lib/workbench';
 import { devTabKey, useWorkbenchStore } from '@/state/workbench-store';
 import { useStopSession } from './Cell';
 import { restartDev } from './DevCapsule';
-import { externalTitle, useExternalSession } from './externalSession';
+import { useExternalSession } from './externalSession';
 import { LiveIcon } from './live/LiveIcon';
 import { canStopSession, copyText, devUrl, runningDevMenu, runningMenu } from './menus';
 import { useProjectMenu } from './ProjectTree';
@@ -39,7 +38,7 @@ interface Props {
 
 const folderName = (path: string | null | undefined) => path?.split(/[\\/]/).filter(Boolean).pop();
 
-const ROOT_HINT = 'Сессии в корне Projects и в папках вне списка проектов';
+const ROOT_HINT = 'Сессии вне папки Projects';
 
 export function RunningList({ sessions, devServers, projects, busy, onStart }: Props) {
   const seen = useWorkbenchStore((s) => s.seen);
@@ -89,8 +88,6 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
       focusSoon(key);
     };
     const url = devUrl(d);
-    const health = devHealth(d);
-    const broken = health === 'crashed' || health === 'errors';
     const look = devLook(d);
     return (
       <button
@@ -98,12 +95,6 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
         type="button"
         className={cn('wb-rt', isOn(d.projectPath, key) && 'on')}
         style={tileStyle(look, key)}
-        title={[
-          `dev · ${devStatusLabel(d)} — ${d.command}`,
-          broken && 'Перезапустить — в меню правой кнопкой',
-        ]
-          .filter(Boolean)
-          .join('\n')}
         onClick={go}
         onContextMenu={(e) =>
           openMenu(
@@ -120,8 +111,8 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
           )
         }
       >
-        <LiveIcon look={look} />
-        <span className="wb-rt-l" data-live-cut>
+        <LiveIcon look={look} seed={key} />
+        <span className="wb-rt-l">
           <span>{d.command}</span>
           <small>{devStatusLabel(d)}</small>
         </span>
@@ -144,14 +135,6 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
           external && status === 'exited' && 'ext',
         )}
         style={tileStyle(look, s.sessionId)}
-        title={[
-          statusTitle(status, external),
-          external
-            ? externalTitle(s)
-            : !s.projectPath && `${s.cwd ?? 'Папка неизвестна'} — не проект из списка`,
-        ]
-          .filter(Boolean)
-          .join('\n')}
         disabled={!external && !s.projectPath}
         onClick={(e) => goSession(s, e.currentTarget)}
         onContextMenu={(e) => {
@@ -171,8 +154,13 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
           );
         }}
       >
-        <LiveIcon look={look} dim={external ? status === 'exited' : !s.projectPath} />
-        <span className="wb-rt-l" data-live-cut>
+        <LiveIcon
+          look={look}
+          dim={external ? status === 'exited' : !s.projectPath}
+          seed={s.sessionId}
+        />
+        {external && <SquareTerminal className="wb-rt-term" strokeWidth={2} aria-hidden="true" />}
+        <span className="wb-rt-l">
           <span>{s.name || (external ? folderName(s.cwd) : null) || 'Claude'}</span>
           <small>{label}</small>
         </span>

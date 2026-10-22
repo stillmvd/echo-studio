@@ -91,16 +91,6 @@ pub async fn list_claude_sessions() -> Result<Vec<ClaudeSession>, String> {
 }
 
 #[tauri::command]
-pub async fn empty_claude_sessions(session_ids: Vec<String>) -> Result<Vec<String>, String> {
-    blocking(move || {
-        crate::conversations::paths::projects_root()
-            .map(|dir| sessions::empty_sessions(&dir, &session_ids))
-            .unwrap_or_default()
-    })
-    .await
-}
-
-#[tauri::command]
 pub async fn focus_session_window(pid: u32, session_id: String) -> Result<window::Focus, String> {
     blocking(move || {
         if sessions::session_pid(&session_id)? != pid {
@@ -121,7 +111,7 @@ fn vscode_cli() -> Option<PathBuf> {
 
 #[tauri::command]
 pub async fn open_in_vscode(project_path: String) -> Result<(), String> {
-    let project = blocking(move || projects::ensure_project(&project_path)).await??;
+    let project = blocking(move || projects::ensure_place(&project_path)).await??;
     let code = vscode_cli().ok_or("VS Code не найден в PATH")?;
     child_command(&code.to_string_lossy())
         .arg(&project.path)
@@ -145,7 +135,7 @@ pub async fn start_claude_session(
     resume_session_id: Option<String>,
 ) -> Result<Started, String> {
     let started = blocking(move || {
-        let project = projects::ensure_project(&project_path)?;
+        let project = projects::ensure_place(&project_path)?;
         sessions::start(&PathBuf::from(project.path), resume_session_id.as_deref())
     })
     .await?;
@@ -161,6 +151,22 @@ pub async fn stop_claude_session(
     let result = blocking(move || sessions::stop(&short_id)).await?;
     hub.poke();
     result
+}
+
+#[tauri::command]
+pub async fn restart_claude_session(
+    hub: State<'_, SessionsHub>,
+    project_path: String,
+    session_id: String,
+    short_id: String,
+) -> Result<Started, String> {
+    let started = blocking(move || {
+        let project = projects::ensure_place(&project_path)?;
+        sessions::restart(&PathBuf::from(project.path), &session_id, &short_id)
+    })
+    .await?;
+    hub.poke();
+    started
 }
 
 #[tauri::command]

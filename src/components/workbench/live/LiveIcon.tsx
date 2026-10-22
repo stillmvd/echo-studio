@@ -1,6 +1,6 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { cn } from '@/lib/cn';
-import { FLAT_VIEWBOX, isFlat, LIVE_COLOR, type LiveLook } from '@/lib/live-status';
+import { FLAT_VIEWBOX, isFlat, LIVE_COLOR, type LiveLook, sweepDelay } from '@/lib/live-status';
 
 type Engine = typeof import('./engine');
 
@@ -111,12 +111,14 @@ export function LiveIcon({
   title,
   className,
   dim = false,
+  seed,
 }: {
   look: LiveLook;
   size?: number;
   title?: string;
   className?: string;
   dim?: boolean;
+  seed?: string;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const glOff = useGlOff();
@@ -129,14 +131,14 @@ export function LiveIcon({
     let gone = false;
     loadEngine()
       .then((e) => {
-        if (!gone) unregister = e.register(el, look, dim);
+        if (!gone) unregister = e.register(el, look, dim, seed ? Number(sweepDelay(seed)) : 0);
       })
       .catch(() => {});
     return () => {
       gone = true;
       unregister?.();
     };
-  }, [flat, look, dim]);
+  }, [flat, look, dim, seed]);
 
   return (
     <span

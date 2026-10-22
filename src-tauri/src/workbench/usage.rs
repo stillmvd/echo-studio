@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use serde::Serialize;
 use serde_json::Value;
 
-use super::projects::{all_projects, project_for, ProjectTree};
+use super::projects::{place_for, places, ProjectTree};
 use crate::conversations::reader::jsonl_lines;
 
 const WINDOW: Duration = Duration::from_secs(7 * 86_400);
@@ -164,8 +164,8 @@ pub fn read_usage(tree: &ProjectTree) -> HashMap<String, Usage> {
     }
     let raw = aggregate(cache.values().map(|(_, f)| f), &since, &today);
     by_project(raw, |cwd| {
-        project_for(tree, cwd)
-            .or_else(|| all_projects(tree).find(|p| claude_slug(&p.path) == cwd))
+        place_for(tree, cwd)
+            .or_else(|| places(tree).find(|p| claude_slug(&p.path) == cwd))
             .map(|p| p.path.clone())
     })
 }

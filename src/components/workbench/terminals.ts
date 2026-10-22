@@ -15,10 +15,12 @@ import {
   untailDevLog,
 } from '@/lib/ipc';
 import {
+  caretStep,
   detectAgentView,
   IMAGE_PASTE,
   isImagePaste,
   isPathTitle,
+  mouseReport,
   terminalKey,
 } from '@/lib/workbench';
 
@@ -37,11 +39,14 @@ interface Entry {
   attachedAt: number;
   agentCheck: ReturnType<typeof setTimeout> | undefined;
   feed: Channel<ArrayBuffer | number[]> | null;
+  early: string[];
   version: number;
   listeners: Set<() => void>;
   pasteImage: (() => void) | null;
   resetCaret: () => void;
   placeCaret: () => void;
+  nudgeCaret: (data: string) => void;
+  mouseCell: string | null;
 }
 
 const entries = new Map<string, Entry>();
@@ -51,14 +56,17 @@ const shorts = new Map<string, { shortId: string; at: number }>();
 const FRESH_MS = 20_000;
 
 export function rememberShort(key: string, shortId: string, fresh = false) {
-  shorts.set(key, { shortId, at: fresh ? Date.now() : 0 });
+  shorts.set(key, { shortId, at: fresh ? Date.now() : (shorts.get(key)?.at ?? 0) });
 }
 
 export function shortOf(key: string): string | null {
   return shorts.get(key)?.shortId ?? null;
 }
 
+export const restarting = new Set<string>();
+
 export function isFresh(key: string): boolean {
+  if (restarting.has(key)) return true;
   const s = shorts.get(key);
   return !!s && Date.now() - s.at < FRESH_MS;
 }
@@ -180,11 +188,14 @@ function create(options: Partial<ITerminalOptions>): Entry {
     attachedAt: 0,
     agentCheck: undefined,
     feed: null,
+    early: [],
     version: 0,
     listeners: new Set(),
     pasteImage: null,
     resetCaret: () => {},
     placeCaret: () => {},
+    nudgeCaret: () => {},
+    mouseCell: null,
   };
   term.onTitleChange((t) => {
     const title = t.trim();
@@ -195,7 +206,8 @@ function create(options: Partial<ITerminalOptions>): Entry {
   return entry;
 }
 
-const CARET_HIDE_MS = 200;
+const CARET_HIDE_MS = 600;
+const CARET_ECHO_MS = 60;
 
 function attachCaret(entry: Entry) {
   const { term } = entry;
@@ -203,39 +215,73 @@ function attachCaret(entry: Entry) {
   el.className = 'wb-caret';
   el.hidden = true;
   let at: { x: number; y: number } | null = null;
+  let typed: { t: number; dx: number }[] = [];
   let hiding: ReturnType<typeof setTimeout> | undefined;
+  const clampX = (x: number) => Math.max(0, Math.min(term.cols - 1, x));
   const place = () => {
     const screen = term.element?.querySelector<HTMLElement>('.xterm-screen');
     if (!screen || !at || term.cols === 0 || term.rows === 0) return;
     if (el.parentElement !== screen) screen.appendChild(el);
     const w = screen.clientWidth / term.cols;
     const h = screen.clientHeight / term.rows;
-    el.style.transform = `translate(${Math.min(at.x, term.cols - 1) * w}px, ${at.y * h}px)`;
+    el.style.transform = `translate(${clampX(at.x) * w}px, ${at.y * h}px)`;
     el.style.height = `${h}px`;
+  };
+  const hideLater = () => {
+    clearTimeout(hiding);
+    hiding = setTimeout(() => {
+      el.hidden = true;
+    }, CARET_HIDE_MS);
   };
   term.parser.registerCsiHandler({ prefix: '?', final: 'h' }, (params) => {
     if (!params.includes(25)) return false;
     clearTimeout(hiding);
-    at = { x: term.buffer.active.cursorX, y: term.buffer.active.cursorY };
+    hiding = undefined;
+    const now = performance.now();
+    typed = typed.filter((k) => now - k.t < CARET_ECHO_MS);
+    const ahead = typed.reduce((sum, k) => sum + k.dx, 0);
+    at = { x: clampX(term.buffer.active.cursorX + ahead), y: term.buffer.active.cursorY };
     el.hidden = false;
     place();
     return false;
   });
   term.parser.registerCsiHandler({ prefix: '?', final: 'l' }, (params) => {
     if (!params.includes(25)) return false;
-    clearTimeout(hiding);
-    hiding = setTimeout(() => {
-      el.hidden = true;
-    }, CARET_HIDE_MS);
+    hideLater();
     return false;
   });
   term.onResize(place);
   entry.placeCaret = place;
+  entry.nudgeCaret = (data) => {
+    const dx = caretStep(data);
+    if (dx === 0) return;
+    const now = performance.now();
+    typed = typed.filter((k) => now - k.t < CARET_ECHO_MS);
+    typed.push({ t: now, dx });
+    if (!at || el.hidden) return;
+    at = { x: clampX(at.x + dx), y: at.y };
+    place();
+    if (hiding !== undefined) hideLater();
+  };
   entry.resetCaret = () => {
     clearTimeout(hiding);
+    hiding = undefined;
     at = null;
+    typed = [];
     el.hidden = true;
   };
+}
+
+function send(entry: Entry, data: string) {
+  const mouse = mouseReport(data);
+  if (mouse) {
+    if (mouse.motion && mouse.cell === entry.mouseCell) return;
+    entry.mouseCell = mouse.cell;
+  }
+  if (entry.terminalId) {
+    void terminalWrite(entry.terminalId, data);
+    entry.nudgeCaret(data);
+  } else if (entry.state === 'attaching') entry.early.push(data);
 }
 
 function claudeEntry(key: string): Entry {
@@ -255,7 +301,7 @@ function claudeEntry(key: string): Entry {
     if (!action) return true;
     if ('send' in action) {
       ev.preventDefault();
-      if (entry.terminalId) void terminalWrite(entry.terminalId, action.send);
+      send(entry, action.send);
       return false;
     }
     if ('copy' in action) {
@@ -266,12 +312,8 @@ function claudeEntry(key: string): Entry {
     }
     return false;
   });
-  term.onData((data) => {
-    if (entry.terminalId) void terminalWrite(entry.terminalId, data);
-  });
-  entry.pasteImage = () => {
-    if (entry.terminalId) void terminalWrite(entry.terminalId, IMAGE_PASTE);
-  };
+  term.onData((data) => send(entry, data));
+  entry.pasteImage = () => send(entry, IMAGE_PASTE);
   entries.set(key, entry);
   return entry;
 }
@@ -344,8 +386,8 @@ export function mount(entry: Entry, container: HTMLElement) {
   entry.opened = true;
 }
 
-export function unmount(entry: Entry) {
-  entry.host.remove();
+export function unmount(entry: Entry, container: HTMLElement) {
+  if (entry.host.parentElement === container) entry.host.remove();
 }
 
 export function fitTerm(entry: Entry) {
@@ -372,6 +414,7 @@ export function connect(key: string, shortId: string) {
     return;
   }
   entry.attachedAt = Date.now();
+  entry.early = [];
   setState(entry, 'attaching');
   entry.term.reset();
   entry.resetCaret();
@@ -417,6 +460,7 @@ export function connect(key: string, shortId: string) {
       }
       entry.terminalId = id;
       byTerminal.set(id, entry);
+      for (const data of entry.early.splice(0)) void terminalWrite(id, data);
       setState(entry, 'live');
       fitTerm(entry);
     })

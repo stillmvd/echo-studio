@@ -1,7 +1,7 @@
 import { Folder } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
-export function ProjectIcon({ svg, size }: { svg: string | null; size?: 'lg' | 'xl' }) {
+export function ProjectIcon({ svg, size }: { svg: string | null; size?: 'lg' | 'hero' }) {
   if (!svg) {
     return (
       <span className={cn('wb-pi none', size)}>

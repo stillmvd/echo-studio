@@ -13,6 +13,7 @@ import {
   RotateCcw,
   Square,
   SquareTerminal,
+  Trash2,
   X,
 } from 'lucide-react';
 import { createElement, type ElementType } from 'react';
@@ -70,16 +71,18 @@ export function projectMenu({
     : devRuns(server)
       ? [action('Остановить dev', Square, actions.stopDev)]
       : [action('Запустить dev', Play, actions.startDev)];
+  const hide: MenuItem[] = project.folder
+    ? []
+    : ['separator', action('Скрыть из дерева', EyeOff, actions.hide)];
   return [
-    action('Открыть', ArrowRight, actions.open),
+    action(project.folder ? 'Открыть папку' : 'Открыть', ArrowRight, actions.open),
     action('Новая сессия Claude', Plus, actions.newSession, { disabled: busy }),
     ...dev,
     'separator',
     action('Открыть в проводнике', FolderOpen, actions.reveal),
     action('Открыть в VS Code', Code, actions.vscode),
     action('Копировать путь', Copy, actions.copyPath),
-    'separator',
-    action('Скрыть из дерева', EyeOff, actions.hide),
+    ...hide,
   ];
 }
 
@@ -168,6 +171,26 @@ export function processMenu({
       disabled: !row.projectPath,
     }),
     ...danger('Завершить', Power, actions.kill),
+  ];
+}
+
+export function conversationMenu({
+  live,
+  busy,
+  actions,
+}: {
+  live: boolean;
+  busy?: boolean;
+  actions: { resume: () => void; remove: () => void };
+}): MenuItem[] {
+  return [
+    action('Продолжить', Play, actions.resume, { disabled: busy }),
+    'separator',
+    action('Удалить разговор', Trash2, actions.remove, {
+      danger: true,
+      disabled: live,
+      hint: live ? 'Сессия запущена' : undefined,
+    }),
   ];
 }
 

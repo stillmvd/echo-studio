@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   cardGlow,
-  clipBox,
   devLook,
   FLAT_VIEWBOX,
   isFlat,
@@ -10,16 +9,8 @@ import {
   SOLID_SCALE,
   sessionLook,
   sweepDelay,
-  underCover,
 } from './live-status';
 import type { DevServer } from './types';
-
-const box = (left: number, top: number, right: number, bottom: number) => ({
-  left,
-  top,
-  right,
-  bottom,
-});
 
 const server = (over: Partial<DevServer>): DevServer => ({
   projectPath: 'C:/p',
@@ -93,30 +84,5 @@ describe('sweepDelay', () => {
       expect(Number(sweepDelay(key))).toBeGreaterThanOrEqual(0);
       expect(Number(sweepDelay(key))).toBeLessThan(5);
     }
-  });
-});
-
-describe('clipBox', () => {
-  it('intersects the slot with every clip', () => {
-    expect(
-      clipBox(box(10, 10, 30, 30), [box(0, 15, 100, 100), box(0, 0, 25, 100)], 800, 600),
-    ).toEqual(box(10, 15, 25, 30));
-  });
-
-  it('cuts at the window edge', () => {
-    expect(clipBox(box(-5, 590, 15, 610), [], 800, 600)).toEqual(box(0, 590, 15, 600));
-  });
-
-  it('returns null when nothing is left', () => {
-    expect(clipBox(box(10, 10, 30, 30), [box(40, 0, 100, 100)], 800, 600)).toBeNull();
-    expect(clipBox(box(10, 10, 30, 30), [box(0, 30, 100, 100)], 800, 600)).toBeNull();
-  });
-});
-
-describe('underCover', () => {
-  it('detects overlap with any cover', () => {
-    expect(underCover(box(10, 10, 30, 30), [])).toBe(false);
-    expect(underCover(box(10, 10, 30, 30), [box(30, 0, 50, 50)])).toBe(false);
-    expect(underCover(box(10, 10, 30, 30), [box(100, 0, 200, 50), box(29, 29, 40, 40)])).toBe(true);
   });
 });

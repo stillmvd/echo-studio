@@ -1,14 +1,5 @@
 import * as T from 'three';
-import {
-  type Box,
-  clipBox,
-  isFlat,
-  LIVE_COLOR,
-  type LiveLook,
-  SOLID_SCALE,
-  type SolidLook,
-  underCover,
-} from '@/lib/live-status';
+import { isFlat, LIVE_COLOR, type LiveLook, SOLID_SCALE, type SolidLook } from '@/lib/live-status';
 
 type Tick = (t: number) => void;
 type Built = [T.Object3D, Tick];
@@ -19,13 +10,9 @@ const REDUCED_GAP_MS = 500;
 const DIM_ALPHA = 0.55;
 
 const canvas = document.createElement('canvas');
-canvas.className = 'live-gl';
-canvas.setAttribute('aria-hidden', 'true');
-document.body.appendChild(canvas);
-
 const renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: true });
 const pixelRatio = () => Math.min(window.devicePixelRatio || 1, 2);
-renderer.setPixelRatio(pixelRatio());
+renderer.setPixelRatio(1);
 renderer.outputEncoding = T.sRGBEncoding;
 renderer.setClearColor(0x000000, 0);
 const camera = new T.PerspectiveCamera(32, 1, 0.1, 50);
@@ -285,93 +272,99 @@ function sceneOf(look: LiveLook) {
 
 interface Slot {
   look: LiveLook;
-  clips: HTMLElement[];
-  cut: Element | null;
   dim: boolean;
+  offset: number;
+  out: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D | null;
 }
 
+interface Job {
+  slot: Slot;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+const ATLAS_W = 2048;
 const slots = new Map<Element, Slot>();
 const visible = new Set<Element>();
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
 let raf = 0;
 let last = 0;
-let width = 0;
-let height = 0;
+let atlasH = 0;
 
 const io = new IntersectionObserver((entries) => {
   for (const e of entries) {
-    if (e.isIntersecting) visible.add(e.target);
+    if (e.isIntersecting && slots.has(e.target)) visible.add(e.target);
     else visible.delete(e.target);
   }
   wake();
 });
 
-function clipsOf(el: HTMLElement): HTMLElement[] {
-  const clips: HTMLElement[] = [];
-  for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
-    const s = getComputedStyle(p);
-    if (s.overflowX !== 'visible' || s.overflowY !== 'visible') clips.push(p);
-  }
-  return clips;
-}
-
-const boxOf = (el: Element): Box => el.getBoundingClientRect();
-
-function clear() {
-  renderer.setScissorTest(false);
-  renderer.clear();
-}
-
-function draw(t: number) {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+function layout(): Job[] {
   const ratio = pixelRatio();
-  if (ratio !== renderer.getPixelRatio()) {
-    renderer.setPixelRatio(ratio);
-    width = 0;
-  }
-  if (w !== width || h !== height) {
-    renderer.setSize(w, h, false);
-    width = w;
-    height = h;
-  }
-  clear();
-  renderer.setScissorTest(true);
-  const covers = [...document.querySelectorAll('[data-live-cover]')].map(boxOf);
-  const ticked = new Set<LiveLook>();
+  const jobs: Job[] = [];
+  let x = 0;
+  let y = 0;
+  let row = 0;
   for (const el of visible) {
     const slot = slots.get(el);
     if (!slot) continue;
     const r = el.getBoundingClientRect();
-    if (r.width === 0 || r.height === 0) continue;
-    if (covers.length > 0 && !el.closest('[data-live-top]') && underCover(r, covers)) continue;
-    const box = clipBox(r, slot.clips.map(boxOf), w, h);
-    if (!box) continue;
-    if (slot.cut?.parentElement?.matches(':hover, :focus-visible')) {
-      box.bottom = Math.min(box.bottom, slot.cut.getBoundingClientRect().top);
-      if (box.bottom <= box.top) continue;
+    const w = Math.min(Math.round(r.width * ratio), ATLAS_W);
+    const h = Math.round(r.height * ratio);
+    if (w === 0 || h === 0) continue;
+    if (x + w > ATLAS_W) {
+      x = 0;
+      y += row;
+      row = 0;
     }
+    jobs.push({ slot, x, y, w, h });
+    x += w;
+    row = Math.max(row, h);
+  }
+  const need = y + row;
+  if (need > atlasH) {
+    renderer.setSize(ATLAS_W, need, false);
+    atlasH = need;
+  }
+  return jobs;
+}
+
+function draw(t: number) {
+  const jobs = layout();
+  if (jobs.length === 0) return;
+  renderer.setScissorTest(false);
+  renderer.clear();
+  renderer.setScissorTest(true);
+  const still = reduce.matches;
+  for (const { slot, x, y, w, h } of jobs) {
     const s = sceneOf(slot.look);
-    if (!ticked.has(slot.look)) {
-      s.tick(t);
-      ticked.add(slot.look);
-    }
+    s.tick(still ? STILL_T : t + slot.offset);
     setAlpha(s, slot.dim ? DIM_ALPHA : 1);
-    renderer.setViewport(r.left, h - r.bottom, r.width, r.height);
-    renderer.setScissor(box.left, h - box.bottom, box.right - box.left, box.bottom - box.top);
+    renderer.setViewport(x, atlasH - y - h, w, h);
+    renderer.setScissor(x, atlasH - y - h, w, h);
     renderer.render(s.scene, camera);
+  }
+  for (const { slot, x, y, w, h } of jobs) {
+    const { out, ctx } = slot;
+    if (out.width !== w || out.height !== h) {
+      out.width = w;
+      out.height = h;
+    }
+    if (!ctx) continue;
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(canvas, x, y, w, h, 0, 0, w, h);
   }
 }
 
 function frame(now: number) {
   raf = 0;
-  if (document.hidden || visible.size === 0) {
-    clear();
-    return;
-  }
+  if (document.hidden || visible.size === 0) return;
   const gap = reduce.matches ? REDUCED_GAP_MS : document.hasFocus() ? 0 : UNFOCUSED_GAP_MS;
   if (now - last >= gap) {
-    draw(reduce.matches ? STILL_T : now / 1000);
+    draw(now / 1000);
     last = now;
   }
   raf = requestAnimationFrame(frame);
@@ -384,21 +377,17 @@ function wake() {
 
 document.addEventListener('visibilitychange', wake);
 window.addEventListener('focus', wake);
-for (const type of ['scroll', 'pointerover', 'pointerout', 'focusin', 'focusout']) {
-  document.addEventListener(type, () => reduce.matches && wake(), { capture: true, passive: true });
-}
 
-export function register(el: HTMLElement, look: LiveLook, dim = false): () => void {
-  slots.set(el, {
-    look,
-    dim,
-    clips: clipsOf(el),
-    cut: el.parentElement?.querySelector(':scope > [data-live-cut]') ?? null,
-  });
+export function register(el: HTMLElement, look: LiveLook, dim = false, offset = 0): () => void {
+  const out = document.createElement('canvas');
+  out.setAttribute('aria-hidden', 'true');
+  el.appendChild(out);
+  slots.set(el, { look, dim, offset, out, ctx: out.getContext('2d') });
   visible.add(el);
   io.observe(el);
   wake();
   return () => {
+    out.remove();
     slots.delete(el);
     visible.delete(el);
     io.unobserve(el);

@@ -27,7 +27,6 @@ export function ProjectHeader({ project, server, busy, onClaude, extra }: Props)
           {shortPath(project.path)}
         </span>
       </span>
-      <span className="wb-gap" />
       <span className="wb-chips">
         {isStatus(git) && (
           <span className="wb-chip" title="Ветка, незакоммиченное, незапушенное">
@@ -50,19 +49,22 @@ export function ProjectHeader({ project, server, busy, onClaude, extra }: Props)
           </span>
         )}
       </span>
-      <DevCapsule project={project} server={server} />
-      {project.dev && extra && <span className="wb-ph-sep" aria-hidden="true" />}
+      <span className="wb-gap" />
       {extra}
-      <button
-        type="button"
-        className="wb-btn p"
-        title="Новая сессия Claude"
-        disabled={busy}
-        onClick={onClaude}
-      >
-        <Plus strokeWidth={2} />
-        <span className="wb-btn-l">Claude</span>
-      </button>
+      {extra && <span className="wb-ph-sep" aria-hidden="true" />}
+      <span className="wb-acts">
+        <DevCapsule project={project} server={server} />
+        <button
+          type="button"
+          className="wb-btn p"
+          title="Новая сессия Claude"
+          disabled={busy}
+          onClick={onClaude}
+        >
+          <Plus strokeWidth={2} />
+          <span className="wb-btn-l">Claude</span>
+        </button>
+      </span>
     </div>
   );
 }

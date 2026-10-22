@@ -11,6 +11,7 @@ import {
   arrangeWall,
   assignTabs,
   byUrgency,
+  caretStep,
   cellOfTab,
   closeTabInLayout,
   detectAgentView,
@@ -23,6 +24,9 @@ import {
   isImagePaste,
   isPathTitle,
   type KeyInput,
+  misplacedTabs,
+  mouseReport,
+  movedTabs,
   moveTabInLayout,
   nextInRecency,
   normalizeCells,
@@ -38,7 +42,7 @@ import {
   samePath,
   statusTitle,
   statusView,
-  tabsToClose,
+  stoppedDevTabs,
   terminalKey,
   topStatus,
   URGENCY,
@@ -57,6 +61,7 @@ const key = (over: Partial<KeyInput>): KeyInput => ({
   altKey: false,
   ctrlKey: false,
   metaKey: false,
+  keyCode: 0,
   ...over,
 });
 
@@ -111,6 +116,13 @@ describe('terminalKey', () => {
   it('leaves Ctrl+V to the native paste and Ctrl+Tab to the switcher', () => {
     expect(terminalKey(key({ code: 'KeyV', ctrlKey: true }), false)).toEqual({ native: true });
     expect(terminalKey(key({ code: 'Tab', ctrlKey: true }), false)).toEqual({ pass: true });
+  });
+
+  it('takes the virtual key when synthetic input leaves the code empty', () => {
+    expect(terminalKey(key({ key: 'м', keyCode: 86, ctrlKey: true }), false)).toEqual({
+      native: true,
+    });
+    expect(terminalKey(key({ key: 'м', keyCode: 77, ctrlKey: true }), false)).toBeNull();
     expect(terminalKey(key({ code: 'Tab', ctrlKey: true, shiftKey: true }), false)).toEqual({
       pass: true,
     });
@@ -129,20 +141,38 @@ const proj = (path: string): WorkbenchProject => ({
   dev: null,
   mcp: null,
   hasClaudeMd: false,
+  folder: false,
 });
 
 describe('projectOf', () => {
   const tree: ProjectTree = {
     root: 'C:\\P',
     roots: [proj('C:\\P\\Solo')],
-    groups: [{ name: 'G', icon: null, projects: [proj('C:\\P\\G\\App'), proj('C:\\P\\G\\App2')] }],
+    groups: [
+      {
+        name: 'G',
+        path: 'C:\\P\\G',
+        icon: null,
+        projects: [proj('C:\\P\\G\\App'), proj('C:\\P\\G\\App2')],
+      },
+    ],
+    folders: [
+      { ...proj('C:\\P'), folder: true },
+      { ...proj('C:\\P\\G'), folder: true },
+    ],
   };
 
   it('matches by path prefix without case', () => {
     expect(projectOf(tree, 'c:/p/g/app/src')?.path).toBe('C:\\P\\G\\App');
     expect(projectOf(tree, 'C:\\P\\G\\App2')?.path).toBe('C:\\P\\G\\App2');
-    expect(projectOf(tree, 'C:\\P\\G\\Ap')).toBeUndefined();
     expect(projectOf(tree, null)).toBeUndefined();
+  });
+
+  it('falls back to the group folder, then to the Projects root', () => {
+    expect(projectOf(tree, 'C:\\P\\G\\Ap')?.path).toBe('C:\\P\\G');
+    expect(projectOf(tree, 'c:/p/g')?.path).toBe('C:\\P\\G');
+    expect(projectOf(tree, 'C:\\P\\_maintenance')?.path).toBe('C:\\P');
+    expect(projectOf(tree, 'C:\\Other')).toBeUndefined();
   });
 
   it('compares paths without case and trailing slash', () => {
@@ -169,6 +199,7 @@ const session = (
   pid: null,
   transcript: null,
   exitedAt: null,
+  shells: false,
 });
 
 const cell = (id: string, projectPath: string | null, over: Partial<WallCell> = {}): WallCell => ({
@@ -951,14 +982,102 @@ describe('project layout', () => {
   });
 });
 
+describe('caretStep', () => {
+  it('moves the caret by typed characters and back on backspace and arrows', () => {
+    expect(caretStep('a')).toBe(1);
+    expect(caretStep('привет')).toBe(6);
+    expect(caretStep('\x7f')).toBe(-1);
+    expect(caretStep('\x1b[D')).toBe(-1);
+    expect(caretStep('\x1b[C')).toBe(1);
+  });
+
+  it('leaves the caret for control input', () => {
+    expect(caretStep('\r')).toBe(0);
+    expect(caretStep('\x1b\r')).toBe(0);
+    expect(caretStep('line\nnext')).toBe(0);
+    expect(caretStep('\x1b[A')).toBe(0);
+  });
+});
+
+describe('mouseReport', () => {
+  it('reads the cell and the motion flag of SGR mouse reports', () => {
+    expect(mouseReport('\x1b[<16;97;4M')).toEqual({ cell: '97;4', motion: false });
+    expect(mouseReport('\x1b[<48;97;4M')).toEqual({ cell: '97;4', motion: true });
+    expect(mouseReport('\x1b[<16;97;4m')).toEqual({ cell: '97;4', motion: false });
+    expect(mouseReport('a')).toBeNull();
+  });
+});
+
+describe('misplacedTabs', () => {
+  it('finds tabs of sessions that now belong to another project, duplicates included', () => {
+    const tabs = { 'C:\\P\\A': ['s1', 's2', 'dev:x'], 'c:/p/a/hush': ['s1'] };
+    const live = [
+      { sessionId: 's1', projectPath: 'C:\\P\\A\\Hush' },
+      { sessionId: 's2', projectPath: 'C:\\P\\A' },
+    ];
+    expect(misplacedTabs(tabs, live)).toEqual([
+      { from: 'C:\\P\\A', key: 's1', to: 'C:\\P\\A\\Hush' },
+    ]);
+  });
+});
+
+describe('movedTabs', () => {
+  it('follows a job through a second /new by the short id the tab was last seen with', () => {
+    const ended = [{ path: 'A', key: '0dfca573-46c9-4933-8c57-a7b65f17ca5d' }];
+    const live = [{ shortId: '0098bfd5', sessionId: '74f0b53d-3313-4375-bdc2-87b349dff166' }];
+    expect(movedTabs(ended, live)).toEqual([]);
+    expect(movedTabs(ended, live, () => '0098bfd5')).toEqual([
+      { ...ended[0], to: '74f0b53d-3313-4375-bdc2-87b349dff166' },
+    ]);
+  });
+
+  it('maps an ended tab to the session its background job continues as', () => {
+    const ended = [
+      { path: 'A', key: 'db3daab3-1ce0-4521-a162-0e8f2b82da9c' },
+      { path: 'A', key: 'aaaaaaaa-0000-0000-0000-000000000000' },
+    ];
+    const live = [
+      { shortId: 'db3daab3', sessionId: '07076712-9b0e-4a59-9d81-9937bd9feee8' },
+      { shortId: null, sessionId: 'aaaaaaaa-1111-0000-0000-000000000000' },
+    ];
+    expect(movedTabs(ended, live)).toEqual([
+      {
+        path: 'A',
+        key: 'db3daab3-1ce0-4521-a162-0e8f2b82da9c',
+        to: '07076712-9b0e-4a59-9d81-9937bd9feee8',
+      },
+    ]);
+  });
+});
+
 describe('ended tabs', () => {
-  it('closes ended tabs the wall opened itself and ended sessions that never got a prompt', () => {
-    const tabs = { A: ['live', 'auto', 'empty', 'used', 'fresh', 'dev:A'] };
+  it('ends every session tab that is neither live nor fresh, dev tabs aside', () => {
+    const tabs = { A: ['live', 'auto', 'used', 'fresh', 'dev:A'] };
     const ended = endedTabs(tabs, new Set(['live']), (k) => k === 'fresh');
-    expect(ended.map((t) => t.key)).toEqual(['auto', 'empty', 'used']);
-    expect(tabsToClose(ended, ['auto', 'live'], ['empty'])).toEqual([
+    expect(ended).toEqual([
       { path: 'A', key: 'auto' },
-      { path: 'A', key: 'empty' },
+      { path: 'A', key: 'used' },
+    ]);
+  });
+
+  it('finds dev tabs whose server is gone or stopped, keeps running and crashed ones', () => {
+    const tabs = { A: ['dev:A', 's1'], B: ['dev:B'], C: ['dev:C'], D: ['dev:D'] };
+    const srv = (projectPath: string, state: DevServer['state']): DevServer => ({
+      projectPath,
+      command: 'pnpm dev',
+      state,
+      ports: [],
+      startedAt: 0,
+      exitCode: null,
+      log: '',
+      pids: [],
+      errors: null,
+      restarted: false,
+    });
+    const devs = [srv('B', 'running'), srv('C', 'error'), srv('D', 'stopped')];
+    expect(stoppedDevTabs(tabs, devs)).toEqual([
+      { path: 'A', key: 'dev:A' },
+      { path: 'D', key: 'dev:D' },
     ]);
   });
 

@@ -19,11 +19,11 @@ export function useRenameSession() {
 
 export function useDeleteSession() {
   const qc = useQueryClient();
-  const setSelectedSessionPath = useUiStore((s) => s.setSelectedSessionPath);
   return useMutation({
     mutationFn: (filePath: string) => deleteConversationSession(filePath),
-    onSuccess: () => {
-      setSelectedSessionPath(null);
+    onSuccess: (_, filePath) => {
+      const ui = useUiStore.getState();
+      if (ui.selectedSessionPath === filePath) ui.setSelectedSessionPath(null);
       qc.invalidateQueries({ queryKey: ['conversations'] });
     },
   });

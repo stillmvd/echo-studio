@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ContextMenuAction, ContextSubmenu, MenuItem } from '@/components/ui/ContextMenu';
 import type { DevServer, ProcessRow, WorkbenchProject } from '@/lib/types';
 import {
+  conversationMenu,
   devTabMenu,
   processMenu,
   projectMenu,
@@ -11,6 +12,18 @@ import {
 } from './menus';
 
 const noop = () => {};
+
+describe('conversationMenu', () => {
+  const actions = { resume: noop, remove: noop };
+  it('deletes only a conversation whose session is not running', () => {
+    expect(labels(conversationMenu({ live: false, actions }))).toEqual([
+      'Продолжить',
+      '—',
+      'Удалить разговор',
+    ]);
+    expect(labels(conversationMenu({ live: true, actions }))).toContain('Удалить разговор (x)');
+  });
+});
 const labels = (items: MenuItem[]) =>
   items.map((i) =>
     i === 'separator' ? '—' : i.label + ('onSelect' in i && i.disabled ? ' (x)' : ''),
@@ -28,6 +41,7 @@ const project: WorkbenchProject = {
   dev: { command: 'pnpm tauri dev', kind: 'tauri' },
   mcp: null,
   hasClaudeMd: true,
+  folder: false,
 };
 
 const server = (state: DevServer['state'], ports: number[] = []): DevServer => ({
@@ -66,6 +80,20 @@ describe('projectMenu', () => {
       'Копировать путь',
       '—',
       'Скрыть из дерева',
+    ]);
+  });
+
+  it('opens a folder without dev and without hiding it from the tree', () => {
+    const folder = { ...project, dev: null, folder: true };
+    expect(
+      labels(projectMenu({ project: folder, server: undefined, actions: projectActions })),
+    ).toEqual([
+      'Открыть папку',
+      'Новая сессия Claude',
+      '—',
+      'Открыть в проводнике',
+      'Открыть в VS Code',
+      'Копировать путь',
     ]);
   });
 

@@ -53,6 +53,7 @@ interface WorkbenchState {
   focusProjectCell: (path: string, index: number) => void;
   activateInCell: (path: string, cell: number, key: string) => void;
   toggleGroup: (name: string) => void;
+  collapseGroups: () => void;
   openTab: (path: string, key: string) => void;
   closeTab: (path: string, key: string) => void;
   activate: (path: string, key: string) => void;
@@ -269,6 +270,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
             ? s.openGroups.filter((g) => g !== name)
             : [...s.openGroups, name],
         })),
+      collapseGroups: () => set({ openGroups: [] }),
       openTab: (path, key) =>
         set((s) => {
           const list = s.tabs[path] ?? [];
@@ -391,12 +393,15 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       name: 'echo-workbench',
       version: 3,
       migrate: (persisted) => migrateWorkbench(persisted) as WorkbenchState,
-      merge: (persisted, current) => ({ ...current, ...migrateWorkbench(persisted) }),
+      merge: (persisted, current) => ({
+        ...current,
+        ...migrateWorkbench(persisted),
+        openGroups: [],
+      }),
       partialize: (s) => ({
         view: s.view,
         mode: s.mode,
         projectLayouts: s.projectLayouts,
-        openGroups: s.openGroups,
         tabs: s.tabs,
         activeTab: s.activeTab,
         recency: s.recency,

@@ -64,8 +64,8 @@ export function statusTitle(status: StatusView, external = false): string {
   return external ? `${line}\n${EXTERNAL_HINT}` : line;
 }
 
-export function all(tree: ProjectTree): WorkbenchProject[] {
-  return [...tree.roots, ...tree.groups.flatMap((g) => g.projects)];
+export function places(tree: ProjectTree): WorkbenchProject[] {
+  return [...tree.roots, ...tree.groups.flatMap((g) => g.projects), ...tree.folders];
 }
 
 export function shortPath(path: string): string {
@@ -81,7 +81,7 @@ export function samePath(a: string, b: string): boolean {
 export function projectOf(tree: ProjectTree, cwd: string | null): WorkbenchProject | undefined {
   if (!cwd) return undefined;
   const c = norm(cwd);
-  return all(tree)
+  return places(tree)
     .filter((p) => {
       const d = norm(p.path);
       return c === d || c.startsWith(`${d}\\`);
@@ -107,6 +107,7 @@ export interface KeyInput {
   altKey: boolean;
   ctrlKey: boolean;
   metaKey: boolean;
+  keyCode: number;
 }
 
 export type KeyAction =
@@ -126,20 +127,37 @@ export function isPathTitle(title: string): boolean {
 
 export const IMAGE_PASTE = '\x1bv';
 
+export function mouseReport(data: string): { cell: string; motion: boolean } | null {
+  if (!data.startsWith('\x1b[<')) return null;
+  const m = /^(\d+);(\d+);(\d+)[Mm]$/.exec(data.slice(3));
+  return m ? { cell: `${m[2]};${m[3]}`, motion: (Number(m[1]) & 32) !== 0 } : null;
+}
+
+export function caretStep(data: string): number {
+  if (data === '\x7f' || data === '\b' || data === '\x1b[D') return -1;
+  if (data === '\x1b[C') return 1;
+  const chars = [...data];
+  return chars.every((c) => c >= ' ' && c !== '\x7f') ? chars.length : 0;
+}
+
 export function isImagePaste(data: Pick<DataTransfer, 'getData' | 'types'> | null): boolean {
   if (!data || data.getData('text/plain')) return false;
   return Array.from(data.types).some((t) => t === 'Files' || t.startsWith('image/'));
+}
+
+function isLetter(e: KeyInput, letter: string): boolean {
+  return e.code ? e.code === `Key${letter}` : e.keyCode === letter.charCodeAt(0);
 }
 
 export function terminalKey(e: KeyInput, hasSelection: boolean): KeyAction {
   if (e.type !== 'keydown' || e.metaKey) return null;
   if (e.ctrlKey && e.code === 'Tab') return { pass: true };
   if (e.key === 'Enter' && !e.ctrlKey && (e.shiftKey || e.altKey)) return { send: '\x1b\r' };
-  if (e.altKey && !e.ctrlKey && !e.shiftKey && e.code === 'KeyV') return { send: IMAGE_PASTE };
-  if (e.ctrlKey && !e.altKey && !e.shiftKey && e.code === 'KeyC' && hasSelection) {
+  if (e.altKey && !e.ctrlKey && !e.shiftKey && isLetter(e, 'V')) return { send: IMAGE_PASTE };
+  if (e.ctrlKey && !e.altKey && !e.shiftKey && isLetter(e, 'C') && hasSelection) {
     return { copy: true };
   }
-  if (e.ctrlKey && !e.altKey && !e.shiftKey && e.code === 'KeyV') return { native: true };
+  if (e.ctrlKey && !e.altKey && !e.shiftKey && isLetter(e, 'V')) return { native: true };
   return null;
 }
 
@@ -711,12 +729,48 @@ export function endedTabs(
   );
 }
 
-export function tabsToClose(
-  ended: { path: string; key: string }[],
-  auto: string[],
-  empty: string[],
+export function stoppedDevTabs(
+  tabs: Record<string, string[]>,
+  devs: DevServer[],
 ): { path: string; key: string }[] {
-  return ended.filter((t) => auto.includes(t.key) || empty.includes(t.key));
+  return Object.entries(tabs).flatMap(([path, keys]) =>
+    keys
+      .filter(
+        (key) =>
+          key.startsWith('dev:') &&
+          devHealth(devs.find((d) => samePath(d.projectPath, path))) === 'stopped',
+      )
+      .map((key) => ({ path, key })),
+  );
+}
+
+export function movedTabs(
+  ended: { path: string; key: string }[],
+  live: { shortId: string | null; sessionId: string }[],
+  shortOf: (key: string) => string | null = () => null,
+): { path: string; key: string; to: string }[] {
+  return ended.flatMap((t) => {
+    const known = shortOf(t.key);
+    const next = live.find(
+      (s) =>
+        s.shortId &&
+        s.sessionId !== t.key &&
+        (known ? s.shortId === known : t.key.startsWith(s.shortId)),
+    );
+    return next ? [{ ...t, to: next.sessionId }] : [];
+  });
+}
+
+export function misplacedTabs(
+  tabs: Record<string, string[]>,
+  live: { sessionId: string; projectPath: string | null }[],
+): { from: string; key: string; to: string }[] {
+  return Object.entries(tabs).flatMap(([from, keys]) =>
+    keys.flatMap((key) => {
+      const to = live.find((s) => s.sessionId === key)?.projectPath;
+      return to && !samePath(to, from) ? [{ from, key, to }] : [];
+    }),
+  );
 }
 
 function filledCells(layout: ProjectLayout): ProjectCell[] {

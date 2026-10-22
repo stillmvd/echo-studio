@@ -50,7 +50,7 @@ export function ClaudeTerminal({
     ro.observe(el);
     return () => {
       ro.disconnect();
-      unmount(entry);
+      unmount(entry, el);
     };
   }, [entry]);
 
@@ -63,9 +63,13 @@ export function ClaudeTerminal({
     return () => cancelAnimationFrame(raf);
   }, [visible, focused, entry, sessionKey]);
 
+  const wasLive = useRef(live);
   useEffect(() => {
+    const revived = live && !wasLive.current;
+    wasLive.current = live;
     if (!shortId || !live) return;
-    const respawned = (state === 'detached' || state === 'ended') && shortId !== entry.shortId;
+    const respawned =
+      (state === 'detached' || state === 'ended') && (shortId !== entry.shortId || revived);
     if (
       state === 'idle' ||
       respawned ||

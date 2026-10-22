@@ -133,11 +133,10 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
 
   return (
     <>
-      <div className="wb-scrim" onClick={cancel} aria-hidden data-live-cover />
+      <div className="wb-scrim" onClick={cancel} aria-hidden />
       <div
         ref={list}
         className="wb-sw"
-        data-live-top
         role="listbox"
         aria-label="Сессии"
         tabIndex={-1}
@@ -163,7 +162,7 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
                 <b>{s.name || 'Claude'}</b>
                 <span>{sessionPlace(s, projects)}</span>
               </span>
-              <StatusIcon session={{ status, phase: s.phase }} />
+              <StatusIcon session={{ status, phase: s.phase }} seed={s.sessionId} />
               <span className="wb-dim">{i === 0 ? 'сейчас' : STATUS_LABEL[status]}</span>
             </button>
           );

@@ -20,6 +20,7 @@ const EXCLUDE: [&str; 3] = ["Breeze-main", "Smart Control-main", "node_modules"]
 pub struct ProjectTree {
     pub groups: Vec<ProjectGroup>,
     pub roots: Vec<Project>,
+    pub folders: Vec<Project>,
     pub root: String,
 }
 
@@ -27,6 +28,7 @@ pub struct ProjectTree {
 #[serde(rename_all = "camelCase")]
 pub struct ProjectGroup {
     pub name: String,
+    pub path: String,
     pub icon: Option<String>,
     pub projects: Vec<Project>,
 }
@@ -41,6 +43,7 @@ pub struct Project {
     pub dev: Option<DevCommand>,
     pub mcp: Option<McpProfile>,
     pub has_claude_md: bool,
+    pub folder: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -98,6 +101,7 @@ pub fn scan(root: &Path) -> ProjectTree {
     let icons = root.join("_maintenance").join("folder-icons");
     let mut groups = Vec::new();
     let mut roots = Vec::new();
+    let mut folders = vec![folder(root, &icons)];
     for top in visible_dirs(root) {
         if is_project(&top) {
             roots.push(project(&top, None, &icons));
@@ -110,13 +114,16 @@ pub fn scan(root: &Path) -> ProjectTree {
             .collect();
         groups.push(ProjectGroup {
             icon: icon(&top, &icons),
+            path: top.to_string_lossy().into_owned(),
             name,
             projects,
         });
+        folders.push(folder(&top, &icons));
     }
     ProjectTree {
         groups,
         roots,
+        folders,
         root: root.to_string_lossy().into_owned(),
     }
 }
@@ -133,6 +140,20 @@ fn project(dir: &Path, group: Option<String>, icons: &Path) -> Project {
         }),
         mcp: mcp_profile(dir),
         has_claude_md: dir.join("CLAUDE.md").is_file(),
+        folder: false,
+    }
+}
+
+fn folder(dir: &Path, icons: &Path) -> Project {
+    Project {
+        path: dir.to_string_lossy().into_owned(),
+        name: file_name(dir),
+        group: None,
+        icon: icon(dir, icons),
+        dev: None,
+        mcp: mcp_profile(dir),
+        has_claude_md: dir.join("CLAUDE.md").is_file(),
+        folder: true,
     }
 }
 
@@ -238,19 +259,30 @@ pub fn all_projects(tree: &ProjectTree) -> impl Iterator<Item = &Project> {
         .chain(tree.groups.iter().flat_map(|g| g.projects.iter()))
 }
 
-pub fn project_for<'a>(tree: &'a ProjectTree, path: &str) -> Option<&'a Project> {
-    all_projects(tree)
+pub fn places(tree: &ProjectTree) -> impl Iterator<Item = &Project> {
+    all_projects(tree).chain(tree.folders.iter())
+}
+
+pub fn place_for<'a>(tree: &'a ProjectTree, path: &str) -> Option<&'a Project> {
+    places(tree)
         .filter(|p| is_within(path, &p.path))
         .max_by_key(|p| p.path.len())
+}
+
+fn ensure_in<'a>(mut list: impl Iterator<Item = &'a Project>, path: &str) -> Option<Project> {
+    list.find(|p| same_path(&p.path, path)).cloned()
 }
 
 pub fn ensure_project(path: &str) -> Result<Project, String> {
     let root = super::projects_root().ok_or("cannot resolve Projects root")?;
     let tree = scan(&root);
-    let found = all_projects(&tree)
-        .find(|p| same_path(&p.path, path))
-        .cloned();
-    found.ok_or_else(|| format!("not a known project: {path}"))
+    ensure_in(all_projects(&tree), path).ok_or_else(|| format!("not a known project: {path}"))
+}
+
+pub fn ensure_place(path: &str) -> Result<Project, String> {
+    let root = super::projects_root().ok_or("cannot resolve Projects root")?;
+    let tree = scan(&root);
+    ensure_in(places(&tree), path).ok_or_else(|| format!("not a known project or folder: {path}"))
 }
 
 #[cfg(test)]
@@ -297,6 +329,21 @@ mod tests {
             tree.groups[1].projects[0].group.as_deref(),
             Some("Windows Apps")
         );
+        let folders: Vec<_> = tree.folders.iter().map(|f| f.path.as_str()).collect();
+        let apps_dir = root.join("Windows Apps").to_string_lossy().into_owned();
+        assert_eq!(folders[0], tree.root);
+        assert!(folders.contains(&apps_dir.as_str()));
+        assert!(tree.folders.iter().all(|f| f.folder && f.dev.is_none()));
+        assert!(all_projects(&tree).all(|p| !p.folder));
+        assert_eq!(tree.groups[1].path, apps_dir);
+        let at = |rel: &str| {
+            place_for(&tree, &root.join(rel).to_string_lossy())
+                .map(|p| p.path.clone())
+                .unwrap()
+        };
+        assert_eq!(at("Windows Apps/Echo/src"), tree.groups[1].projects[1].path);
+        assert_eq!(at("Windows Apps"), apps_dir);
+        assert_eq!(at("_maintenance"), tree.root);
     }
 
     #[test]
