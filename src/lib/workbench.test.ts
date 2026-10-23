@@ -15,6 +15,7 @@ import {
   cellOfTab,
   closeTabInLayout,
   detectAgentView,
+  echoedKeys,
   effectiveStatus,
   emptyCells,
   emptyLayout,
@@ -996,6 +997,39 @@ describe('caretStep', () => {
     expect(caretStep('\x1b\r')).toBe(0);
     expect(caretStep('line\nnext')).toBe(0);
     expect(caretStep('\x1b[A')).toBe(0);
+  });
+});
+
+describe('echoedKeys', () => {
+  const char = (ch: string, shown = false) => ({ ch, dx: 1, del: false, shown });
+  const back = (shown = false) => ({ ch: null, dx: -1, del: true, shown });
+  const left = { ch: null, dx: -1, del: false, shown: false };
+
+  it('counts only the keys the screen already shows', () => {
+    const typed = [char('a'), char('b'), char('c')];
+    expect(echoedKeys('❯', 2, typed, '❯')).toBeNull();
+    expect(echoedKeys('❯', 2, typed, '❯ a')).toEqual({ count: 1, x: 3 });
+    expect(echoedKeys('❯', 2, typed, '❯ abc')).toEqual({ count: 3, x: 5 });
+  });
+
+  it('follows backspace and arrows, including in the middle of the line', () => {
+    expect(echoedKeys('❯ abc', 5, [back(), back()], '❯ ab')).toEqual({ count: 1, x: 4 });
+    expect(echoedKeys('❯ abc', 5, [left, char('x')], '❯ abxc')).toEqual({ count: 2, x: 5 });
+  });
+
+  it('keeps the caret at the input start on backspace in an empty prompt', () => {
+    expect(echoedKeys('❯', 2, [back(), char('a')], '❯ a', 2)).toEqual({ count: 2, x: 3 });
+  });
+
+  it('skips only keys the last cursor report already counted', () => {
+    expect(echoedKeys('❯ abcdefgh', 10, [back(), back(), back()], '❯ abcdefg')).toEqual({
+      count: 1,
+      x: 9,
+    });
+    expect(echoedKeys('❯ ab', 4, [char('b', true), char('c')], '❯ abc')).toEqual({
+      count: 2,
+      x: 5,
+    });
   });
 });
 

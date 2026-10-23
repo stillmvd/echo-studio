@@ -16,6 +16,7 @@ import {
   type ProjectLayout,
   placeProject,
   pruneCells,
+  renameTabInLayout,
   samePath,
   showTabInLayout,
   type WallCell,
@@ -56,6 +57,7 @@ interface WorkbenchState {
   collapseGroups: () => void;
   openTab: (path: string, key: string) => void;
   closeTab: (path: string, key: string) => void;
+  renameTab: (path: string, from: string, to: string) => void;
   activate: (path: string, key: string) => void;
   markSeen: (sessionId: string) => void;
   setLayout: (layout: WallLayout) => void;
@@ -314,6 +316,24 @@ export const useWorkbenchStore = create<WorkbenchState>()(
             cells: s.cells.some((c) => c.activeTab === key)
               ? s.cells.map((c) => (c.activeTab === key ? { ...c, activeTab: undefined } : c))
               : s.cells,
+          };
+        }),
+      renameTab: (path, from, to) =>
+        set((s) => {
+          const list = s.tabs[path] ?? [];
+          if (!list.includes(from) || list.includes(to)) return {};
+          const swap = (k: string) => (k === from ? to : k);
+          const tabs = list.map(swap);
+          return {
+            tabs: { ...s.tabs, [path]: tabs },
+            projectLayouts: {
+              ...s.projectLayouts,
+              [path]: normalizeLayout(renameTabInLayout(layoutOf(s, path), from, to), tabs),
+            },
+            activeTab: s.activeTab[path] === from ? { ...s.activeTab, [path]: to } : s.activeTab,
+            recency: s.recency.map(swap),
+            autoTabs: s.autoTabs.map(swap),
+            cells: s.cells.map((c) => (c.activeTab === from ? { ...c, activeTab: to } : c)),
           };
         }),
       activate: (path, key) =>

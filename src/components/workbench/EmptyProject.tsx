@@ -161,6 +161,8 @@ export function EmptyProject({ project, server, visible, busy, onStart }: Props)
         description="Файл .jsonl удалится с диска, вернуть его из Echo нельзя."
         subject={removing ? sessionSubject(removing) : null}
         confirmLabel="Удалить"
+        doneToast="Разговор удалён"
+        failToast="Разговор не удалился"
         busy={del.isPending}
         onCancel={() => setRemoving(null)}
         onConfirm={async () => {

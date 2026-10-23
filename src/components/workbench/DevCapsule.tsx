@@ -114,6 +114,8 @@ export function useDevControl() {
         confirmLabel={stopping?.restart ? 'Перезапустить' : 'Остановить'}
         cancelLabel="Отмена"
         danger
+        doneToast={stopping?.restart ? 'dev-сервер перезапускается' : 'dev-сервер остановлен'}
+        failToast={stopping?.restart ? 'dev-сервер не перезапустился' : 'dev-сервер не остановился'}
         onConfirm={async () => {
           if (!stopping) return;
           await stopDevServer(stopping.path);

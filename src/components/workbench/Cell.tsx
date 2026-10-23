@@ -56,6 +56,8 @@ export function useStopSession() {
       confirmLabel="Завершить"
       cancelLabel="Отмена"
       danger
+      doneToast="Сессия завершена"
+      failToast="Сессия не завершилась"
       onConfirm={async () => {
         if (stopping) await stopClaudeSession(stopping);
         setStopping(null);
@@ -105,6 +107,8 @@ function useRestartSession() {
         description="Claude сейчас работает или держит фоновые команды (например, dev-сервер) — они остановятся. Разговор продолжится в новом процессе Claude."
         confirmLabel="Перезапустить"
         cancelLabel="Отмена"
+        doneToast="Сессия перезапущена"
+        failToast="Сессия не перезапустилась"
         onConfirm={async () => {
           if (asking) await run(asking);
           setAsking(null);

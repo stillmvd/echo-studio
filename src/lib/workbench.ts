@@ -140,6 +140,38 @@ export function caretStep(data: string): number {
   return chars.every((c) => c >= ' ' && c !== '\x7f') ? chars.length : 0;
 }
 
+export interface TypedKey {
+  ch: string | null;
+  dx: number;
+  del: boolean;
+  shown: boolean;
+}
+
+export function echoedKeys(
+  base: string,
+  at: number,
+  typed: TypedKey[],
+  actual: string,
+  start = 0,
+): { count: number; x: number } | null {
+  let best: { count: number; x: number } | null = null;
+  const unshown = typed.findIndex((k) => !k.shown);
+  const last = unshown < 0 ? typed.length - 1 : unshown;
+  for (let from = 0; from <= last; from++) {
+    let text = base.padEnd(at);
+    let x = at;
+    for (let i = from; i < typed.length; i++) {
+      const k = typed[i];
+      if (!k) break;
+      if (k.ch !== null) text = text.slice(0, x) + k.ch + text.slice(x);
+      else if (k.del && x > start) text = text.slice(0, x - 1) + text.slice(x);
+      x = Math.max(x >= start ? start : 0, Math.min(text.length, x + k.dx));
+      if (i + 1 > (best?.count ?? 0) && text.trimEnd() === actual) best = { count: i + 1, x };
+    }
+  }
+  return best;
+}
+
 export function isImagePaste(data: Pick<DataTransfer, 'getData' | 'types'> | null): boolean {
   if (!data || data.getData('text/plain')) return false;
   return Array.from(data.types).some((t) => t === 'Files' || t.startsWith('image/'));
@@ -800,6 +832,17 @@ export function closeTabInLayout(
   const left = filledCells(next);
   if (left.length !== 1 || filledCells(layout).length < 2) return next;
   return normalizeLayout({ layout: '1x1', focus: 0, cells: left }, tabs);
+}
+
+export function renameTabInLayout(layout: ProjectLayout, from: string, to: string): ProjectLayout {
+  return {
+    ...layout,
+    cells: layout.cells.map((c) => ({
+      ...c,
+      tabs: c.tabs.map((k) => (k === from ? to : k)),
+      ...(c.active === from ? { active: to } : {}),
+    })),
+  };
 }
 
 export function moveTabInLayout(

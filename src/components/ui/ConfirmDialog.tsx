@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { LoaderCircle } from 'lucide-react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
 import { splitTitle } from '@/lib/sessions';
+import { toast } from '@/state/toast-store';
 
 export interface DialogSubject {
   title: string;
@@ -20,12 +22,15 @@ interface Props {
   confirmDisabled?: boolean;
   wide?: boolean;
   subject?: DialogSubject | null;
+  doneToast?: string;
+  failToast?: string;
   onConfirm: () => void | Promise<void>;
   onCancel: () => void;
   children?: React.ReactNode;
 }
 
 const EXIT_MS = 200;
+const SHAKE: Keyframe[] = [0, -8, 8, -6, 6, 0].map((x) => ({ translate: `${x}px 0` }));
 
 export const dialogButton =
   'inline-flex h-10 items-center justify-center gap-2 rounded-full px-[18px] text-[13px] whitespace-nowrap outline-none [transition:transform_120ms_var(--ease-trail),background-color_200ms_var(--ease-trail)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-secondary)] active:scale-[.96] disabled:pointer-events-none disabled:opacity-50';
@@ -41,6 +46,8 @@ export function ConfirmDialog({
   confirmDisabled,
   wide,
   subject,
+  doneToast,
+  failToast,
   onConfirm,
   onCancel,
   children,
@@ -48,17 +55,27 @@ export function ConfirmDialog({
   const [mounted, setMounted] = useState(open);
   const [shown, setShown] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descId = useId();
+  const working = busy || pending;
 
   const confirm = useCallback(async () => {
     setError(null);
+    setPending(true);
     try {
       await onConfirm();
+      if (doneToast) toast(doneToast);
     } catch (e) {
       setError(String(e));
+      if (failToast) toast(`${failToast}: ${String(e)}`, 'fail');
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches)
+        panel.current?.animate(SHAKE, { duration: 380, easing: 'ease-out' });
+    } finally {
+      setPending(false);
     }
-  }, [onConfirm]);
+  }, [onConfirm, doneToast, failToast]);
 
   useEffect(() => {
     if (open) {
@@ -75,10 +92,10 @@ export function ConfirmDialog({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !busy) onCancel();
+      if (e.key === 'Escape' && !working) onCancel();
       if (
         e.key === 'Enter' &&
-        !busy &&
+        !working &&
         !confirmDisabled &&
         !e.defaultPrevented &&
         !(e.target instanceof HTMLTextAreaElement) &&
@@ -88,7 +105,7 @@ export function ConfirmDialog({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, busy, confirmDisabled, confirm, onCancel]);
+  }, [open, working, confirmDisabled, confirm, onCancel]);
 
   if (!mounted) return null;
 
@@ -104,7 +121,7 @@ export function ConfirmDialog({
           : 'pointer-events-none bg-black/0 opacity-0 backdrop-blur-none duration-200',
       )}
       onClick={(e) => {
-        if (!busy && e.target === e.currentTarget) onCancel();
+        if (!working && e.target === e.currentTarget) onCancel();
       }}
       role="dialog"
       aria-modal="true"
@@ -112,6 +129,7 @@ export function ConfirmDialog({
       aria-describedby={description ? descId : undefined}
     >
       <div
+        ref={panel}
         className={cn(
           'flex max-h-full w-full flex-col gap-[18px] rounded-[28px] bg-[var(--color-bg-secondary)] p-6 shadow-[0_0_0_1px_var(--color-border),0_24px_64px_rgb(0_0_0/45%)] transition-transform ease-[var(--ease-trail)] motion-reduce:transition-none',
           wide ? 'max-w-[540px]' : 'max-w-[440px]',
@@ -163,7 +181,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            disabled={busy}
+            disabled={working}
             className={cn(
               dialogButton,
               'bg-[var(--color-bg-tertiary)] font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-hover)]',
@@ -174,16 +192,24 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={() => void confirm()}
-            disabled={busy || confirmDisabled}
+            disabled={working || confirmDisabled}
+            aria-busy={working}
             className={cn(
               dialogButton,
               'font-bold',
+              working && 'disabled:opacity-100',
               danger
                 ? 'bg-[var(--color-danger)] text-[var(--color-bg-primary)] hover:bg-[color-mix(in_srgb,var(--color-danger)_88%,white)]'
                 : 'bg-[var(--color-accent)] text-[var(--color-accent-fg)] hover:bg-[var(--color-accent-hover)]',
             )}
           >
-            {busy ? 'Working…' : confirmLabel}
+            {working && (
+              <LoaderCircle
+                className="h-[15px] w-[15px] animate-spin motion-reduce:animate-none"
+                strokeWidth={2}
+              />
+            )}
+            {confirmLabel}
           </button>
         </div>
       </div>

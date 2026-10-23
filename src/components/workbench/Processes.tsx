@@ -216,6 +216,7 @@ export function Processes({
         description={single ? `${single.name} · ${describe(single)}` : undefined}
         confirmLabel="Завершить"
         cancelLabel="Отмена"
+        failToast="Процессы не завершились"
         busy={kill.isPending}
         onConfirm={async () => {
           if (!pending) return;

@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
 
 use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
 use serde::Serialize;
@@ -13,8 +12,13 @@ use super::is_claude_env;
 use super::sessions::{claude_exe, is_short_id};
 
 pub const EVENT_EXIT: &str = "workbench://terminal-exit";
-const FLUSH: Duration = Duration::from_millis(16);
 const PENDING_CAP: usize = 4 << 20;
+
+#[derive(Default)]
+struct Pending {
+    data: Vec<u8>,
+    done: bool,
+}
 
 struct Term {
     short_id: String,
@@ -88,41 +92,49 @@ impl Terminals {
             .map_err(|e| format!("pty writer: {e}"))?;
         let id = format!("t{}", self.next.fetch_add(1, Ordering::Relaxed));
 
-        let pending = Arc::new(Mutex::new(Vec::<u8>::new()));
-        let done = Arc::new(AtomicBool::new(false));
+        let pending = Arc::new((Mutex::new(Pending::default()), Condvar::new()));
         {
             let pending = pending.clone();
-            let done = done.clone();
             std::thread::spawn(move || {
+                let (lock, ready) = &*pending;
                 let mut buf = [0u8; 65536];
                 while let Ok(n) = reader.read(&mut buf) {
                     if n == 0 {
                         break;
                     }
-                    if let Ok(mut p) = pending.lock() {
-                        p.extend_from_slice(&buf[..n]);
-                        if p.len() > PENDING_CAP {
-                            let excess = p.len() - PENDING_CAP;
-                            p.drain(..excess);
+                    if let Ok(mut p) = lock.lock() {
+                        p.data.extend_from_slice(&buf[..n]);
+                        if p.data.len() > PENDING_CAP {
+                            let excess = p.data.len() - PENDING_CAP;
+                            p.data.drain(..excess);
                         }
                     }
+                    ready.notify_one();
                 }
-                done.store(true, Ordering::Release);
+                if let Ok(mut p) = lock.lock() {
+                    p.done = true;
+                }
+                ready.notify_one();
             });
         }
         let mut flush_killer = child.clone_killer();
-        std::thread::spawn(move || loop {
-            std::thread::sleep(FLUSH);
-            let finished = done.load(Ordering::Acquire);
-            let chunk = pending.lock().map(|mut p| std::mem::take(&mut *p));
-            if let Ok(chunk) = chunk {
+        std::thread::spawn(move || {
+            let (lock, ready) = &*pending;
+            loop {
+                let Ok(guard) = lock.lock() else { break };
+                let Ok(mut p) = ready.wait_while(guard, |p| p.data.is_empty() && !p.done) else {
+                    break;
+                };
+                let chunk = std::mem::take(&mut p.data);
+                let finished = p.done;
+                drop(p);
                 if !chunk.is_empty() && on_data.send(Response::new(chunk)).is_err() {
                     let _ = flush_killer.kill();
                     break;
                 }
-            }
-            if finished {
-                break;
+                if finished {
+                    break;
+                }
             }
         });
         let replaced: Vec<Term> = {

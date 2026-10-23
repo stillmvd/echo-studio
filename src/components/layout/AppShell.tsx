@@ -1,5 +1,6 @@
 import { UpdateToast } from '@stillmvd/tauri-ship';
 import { LeaveGuard } from '@/components/memory/LeaveGuard';
+import { Toaster } from '@/components/ui/Toaster';
 import { WorkbenchLayout } from '@/components/workbench/WorkbenchLayout';
 import { useToolingWatch } from '@/hooks/use-tooling';
 import { useUiStore } from '@/state/ui-store';
@@ -29,6 +30,7 @@ export function AppShell() {
       </div>
       <LeaveGuard />
       <UpdateToast />
+      <Toaster />
     </div>
   );
 }

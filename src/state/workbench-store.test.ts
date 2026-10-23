@@ -19,6 +19,32 @@ describe('workbench store', () => {
     });
   });
 
+  it('renames a tab in place after /new, keeping its cell, order and activity', () => {
+    const s = useWorkbenchStore.getState();
+    s.openTab(P, 'a');
+    s.openTab(P, 'old');
+    s.openTab(P, 'b');
+    s.setProjectLayout(P, '2x1');
+    s.moveTab(P, 'old', 1);
+    s.activate(P, 'old');
+    useWorkbenchStore.getState().renameTab(P, 'old', 'new');
+    const st = useWorkbenchStore.getState();
+    expect(st.tabs[P]).toEqual(['a', 'new', 'b']);
+    expect(st.activeTab[P]).toBe('new');
+    expect(st.recency).not.toContain('old');
+    expect(st.recency[0]).toBe('new');
+    expect(st.projectLayouts[P]?.cells[1]).toEqual({ tabs: ['new'], active: 'new' });
+  });
+
+  it('leaves tabs alone when the new key is already open', () => {
+    const s = useWorkbenchStore.getState();
+    s.openTab(P, 'old');
+    s.openTab(P, 'new');
+    const before = useWorkbenchStore.getState().tabs;
+    useWorkbenchStore.getState().renameTab(P, 'old', 'new');
+    expect(useWorkbenchStore.getState().tabs).toBe(before);
+  });
+
   it('opens, activates and closes tabs with recency', () => {
     const s = useWorkbenchStore.getState();
     s.openTab(P, 'a');

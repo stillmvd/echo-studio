@@ -4,7 +4,7 @@ import { forgetClaudeSession, listClaudeSessions, listDevServers } from '@/lib/i
 import type { ClaudeSession, DevServer } from '@/lib/types';
 import { endedTabs, misplacedTabs, movedTabs, stoppedDevTabs } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
-import { dispose, isFresh, rememberShort, shortOf } from './terminals';
+import { dispose, isFresh, rekey, rememberShort, shortOf } from './terminals';
 
 export function useEndedTabs(sessions: ClaudeSession[]) {
   const tabs = useWorkbenchStore((s) => s.tabs);
@@ -64,8 +64,12 @@ export function useEndedTabs(sessions: ClaudeSession[]) {
       const [path, key, to] = triple.split('\n');
       if (!path || !key || !to) continue;
       const st = useWorkbenchStore.getState();
+      if (!st.tabs[path]?.includes(to)) {
+        if (!rekey(key, to)) dispose(key);
+        st.renameTab(path, key, to);
+        continue;
+      }
       const prev = st.activeTab[path];
-      if (!st.tabs[path]?.includes(to)) st.openTab(path, to);
       dispose(key);
       st.closeTab(path, key);
       if (prev && prev !== key) st.activate(path, prev);

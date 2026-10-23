@@ -17,10 +17,12 @@ import {
 import {
   caretStep,
   detectAgentView,
+  echoedKeys,
   IMAGE_PASTE,
   isImagePaste,
   isPathTitle,
   mouseReport,
+  type TypedKey,
   terminalKey,
 } from '@/lib/workbench';
 
@@ -46,6 +48,7 @@ interface Entry {
   resetCaret: () => void;
   placeCaret: () => void;
   nudgeCaret: (data: string) => void;
+  echoCaret: () => void;
   mouseCell: string | null;
 }
 
@@ -195,6 +198,7 @@ function create(options: Partial<ITerminalOptions>): Entry {
     resetCaret: () => {},
     placeCaret: () => {},
     nudgeCaret: () => {},
+    echoCaret: () => {},
     mouseCell: null,
   };
   term.onTitleChange((t) => {
@@ -207,7 +211,8 @@ function create(options: Partial<ITerminalOptions>): Entry {
 }
 
 const CARET_HIDE_MS = 600;
-const CARET_ECHO_MS = 60;
+const CARET_STALE_MS = 300;
+const INPUT_START = 2;
 
 function attachCaret(entry: Entry) {
   const { term } = entry;
@@ -215,8 +220,13 @@ function attachCaret(entry: Entry) {
   el.className = 'wb-caret';
   el.hidden = true;
   let at: { x: number; y: number } | null = null;
-  let typed: { t: number; dx: number }[] = [];
+  let typed: (TypedKey & { t: number })[] = [];
+  let base = '';
   let hiding: ReturnType<typeof setTimeout> | undefined;
+  const fresh = () => {
+    const now = performance.now();
+    typed = typed.filter((k) => now - k.t < CARET_STALE_MS);
+  };
   const clampX = (x: number) => Math.max(0, Math.min(term.cols - 1, x));
   const place = () => {
     const screen = term.element?.querySelector<HTMLElement>('.xterm-screen');
@@ -233,14 +243,36 @@ function attachCaret(entry: Entry) {
       el.hidden = true;
     }, CARET_HIDE_MS);
   };
+  const rowText = (y: number) => {
+    const buf = term.buffer.active;
+    const line = buf.getLine(buf.baseY + y);
+    let text = '';
+    for (let x = 0; x < term.cols; x++) {
+      const cell = line?.getCell(x);
+      if (cell && !cell.isDim()) text += cell.getChars() || ' ';
+    }
+    return text.replaceAll(' ', ' ').trimEnd();
+  };
+  entry.echoCaret = () => {
+    if (!at || typed.length === 0) return;
+    fresh();
+    const actual = rowText(at.y);
+    const hit = echoedKeys(base, at.x, typed, actual, INPUT_START);
+    if (!hit) return;
+    typed.splice(0, hit.count);
+    base = actual;
+    at = { x: clampX(hit.x), y: at.y };
+    if (!el.hidden) place();
+    if (hiding !== undefined) hideLater();
+  };
   term.parser.registerCsiHandler({ prefix: '?', final: 'h' }, (params) => {
     if (!params.includes(25)) return false;
     clearTimeout(hiding);
     hiding = undefined;
-    const now = performance.now();
-    typed = typed.filter((k) => now - k.t < CARET_ECHO_MS);
-    const ahead = typed.reduce((sum, k) => sum + k.dx, 0);
-    at = { x: clampX(term.buffer.active.cursorX + ahead), y: term.buffer.active.cursorY };
+    fresh();
+    at = { x: term.buffer.active.cursorX, y: term.buffer.active.cursorY };
+    base = rowText(at.y);
+    for (const k of typed) k.shown = true;
     el.hidden = false;
     place();
     return false;
@@ -255,13 +287,12 @@ function attachCaret(entry: Entry) {
   entry.nudgeCaret = (data) => {
     const dx = caretStep(data);
     if (dx === 0) return;
-    const now = performance.now();
-    typed = typed.filter((k) => now - k.t < CARET_ECHO_MS);
-    typed.push({ t: now, dx });
-    if (!at || el.hidden) return;
-    at = { x: clampX(at.x + dx), y: at.y };
-    place();
-    if (hiding !== undefined) hideLater();
+    fresh();
+    const t = performance.now();
+    const del = data === '\x7f' || data === '\b';
+    if (!del && !data.startsWith('\x1b'))
+      for (const ch of data) typed.push({ t, ch, dx: 1, del, shown: false });
+    else typed.push({ t, ch: null, dx, del, shown: false });
   };
   entry.resetCaret = () => {
     clearTimeout(hiding);
@@ -279,7 +310,7 @@ function send(entry: Entry, data: string) {
     entry.mouseCell = mouse.cell;
   }
   if (entry.terminalId) {
-    void terminalWrite(entry.terminalId, data);
+    terminalWrite(entry.terminalId, data).catch(() => {});
     entry.nudgeCaret(data);
   } else if (entry.state === 'attaching') entry.early.push(data);
 }
@@ -364,6 +395,21 @@ export function stopTail(key: string) {
   if (tail?.id != null) void untailDevLog(tail.id).catch(() => {});
 }
 
+async function clickPaste(entry: Entry) {
+  const { term } = entry;
+  if (term.hasSelection()) {
+    await navigator.clipboard.writeText(term.getSelection());
+    term.clearSelection();
+    return;
+  }
+  if (!entry.pasteImage) return;
+  term.focus();
+  const items = await navigator.clipboard.read();
+  const text = items.find((i) => i.types.includes('text/plain'));
+  if (text) term.paste(await (await text.getType('text/plain')).text());
+  else if (items.some((i) => i.types.some((t) => t.startsWith('image/')))) entry.pasteImage();
+}
+
 export function mount(entry: Entry, container: HTMLElement) {
   container.appendChild(entry.host);
   if (entry.opened) return;
@@ -378,6 +424,10 @@ export function mount(entry: Entry, container: HTMLElement) {
     },
     true,
   );
+  entry.host.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    clickPaste(entry).catch(() => {});
+  });
   try {
     const gl = new WebglAddon();
     gl.onContextLoss(() => gl.dispose());
@@ -423,10 +473,11 @@ export function connect(key: string, shortId: string) {
   entry.feed = channel;
   channel.onmessage = (chunk) => {
     if (entry.feed !== channel || entry.state === 'detached') return;
-    entry.term.write(
-      chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : new Uint8Array(chunk),
-      () => watchAgentView(entry),
-    );
+    const bytes = chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : new Uint8Array(chunk);
+    entry.term.write(bytes, () => {
+      entry.echoCaret();
+      watchAgentView(entry);
+    });
   };
   const previous = inflight.get(shortId);
   const waited = previous
@@ -460,7 +511,7 @@ export function connect(key: string, shortId: string) {
       }
       entry.terminalId = id;
       byTerminal.set(id, entry);
-      for (const data of entry.early.splice(0)) void terminalWrite(id, data);
+      for (const data of entry.early.splice(0)) terminalWrite(id, data).catch(() => {});
       setState(entry, 'live');
       fitTerm(entry);
     })
@@ -475,6 +526,17 @@ export function reattach(key: string, shortId: string) {
     entry.state = 'ended';
   }
   connect(key, shortId);
+}
+
+export function rekey(from: string, to: string): boolean {
+  const entry = entries.get(from);
+  if (!entry || entries.has(to) || entry.state === 'attaching') return false;
+  entries.delete(from);
+  entries.set(to, entry);
+  const short = shorts.get(from);
+  shorts.delete(from);
+  if (short && !shorts.has(to)) shorts.set(to, short);
+  return true;
 }
 
 export function dispose(key: string) {
