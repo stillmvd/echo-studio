@@ -290,3 +290,18 @@ export async function untailDevLog(subscriptionId: number): Promise<void> {
 export async function openDevServer(projectPath: string): Promise<void> {
   return invoke('open_dev_server', { projectPath });
 }
+
+export async function resolveTerminalPaths(
+  base: string | null,
+  paths: string[],
+): Promise<(string | null)[]> {
+  return invoke('resolve_terminal_paths', { base, paths });
+}
+
+export async function openTerminalPath(
+  path: string,
+  line: number | null,
+  column: number | null,
+): Promise<void> {
+  return invoke('open_terminal_path', { path, line, column });
+}

@@ -125,12 +125,74 @@ export function isPathTitle(title: string): boolean {
   );
 }
 
+export interface TermLink {
+  start: number;
+  end: number;
+  kind: 'url' | 'path';
+  target: string;
+  line: number | null;
+  column: number | null;
+}
+
+const URL_RE = /https?:\/\/[^\s"'`<>[\]{}]+/g;
+const SEG = String.raw`[\p{L}\p{N}_.@-]`;
+const END = String.raw`[\p{L}\p{N}_@-]`;
+const PATH_RE = new RegExp(
+  String.raw`(?<![\p{L}\p{N}_.@/\\:-])(` +
+    String.raw`[A-Za-z]:[\\/](?:${SEG}+[\\/])*${SEG}*${END}` +
+    String.raw`|(?:\.{1,2}[\\/])?(?:${SEG}+[\\/])+${SEG}*${END}` +
+    String.raw`|${END}${SEG}*\.\p{L}[\p{L}\p{N}]*` +
+    String.raw`)(?::(\d+)(?::(\d+))?)?`,
+  'gu',
+);
+
+function trimUrl(url: string): string {
+  let target = url.replace(/[.,;:!?]+$/, '');
+  const count = (ch: string) => target.split(ch).length - 1;
+  while (target.endsWith(')') && count('(') < count(')')) {
+    target = target.slice(0, -1).replace(/[.,;:!?]+$/, '');
+  }
+  return target;
+}
+
+export function findLinks(text: string): TermLink[] {
+  const links: TermLink[] = [];
+  for (const m of text.matchAll(URL_RE)) {
+    const target = trimUrl(m[0]);
+    links.push({
+      start: m.index,
+      end: m.index + target.length,
+      kind: 'url',
+      target,
+      line: null,
+      column: null,
+    });
+  }
+  const urls = [...links];
+  for (const m of text.matchAll(PATH_RE)) {
+    const start = m.index;
+    const end = start + m[0].length;
+    if (urls.some((u) => start < u.end && end > u.start)) continue;
+    links.push({
+      start,
+      end,
+      kind: 'path',
+      target: m[1] ?? m[0],
+      line: m[2] ? Number(m[2]) : null,
+      column: m[3] ? Number(m[3]) : null,
+    });
+  }
+  return links;
+}
+
 export const IMAGE_PASTE = '\x1bv';
 
-export function mouseReport(data: string): { cell: string; motion: boolean } | null {
+export function mouseReport(data: string): { cell: string; motion: boolean; ctrl: boolean } | null {
   if (!data.startsWith('\x1b[<')) return null;
   const m = /^(\d+);(\d+);(\d+)[Mm]$/.exec(data.slice(3));
-  return m ? { cell: `${m[2]};${m[3]}`, motion: (Number(m[1]) & 32) !== 0 } : null;
+  if (!m) return null;
+  const button = Number(m[1]);
+  return { cell: `${m[2]};${m[3]}`, motion: (button & 32) !== 0, ctrl: (button & 16) !== 0 };
 }
 
 export function caretStep(data: string): number {

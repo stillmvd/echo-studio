@@ -16,6 +16,7 @@ import {
 
 interface Props {
   sessionKey: string;
+  cwd: string;
   shortId: string | null;
   live: boolean;
   status: StatusView;
@@ -28,6 +29,7 @@ interface Props {
 
 export function ClaudeTerminal({
   sessionKey,
+  cwd,
   shortId,
   live,
   status,
@@ -38,7 +40,7 @@ export function ClaudeTerminal({
   onStop,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const entry = useClaudeTerm(sessionKey);
+  const entry = useClaudeTerm(sessionKey, cwd);
   const { state } = entry;
   useShown(sessionKey, visible);
 

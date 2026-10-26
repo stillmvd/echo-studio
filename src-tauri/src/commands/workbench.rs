@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
@@ -12,7 +12,7 @@ use crate::workbench::sessions::{self, ClaudeSession, Started};
 use crate::workbench::terminal::Terminals;
 use crate::workbench::watch::SessionsHub;
 use crate::workbench::{
-    child_command, dev, git, limits, processes, projects, projects_root, usage, window,
+    child_command, dev, git, limits, links, processes, projects, projects_root, usage, window,
 };
 
 #[tauri::command]
@@ -101,12 +101,16 @@ pub async fn focus_session_window(pid: u32, session_id: String) -> Result<window
     .await?
 }
 
-fn vscode_cli() -> Option<PathBuf> {
+fn on_path(name: &str) -> Option<PathBuf> {
     std::env::var_os("PATH").and_then(|paths| {
         std::env::split_paths(&paths)
-            .map(|dir| dir.join("code.cmd"))
+            .map(|dir| dir.join(name))
             .find(|p| p.is_file())
     })
+}
+
+fn vscode_cli() -> Option<PathBuf> {
+    on_path("code.cmd")
 }
 
 #[tauri::command]
@@ -117,6 +121,57 @@ pub async fn open_in_vscode(project_path: String) -> Result<(), String> {
         .arg(&project.path)
         .spawn()
         .map_err(|e| format!("failed to start VS Code: {e}"))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn resolve_terminal_paths(
+    base: Option<String>,
+    paths: Vec<String>,
+) -> Result<Vec<Option<String>>, String> {
+    blocking(move || {
+        let base = base.map(PathBuf::from);
+        paths
+            .iter()
+            .map(|p| links::resolve(base.as_deref(), p).map(|p| p.to_string_lossy().into_owned()))
+            .collect()
+    })
+    .await
+}
+
+fn zed_cli() -> Option<PathBuf> {
+    on_path("zed.exe").or_else(|| {
+        let local = PathBuf::from(std::env::var_os("LOCALAPPDATA")?);
+        Some(local.join(r"Programs\Zed\bin\zed.exe")).filter(|p| p.is_file())
+    })
+}
+
+#[tauri::command]
+pub async fn open_terminal_path(
+    path: String,
+    line: Option<u32>,
+    column: Option<u32>,
+) -> Result<(), String> {
+    let opener = blocking(move || {
+        let target = Path::new(&path);
+        (target.is_absolute() && target.exists())
+            .then(|| links::opener(target, line, column))
+            .ok_or_else(|| format!("не найдено: {path}"))
+    })
+    .await??;
+    let spawned = match opener {
+        links::Opener::Explorer(target) => child_command("explorer.exe").arg(target).spawn(),
+        links::Opener::Editor(target) => match zed_cli() {
+            Some(zed) => child_command(&zed.to_string_lossy()).arg(&target).spawn(),
+            None => {
+                let code = vscode_cli().ok_or("Zed и VS Code не найдены")?;
+                child_command(&code.to_string_lossy())
+                    .args(["-g", &target])
+                    .spawn()
+            }
+        },
+    };
+    spawned.map_err(|e| format!("failed to open: {e}"))?;
     Ok(())
 }
 

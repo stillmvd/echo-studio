@@ -1,11 +1,14 @@
 import { Channel } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { open } from '@tauri-apps/plugin-shell';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
-import { type ITerminalOptions, Terminal } from '@xterm/xterm';
+import { type ILink, type ITerminalOptions, Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import { useEffect, useSyncExternalStore } from 'react';
 import {
+  openTerminalPath,
+  resolveTerminalPaths,
   tailDevLog,
   terminalAttach,
   terminalDetach,
@@ -18,13 +21,16 @@ import {
   caretStep,
   detectAgentView,
   echoedKeys,
+  findLinks,
   IMAGE_PASTE,
   isImagePaste,
   isPathTitle,
   mouseReport,
+  type TermLink,
   type TypedKey,
   terminalKey,
 } from '@/lib/workbench';
+import { toast } from '@/state/toast-store';
 
 export type TermState = 'idle' | 'attaching' | 'live' | 'ended' | 'detached' | 'error';
 
@@ -33,6 +39,7 @@ interface Entry {
   fit: FitAddon;
   host: HTMLDivElement;
   opened: boolean;
+  cwd: string | null;
   terminalId: string | null;
   state: TermState;
   error: string | null;
@@ -183,6 +190,7 @@ function create(options: Partial<ITerminalOptions>): Entry {
     fit,
     host,
     opened: false,
+    cwd: null,
     terminalId: null,
     state: 'idle',
     error: null,
@@ -207,7 +215,122 @@ function create(options: Partial<ITerminalOptions>): Entry {
     entry.title = title;
     notify(entry);
   });
+  term.options.linkHandler = {
+    hover: () => {
+      oscHovered = true;
+    },
+    leave: () => {
+      oscHovered = false;
+    },
+    activate: (e, uri) => {
+      if (!e.ctrlKey) return;
+      if (/^https?:\/\//i.test(uri)) openLink({ kind: 'url', target: uri });
+      else if (/^file:\/\//i.test(uri)) {
+        const path = decodeURIComponent(new URL(uri).pathname).replace(/^\/([A-Za-z]:)/, '$1');
+        openLink({ kind: 'path', target: path });
+      }
+    },
+  };
+  term.registerLinkProvider({
+    provideLinks: (row, done) => {
+      linksAt(entry, row).then(done, () => done(undefined));
+    },
+  });
   return entry;
+}
+
+function openLink(
+  link: Pick<TermLink, 'kind' | 'target'> & Partial<Pick<TermLink, 'line' | 'column'>>,
+) {
+  const failed = (e: unknown) => toast(`Не открылось: ${String(e)}`, 'fail');
+  if (link.kind === 'url') open(link.target).catch(failed);
+  else openTerminalPath(link.target, link.line ?? null, link.column ?? null).catch(failed);
+}
+
+let hovered: ILink | null = null;
+let oscHovered = false;
+function markLink(on: boolean) {
+  const decorations = hovered?.decorations;
+  if (!decorations) return;
+  decorations.underline = on;
+  decorations.pointerCursor = on;
+}
+for (const type of ['keydown', 'keyup'] as const) {
+  window.addEventListener(
+    type,
+    (e) => {
+      if (e.key === 'Control') markLink(type === 'keydown');
+    },
+    true,
+  );
+}
+
+function logicalRow(term: Terminal, y: number) {
+  const buf = term.buffer.active;
+  let top = y;
+  while (top > 0 && buf.getLine(top)?.isWrapped) top--;
+  let bottom = y;
+  while (buf.getLine(bottom + 1)?.isWrapped) bottom++;
+  let text = '';
+  const cells: { from: number; to: number; y: number }[] = [];
+  for (let row = top; row <= bottom; row++) {
+    const line = buf.getLine(row);
+    if (!line) break;
+    for (let x = 0; x < line.length; x++) {
+      const cell = line.getCell(x);
+      if (!cell || cell.getWidth() === 0) continue;
+      const chars = cell.getChars() || ' ';
+      for (let i = 0; i < chars.length; i++) {
+        cells.push({ from: x + 1, to: x + cell.getWidth(), y: row + 1 });
+      }
+      text += chars;
+    }
+  }
+  return { text, cells };
+}
+
+async function linksAt(entry: Entry, row: number): Promise<ILink[] | undefined> {
+  const { text, cells } = logicalRow(entry.term, row - 1);
+  const found = findLinks(text).filter((link) => {
+    const first = cells[link.start];
+    const last = cells[link.end - 1];
+    return !!first && !!last && first.y <= row && last.y >= row;
+  });
+  const paths = found.filter((link) => link.kind === 'path');
+  const resolved = paths.length
+    ? await resolveTerminalPaths(
+        entry.cwd,
+        paths.map((link) => link.target),
+      )
+    : [];
+  const real = new Map(paths.map((link, i) => [link, resolved[i] ?? null]));
+  const links = found.flatMap((link): ILink[] => {
+    const first = cells[link.start];
+    const last = cells[link.end - 1];
+    const target = link.kind === 'url' ? link.target : real.get(link);
+    if (!first || !last || !target) return [];
+    const shown: ILink = {
+      range: { start: { x: first.from, y: first.y }, end: { x: last.to, y: last.y } },
+      text: text.slice(link.start, link.end),
+      decorations: { underline: false, pointerCursor: false },
+      activate: (e) => {
+        if (e.ctrlKey) openLink({ ...link, target });
+      },
+      hover: (e) => {
+        hovered = shown;
+        queueMicrotask(() => {
+          if (hovered === shown) markLink(e.ctrlKey);
+        });
+      },
+      leave: () => {
+        if (hovered !== shown) return;
+        markLink(false);
+        hovered = null;
+      },
+    };
+    return [shown];
+  });
+  return links.length ? links : undefined;
 }
 
 const CARET_HIDE_MS = 600;
@@ -306,6 +429,7 @@ function attachCaret(entry: Entry) {
 function send(entry: Entry, data: string) {
   const mouse = mouseReport(data);
   if (mouse) {
+    if (mouse.ctrl && !mouse.motion && (hovered || oscHovered)) return;
     if (mouse.motion && mouse.cell === entry.mouseCell) return;
     entry.mouseCell = mouse.cell;
   }
@@ -368,6 +492,7 @@ let tailSeq = 0;
 
 export function startTail(key: string, projectPath: string, fresh = false) {
   const entry = logEntry(key);
+  entry.cwd = projectPath;
   if (fresh) {
     stopTail(key);
     entry.term.reset();
@@ -623,8 +748,9 @@ export function focusSoon(key: string) {
   );
 }
 
-export function useClaudeTerm(key: string) {
+export function useClaudeTerm(key: string, cwd?: string) {
   const entry = claudeEntry(key);
+  if (cwd) entry.cwd = cwd;
   useSyncExternalStore(
     (cb) => {
       entry.listeners.add(cb);

@@ -21,6 +21,7 @@ import {
   emptyLayout,
   endedTabs,
   externalAction,
+  findLinks,
   HANDS_ON_MS,
   isImagePaste,
   isPathTitle,
@@ -1035,9 +1036,10 @@ describe('echoedKeys', () => {
 
 describe('mouseReport', () => {
   it('reads the cell and the motion flag of SGR mouse reports', () => {
-    expect(mouseReport('\x1b[<16;97;4M')).toEqual({ cell: '97;4', motion: false });
-    expect(mouseReport('\x1b[<48;97;4M')).toEqual({ cell: '97;4', motion: true });
-    expect(mouseReport('\x1b[<16;97;4m')).toEqual({ cell: '97;4', motion: false });
+    expect(mouseReport('\x1b[<0;97;4M')).toEqual({ cell: '97;4', motion: false, ctrl: false });
+    expect(mouseReport('\x1b[<16;97;4M')).toEqual({ cell: '97;4', motion: false, ctrl: true });
+    expect(mouseReport('\x1b[<48;97;4M')).toEqual({ cell: '97;4', motion: true, ctrl: true });
+    expect(mouseReport('\x1b[<16;97;4m')).toEqual({ cell: '97;4', motion: false, ctrl: true });
     expect(mouseReport('a')).toBeNull();
   });
 });
@@ -1132,5 +1134,69 @@ describe('ended tabs', () => {
       'b',
     ]);
     expect(closeTabInLayout(lone, 'a', ['b']).layout).toBe('2x1');
+  });
+});
+
+describe('findLinks', () => {
+  const pick = (text: string) =>
+    findLinks(text).map(({ kind, target, line, column }) => ({ kind, target, line, column }));
+  const at = (text: string) => findLinks(text).map((l) => text.slice(l.start, l.end));
+
+  it('finds dev URLs and drops trailing punctuation', () => {
+    expect(at(' » App URL.......... http://172.18.0.1:9000/')).toEqual(['http://172.18.0.1:9000/']);
+    expect(at('see https://github.com/browserslist/update-db#readme.')).toEqual([
+      'https://github.com/browserslist/update-db#readme',
+    ]);
+    expect(at('Published ⧉https://claude.ai/artifact/7Szcs63f76j6DfhC68VoVD')).toEqual([
+      'https://claude.ai/artifact/7Szcs63f76j6DfhC68VoVD',
+    ]);
+    expect(at('(https://example.com/a)')).toEqual(['https://example.com/a']);
+    expect(at('see https://en.wikipedia.org/wiki/Foo_(bar).')).toEqual([
+      'https://en.wikipedia.org/wiki/Foo_(bar)',
+    ]);
+  });
+
+  it('finds folders, bare file names and non-ASCII names', () => {
+    expect(at('в src/components/workbench и package.json, README.md')).toEqual([
+      'src/components/workbench',
+      'package.json',
+      'README.md',
+    ]);
+    expect(at('docs\\Отчёт\\план.md:3')).toEqual(['docs\\Отчёт\\план.md:3']);
+    expect(at('C:\\Проекты\\Echo')).toEqual(['C:\\Проекты\\Echo']);
+  });
+
+  it('finds relative paths with an extension and an optional line', () => {
+    expect(pick('1. Открой docs/design/stands/101-vehicles-showcase/stand.html. Дальше')).toEqual([
+      {
+        kind: 'path',
+        target: 'docs/design/stands/101-vehicles-showcase/stand.html',
+        line: null,
+        column: null,
+      },
+    ]);
+    expect(pick('Artifact("docs\\design\\stand.html")')[0]?.target).toBe(
+      'docs\\design\\stand.html',
+    );
+    expect(pick('at src/app.ts:42:7')).toEqual([
+      { kind: 'path', target: 'src/app.ts', line: 42, column: 7 },
+    ]);
+    expect(pick('./scripts/run.mjs:3')[0]).toMatchObject({ target: './scripts/run.mjs', line: 3 });
+  });
+
+  it('finds absolute Windows paths without an extension', () => {
+    expect(pick(' » App dir..... C:\\Users\\stillmvd\\Projects\\ProHouse\\Breeze')).toEqual([
+      {
+        kind: 'path',
+        target: 'C:\\Users\\stillmvd\\Projects\\ProHouse\\Breeze',
+        line: null,
+        column: null,
+      },
+    ]);
+  });
+
+  it('skips versions, dates and paths inside URLs', () => {
+    expect(at('v2.24.0 es2022|firefox115 26.10.2026 15:19:59')).toEqual([]);
+    expect(pick('http://localhost:9000/src/main.ts').map((l) => l.kind)).toEqual(['url']);
   });
 });

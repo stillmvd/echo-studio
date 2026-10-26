@@ -155,6 +155,8 @@ pub fn run() {
             commands::workbench::tail_dev_log,
             commands::workbench::untail_dev_log,
             commands::workbench::open_dev_server,
+            commands::workbench::open_terminal_path,
+            commands::workbench::resolve_terminal_paths,
             app_ready,
             toasts_muted,
         ])

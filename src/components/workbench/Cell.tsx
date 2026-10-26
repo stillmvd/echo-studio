@@ -595,6 +595,7 @@ export function Cell({
         <ClaudeTerminal
           key={info.key}
           sessionKey={info.key}
+          cwd={info.session?.cwd ?? project.path}
           shortId={info.shortId}
           live={info.live}
           status={info.status}
