@@ -1,0 +1,17 @@
+.nr-btn { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 999px; transition: transform 200ms var(--ease-trail); }
+.nr-btn:active { transform: scale(0.96); }
+.nr-btn::before { content: ""; position: absolute; inset: -6px; border-radius: 999px; background: radial-gradient(closest-side, color-mix(in srgb, var(--tn) 55%, transparent), transparent); opacity: 0; pointer-events: none; transition: opacity 240ms var(--ease-trail); }
+.nr-btn[aria-current="page"]::before { opacity: 1; }
+.nr-gi { position: relative; display: block; width: 32px; height: 32px; transition: opacity 200ms var(--ease-trail), filter 200ms var(--ease-trail); }
+.nr-gi > .gl { display: block; width: 100%; height: 100%; overflow: visible; }
+.nr-btn:not([aria-current="page"]) .nr-gi { opacity: 0.5; filter: saturate(0.45); }
+.nr-btn:not([aria-current="page"]):is(:hover, :focus-visible) .nr-gi { opacity: 1; filter: none; }
+.nr-btn .gl-sh { transform: skewX(-18deg) translateX(0); }
+.nr-btn:is(:hover, :focus-visible) .gl-sh { animation: nr-sweep 1.4s var(--ease-trail) infinite; }
+.nr-btn[aria-current="page"] .gl-sh { animation: nr-sweep-idle 4s var(--ease-trail) infinite; }
+@keyframes nr-sweep { 0% { transform: skewX(-18deg) translateX(0); } 70%, 100% { transform: skewX(-18deg) translateX(190px); } }
+@keyframes nr-sweep-idle { 0% { transform: skewX(-18deg) translateX(0); } 25%, 100% { transform: skewX(-18deg) translateX(190px); } }
+@media (prefers-reduced-motion: reduce) {
+  .nr-btn, .nr-btn *, .nr-btn::before { animation: none !important; transition: none !important; }
+  .nr-btn:active { transform: none; }
+}

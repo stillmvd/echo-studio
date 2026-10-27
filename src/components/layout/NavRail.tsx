@@ -1,17 +1,17 @@
-import { Blocks, Brain, LayoutGrid, type LucideIcon, MessageSquare, Settings } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import type { CSSProperties } from 'react';
 import { type AppTab, goToTab, useUiStore } from '@/state/ui-store';
+import { glassIcon, glassTone } from './glass-icons';
 
-const sections: { id: AppTab; label: string; Icon: LucideIcon }[] = [
-  { id: 'workbench', label: 'Рабочее место', Icon: LayoutGrid },
-  { id: 'tools', label: 'Tools', Icon: Blocks },
-  { id: 'memory', label: 'Memory', Icon: Brain },
-  { id: 'conversations', label: 'Conversations', Icon: MessageSquare },
+const sections: { id: AppTab; label: string }[] = [
+  { id: 'dashboard', label: 'Дашборд' },
+  { id: 'workbench', label: 'Рабочее место' },
+  { id: 'tools', label: 'Инструменты' },
+  { id: 'memory', label: 'Память' },
+  { id: 'conversations', label: 'Сессии' },
 ];
 
-function RailButton({ id, label, Icon }: { id: AppTab; label: string; Icon: LucideIcon }) {
-  const activeTab = useUiStore((s) => s.activeTab);
-  const active = activeTab === id;
+function RailButton({ id, label }: { id: AppTab; label: string }) {
+  const active = useUiStore((s) => s.activeTab === id);
 
   return (
     <button
@@ -20,26 +20,22 @@ function RailButton({ id, label, Icon }: { id: AppTab; label: string; Icon: Luci
       aria-label={label}
       aria-current={active ? 'page' : undefined}
       onClick={() => goToTab(id)}
-      className={cn(
-        'grid h-11 w-11 place-items-center rounded-full transition-[background-color,color,transform] duration-200 ease-[var(--ease-trail)] active:scale-96 motion-reduce:transition-none motion-reduce:active:scale-100',
-        active
-          ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-primary)]'
-          : 'text-[var(--color-text-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]',
-      )}
+      className="nr-btn"
+      style={{ '--tn': glassTone[id] } as CSSProperties}
     >
-      <Icon className="h-4 w-4" strokeWidth={1.75} />
+      <span className="nr-gi">{glassIcon[id]}</span>
     </button>
   );
 }
 
 export function NavRail() {
   return (
-    <nav aria-label="Sections" className="flex w-14 shrink-0 flex-col items-center gap-2 pb-3">
+    <nav aria-label="Разделы" className="flex w-14 shrink-0 flex-col items-center gap-2 pb-3">
       {sections.map((s) => (
         <RailButton key={s.id} {...s} />
       ))}
       <div className="mt-auto">
-        <RailButton id="settings" label="Settings" Icon={Settings} />
+        <RailButton id="settings" label="Настройки" />
       </div>
     </nav>
   );
