@@ -45,7 +45,7 @@ pub struct SessionSearchHit {
 }
 
 pub fn read_session(file_path: &Path) -> Result<Vec<DisplayItem>, String> {
-    let file = fs::File::open(file_path).map_err(|e| format!("open: {e}"))?;
+    let file = fs::File::open(file_path).map_err(|e| format!("Не удалось открыть файл: {e}"))?;
     let reader = BufReader::new(file);
     let mut items = Vec::new();
     for line in jsonl_lines(reader) {

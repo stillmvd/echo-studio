@@ -39,7 +39,7 @@ describe('ConfirmDialog', () => {
     const button = dialog(() => new Promise<void>((r) => (finish = r)));
     fireEvent.click(button);
     expect(button.getAttribute('aria-busy')).toBe('true');
-    expect(screen.getByRole('button', { name: 'Cancel' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Отмена' }).hasAttribute('disabled')).toBe(true);
     await act(async () => finish());
     expect(button.getAttribute('aria-busy')).toBe('false');
     expect(useToastStore.getState().toasts.map((t) => t.text)).toEqual(['Сессия завершена']);

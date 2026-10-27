@@ -79,7 +79,7 @@ export function projectMenu({
     action('Новая сессия Claude', Plus, actions.newSession, { disabled: busy }),
     ...dev,
     'separator',
-    action('Открыть в проводнике', FolderOpen, actions.reveal),
+    action('В Проводнике', FolderOpen, actions.reveal),
     action('Открыть в VS Code', Code, actions.vscode),
     action('Копировать путь', Copy, actions.copyPath),
     ...hide,
@@ -96,7 +96,7 @@ function moveTo(cells: MoveTargets | null): MenuItem[] {
   if (!cells || cells.count < 2) return [];
   return [
     {
-      label: 'Переместить в ячейку…',
+      label: 'В ячейку…',
       icon: icon(MoveRight),
       items: Array.from({ length: cells.count }, (_, i) =>
         action(`Ячейка ${i + 1}`, SquareTerminal, () => cells.move(i), {
@@ -164,10 +164,10 @@ export function processMenu({
   actions: { copyCommand: () => void; openFolder: () => void; kill: () => void };
 }): MenuItem[] {
   return [
-    action('Копировать командную строку', Copy, actions.copyCommand, {
+    action('Копировать команду', Copy, actions.copyCommand, {
       disabled: !row.commandLine,
     }),
-    action('Открыть папку проекта', FolderOpen, actions.openFolder, {
+    action('Открыть папку', FolderOpen, actions.openFolder, {
       disabled: !row.projectPath,
     }),
     ...danger('Завершить', Power, actions.kill),
@@ -186,7 +186,7 @@ export function conversationMenu({
   return [
     action('Продолжить', Play, actions.resume, { disabled: busy }),
     'separator',
-    action('Удалить разговор', Trash2, actions.remove, {
+    action('Удалить сессию', Trash2, actions.remove, {
       danger: true,
       disabled: live,
       hint: live ? 'Сессия запущена' : undefined,

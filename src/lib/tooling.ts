@@ -1,4 +1,15 @@
-import type { ToggleTarget, ToolCopy, ToolItem, ToolKind } from './types';
+import type { ToggleTarget, ToolCopy, ToolItem, ToolKind, ToolOrigin } from './types';
+
+export const ORIGIN_LABEL: Record<ToolOrigin, string> = {
+  user: 'глобально',
+  project: 'проект',
+  local: 'личный',
+  plugin: 'plugin',
+};
+
+export function scopeTitle(scope: { kind: string; name: string }): string {
+  return scope.kind === 'global' ? 'Общие' : scope.name;
+}
 
 export type KindFilter = ToolKind | 'all';
 

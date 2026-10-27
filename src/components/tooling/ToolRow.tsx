@@ -1,6 +1,7 @@
 import { Copy } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { highlightSegments } from '@/lib/tooling';
+import { plural } from '@/lib/dashboard';
+import { highlightSegments, ORIGIN_LABEL } from '@/lib/tooling';
 import type { ToolItem } from '@/lib/types';
 import { KIND_META } from './kinds';
 import { hasToggle, RowToggle } from './ToolToggle';
@@ -39,12 +40,15 @@ type Tone = 'mono' | 'warn' | 'danger' | 'mine';
 function tags(item: ToolItem, copies: number): { text: string; tone?: Tone; copy?: boolean }[] {
   const out: { text: string; tone?: Tone; copy?: boolean }[] = [];
   if (item.origin === 'project' || item.origin === 'local')
-    out.push({ text: item.origin, tone: 'mine' });
-  if (item.overriddenBy) out.push({ text: `Overridden by ${item.overriddenBy}`, tone: 'warn' });
+    out.push({ text: ORIGIN_LABEL[item.origin], tone: 'mine' });
+  if (item.overriddenBy) out.push({ text: `Заменён: ${item.overriddenBy}`, tone: 'warn' });
   if (item.overrides.length > 0)
-    out.push({ text: `Overrides ${item.overrides.join(', ')}`, tone: 'warn' });
+    out.push({ text: `Заменяет ${item.overrides.join(', ')}`, tone: 'warn' });
   if (copies > 0)
-    out.push({ text: `+${copies} ${copies === 1 ? 'project' : 'projects'}`, copy: true });
+    out.push({
+      text: `+${copies} ${plural(copies, 'проект', 'проекта', 'проектов')}`,
+      copy: true,
+    });
   if (item.kind === 'plugin' && item.plugin?.version) {
     out.push({ text: item.plugin.version, tone: 'mono' });
   }
@@ -52,8 +56,8 @@ function tags(item: ToolItem, copies: number): { text: string; tone?: Tone; copy
     out.push({ text: item.pluginKey.split('@')[0] ?? item.pluginKey });
   }
   if (item.overrideMode) out.push({ text: item.overrideMode, tone: 'warn' });
-  if (item.state === 'unavailable') out.push({ text: 'plugin off' });
-  if (item.state === 'error') out.push({ text: 'error', tone: 'danger' });
+  if (item.state === 'unavailable') out.push({ text: 'plugin выкл.' });
+  if (item.state === 'error') out.push({ text: 'ошибка', tone: 'danger' });
   return out;
 }
 

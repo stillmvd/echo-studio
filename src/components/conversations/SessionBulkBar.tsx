@@ -2,6 +2,7 @@ import { Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useBulkDeleteSessions } from '@/hooks/use-session-actions';
+import { plural } from '@/lib/dashboard';
 import { formatBytes } from '@/lib/projects';
 import type { SessionMeta } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
@@ -28,6 +29,7 @@ export function SessionBulkBar({ sessions, visiblePaths }: Props) {
   const selectedBytes = sessions
     .filter((s) => ids.includes(s.filePath))
     .reduce((n, s) => n + s.sizeBytes, 0);
+  const count = plural(ids.length, 'сессию', 'сессии', 'сессий');
   const allSelected = visiblePaths.every((p) => ids.includes(p));
 
   const onConfirm = async () => {
@@ -36,7 +38,7 @@ export function SessionBulkBar({ sessions, visiblePaths }: Props) {
     setConfirmOpen(false);
     if (result.failed.length > 0) {
       setStatusMsg(
-        `Deleted ${result.deleted.length}, failed ${result.failed.length}: ${result.failed[0]?.error ?? ''}`,
+        `Удалено ${result.deleted.length}, не удалось ${result.failed.length}: ${result.failed[0]?.error ?? ''}`,
       );
     }
   };
@@ -45,11 +47,11 @@ export function SessionBulkBar({ sessions, visiblePaths }: Props) {
     <>
       <div
         role="toolbar"
-        aria-label="Selected sessions"
+        aria-label="Выбранные сессии"
         className="absolute bottom-5 left-1/2 z-10 flex h-[52px] max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 rounded-full bg-[var(--color-bg-secondary)] pr-2 pl-5 text-[13px] font-medium whitespace-nowrap text-[var(--color-text-muted)] tabular-nums shadow-[0_0_0_1px_var(--color-border),0_12px_30px_rgb(0_0_0/32%)] @max-[960px]:left-4 @max-[960px]:translate-x-0"
       >
         <span className="mr-1.5 truncate">
-          <b className="font-bold text-[var(--color-text-primary)]">{ids.length}</b> selected ·{' '}
+          <b className="font-bold text-[var(--color-text-primary)]">{ids.length}</b> выбрано ·{' '}
           {formatBytes(selectedBytes)}
         </span>
         {statusMsg && (
@@ -64,7 +66,7 @@ export function SessionBulkBar({ sessions, visiblePaths }: Props) {
             disabled={del.isPending}
             className={`${pill} px-4 hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]`}
           >
-            Select all
+            Выбрать все
           </button>
         )}
         <button
@@ -74,14 +76,14 @@ export function SessionBulkBar({ sessions, visiblePaths }: Props) {
           className={`${pill} bg-[var(--color-danger-soft)] px-4 text-[var(--color-danger)] hover:bg-[color-mix(in_srgb,var(--color-danger)_24%,transparent)]`}
         >
           <Trash2 className="h-3.5 w-3.5" />
-          Delete
+          Удалить
         </button>
         <button
           type="button"
           onClick={clear}
           disabled={del.isPending}
-          title="Cancel selection"
-          aria-label="Cancel selection"
+          title="Снять выбор"
+          aria-label="Снять выбор"
           className={`${pill} w-9 bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] hover:bg-[var(--color-hover)]`}
         >
           <X className="h-4 w-4" />
@@ -91,13 +93,16 @@ export function SessionBulkBar({ sessions, visiblePaths }: Props) {
       <ConfirmDialog
         open={confirmOpen}
         busy={del.isPending}
-        title={`Delete ${ids.length} sessions permanently?`}
-        description="The .jsonl files will be removed from disk. This cannot be undone via this app."
+        title={`Удалить ${ids.length} ${count} насовсем?`}
+        description="Файлы .jsonl будут удалены с диска. Отменить это в Echo Studio нельзя."
         subject={{
-          title: 'Selected sessions',
-          chips: [`${ids.length} sessions`, formatBytes(selectedBytes)],
+          title: 'Выбранные сессии',
+          chips: [
+            `${ids.length} ${plural(ids.length, 'сессия', 'сессии', 'сессий')}`,
+            formatBytes(selectedBytes),
+          ],
         }}
-        confirmLabel="Delete all"
+        confirmLabel="Удалить все"
         danger
         onConfirm={onConfirm}
         onCancel={() => setConfirmOpen(false)}

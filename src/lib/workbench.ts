@@ -37,7 +37,7 @@ export function devStatusLabel(server: DevServer): string {
 }
 
 export const STATUS_LABEL: Record<StatusView, string> = {
-  waiting: 'ждёт тебя',
+  waiting: 'ждёт вас',
   error: 'ошибка',
   working: 'работает',
   done: 'ответ готов',

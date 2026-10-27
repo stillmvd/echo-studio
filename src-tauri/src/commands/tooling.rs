@@ -32,7 +32,7 @@ pub struct ToolFile {
 }
 
 fn home() -> Result<PathBuf, String> {
-    dirs::home_dir().ok_or_else(|| "cannot resolve home folder".to_string())
+    dirs::home_dir().ok_or_else(|| "Не найдена домашняя папка".to_string())
 }
 
 fn known_scopes(home: &Path) -> Vec<ScopeRef> {
@@ -58,7 +58,8 @@ fn allowed_roots(home: &Path) -> Vec<PathBuf> {
 }
 
 fn read_limited(path: &Path) -> Result<ToolFile, String> {
-    let bytes = fs::read(path).map_err(|e| format!("read {}: {e}", path.display()))?;
+    let bytes =
+        fs::read(path).map_err(|e| format!("Не удалось прочитать {}: {e}", path.display()))?;
     if bytes.len() <= READ_LIMIT {
         return Ok(ToolFile {
             text: String::from_utf8_lossy(&bytes).into_owned(),
@@ -104,10 +105,10 @@ pub async fn scan_tool_scope(scope: ScopeArg) -> Result<ScanResult, String> {
             if known {
                 Ok(scan_project(&home, &path))
             } else {
-                Err(format!("unknown project: {path}"))
+                Err(format!("Неизвестный проект: {path}"))
             }
         }
-        (ScopeKind::Project, None) => Err("project path is required".into()),
+        (ScopeKind::Project, None) => Err("Не указан путь проекта".into()),
     })
     .await?
 }
@@ -119,7 +120,7 @@ pub async fn read_tool_file(path: String) -> Result<ToolFile, String> {
         let target = PathBuf::from(&path);
         let ext = target.extension().and_then(|e| e.to_str()).unwrap_or("");
         if !ext.eq_ignore_ascii_case("md") && !ext.eq_ignore_ascii_case("json") {
-            return Err(format!("refusing: {path} is not .md or .json"));
+            return Err(format!("Только .md и .json: {path}"));
         }
         let canonical = ensure_allowed(&target, &allowed_roots(&home))?;
         read_limited(&canonical)
@@ -131,7 +132,7 @@ fn backups_root(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
         .app_data_dir()
         .map(|d| d.join("config-backups"))
-        .map_err(|e| format!("cannot resolve app data folder: {e}"))
+        .map_err(|e| format!("Нет доступа к папке данных приложения: {e}"))
 }
 
 #[tauri::command]
@@ -156,7 +157,7 @@ pub async fn set_tool_enabled(
         scan.items
             .into_iter()
             .find(|i| i.toggle.as_ref() == Some(&target))
-            .ok_or_else(|| format!("{} not found after the change", target.name))
+            .ok_or_else(|| format!("{} не найден после изменения", target.name))
     })
     .await?
 }

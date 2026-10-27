@@ -428,7 +428,7 @@ export function MemoryList({
 
   let body: React.ReactNode = null;
   if (typed) {
-    if (searchWaiting) body = <CenterNote>Ищу…</CenterNote>;
+    if (searchWaiting) body = <CenterNote>Поиск…</CenterNote>;
     else if (search.error) {
       body = (
         <CenterNote>
@@ -448,7 +448,7 @@ export function MemoryList({
       <CenterNote>
         <span className="inline-flex items-center gap-2">
           <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--color-accent)] motion-reduce:animate-none" />
-          Читаю память…
+          Чтение памяти…
         </span>
       </CenterNote>
     );

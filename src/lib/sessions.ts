@@ -5,18 +5,18 @@ export function sessionSubject(s: SessionMeta) {
   return {
     title: sessionDisplayTitle(s),
     id: s.sessionId.slice(0, 8),
-    chips: [`${s.messageCount} msgs`, formatBytes(s.sizeBytes)],
+    chips: [`${s.messageCount} сообщ.`, formatBytes(s.sizeBytes)],
   };
 }
 
 export function formatDuration(ms: number): string {
-  if (ms < 1000) return '<1s';
+  if (ms < 1000) return '<1с';
   const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 60) return `${seconds}с`;
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
+  if (minutes < 60) return `${minutes}м ${seconds % 60}с`;
   const hours = Math.floor(minutes / 60);
-  return `${hours}h ${minutes % 60}m`;
+  return `${hours}ч ${minutes % 60}м`;
 }
 
 function parse(iso: string | null): Date | null {
@@ -33,7 +33,7 @@ export function formatTime(iso: string | null): string {
 }
 
 function shortDate(d: Date, now: Date): string {
-  const month = d.toLocaleString('en', { month: 'short' });
+  const month = d.toLocaleString('ru-RU', { month: 'short' }).replace('.', '');
   const year = d.getFullYear() === now.getFullYear() ? '' : ` ${d.getFullYear()}`;
   return `${d.getDate()} ${month}${year}`;
 }
@@ -51,13 +51,13 @@ export interface DayLabel {
 
 export function dayLabel(iso: string | null, now = new Date()): DayLabel {
   const d = parse(iso);
-  if (!d) return { key: 'none', lead: null, date: 'No activity' };
+  if (!d) return { key: 'none', lead: null, date: 'Без даты' };
   const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const days = Math.round(
     (today.getTime() - new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) / 86_400_000,
   );
-  const lead = days === 0 ? 'Today' : days === 1 ? 'Yesterday' : null;
+  const lead = days === 0 ? 'Сегодня' : days === 1 ? 'Вчера' : null;
   return { key, lead, date: shortDate(d, now) };
 }
 

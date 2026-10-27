@@ -539,6 +539,7 @@ export function mount(entry: Entry, container: HTMLElement) {
   container.appendChild(entry.host);
   if (entry.opened) return;
   entry.term.open(entry.host);
+  entry.term.textarea?.setAttribute('aria-label', 'Ввод в терминал');
   entry.term.element?.addEventListener(
     'paste',
     (e) => {

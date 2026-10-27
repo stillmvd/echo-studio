@@ -183,7 +183,7 @@ function Side({
       </div>
       <div className="max-h-[220px] overflow-y-auto text-[12.5px]">
         {body === null ? (
-          <span className="text-xs text-[var(--color-text-muted)]">Читаю файл…</span>
+          <span className="text-xs text-[var(--color-text-muted)]">Чтение файла…</span>
         ) : (
           <Markdown body={body} className="tool-md" />
         )}
@@ -268,7 +268,7 @@ function Compare({
           )}
         >
           <Merge className="h-[15px] w-[15px]" strokeWidth={1.75} />
-          {merge.isPending ? 'Сливаю…' : 'Слить'}
+          {merge.isPending ? 'Слияние…' : 'Слить'}
         </button>
       </div>
       <p className="px-1 text-[13px] leading-normal font-medium text-[var(--color-text-muted)]">
@@ -455,7 +455,7 @@ export function MemoryDupes({
       ) : isLoading ? (
         <span className="inline-flex items-center gap-2 px-2 text-[13px] font-medium text-[var(--color-text-muted)]">
           <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--color-accent)] motion-reduce:animate-none" />
-          Ищу похожие записи…
+          Поиск похожих записей…
         </span>
       ) : pairs.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2.5 px-4 pb-[88px] text-center">

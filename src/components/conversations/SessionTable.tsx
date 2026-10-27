@@ -8,6 +8,7 @@ import { useDeleteSession } from '@/hooks/use-session-actions';
 import { type AgeFilter, applyAgeFilter } from '@/lib/age-filter';
 import { cn } from '@/lib/cn';
 import { menuPoint } from '@/lib/context-menu';
+import { plural } from '@/lib/dashboard';
 import { openInClaudeCode, revealInExplorer } from '@/lib/ipc';
 import { formatBytes } from '@/lib/projects';
 import {
@@ -32,27 +33,27 @@ interface Props {
 type SortBy = 'date' | 'size' | 'duration' | 'msgs';
 
 const columns: { key: SortBy | 'session' | 'branch'; label: string; sortable: boolean }[] = [
-  { key: 'session', label: 'Session', sortable: false },
-  { key: 'date', label: 'Last activity', sortable: true },
-  { key: 'duration', label: 'Duration', sortable: true },
-  { key: 'msgs', label: 'Msgs', sortable: true },
-  { key: 'size', label: 'Size', sortable: true },
-  { key: 'branch', label: 'Branch', sortable: false },
+  { key: 'session', label: 'Сессия', sortable: false },
+  { key: 'date', label: 'Время', sortable: true },
+  { key: 'duration', label: 'Длит.', sortable: true },
+  { key: 'msgs', label: 'Сообщ.', sortable: true },
+  { key: 'size', label: 'Размер', sortable: true },
+  { key: 'branch', label: 'Ветка', sortable: false },
 ];
 
 const narrowHidden = new Set(['duration', 'msgs', 'branch']);
 
 const ageFilterOptions: { value: AgeFilter; short: string; label: string }[] = [
-  { value: 'all', short: 'All', label: 'All sessions' },
-  { value: 'older30', short: '30d+', label: 'Older than 30 days' },
-  { value: 'older90', short: '90d+', label: 'Older than 90 days' },
-  { value: 'older365', short: '1y+', label: 'Older than 1 year' },
+  { value: 'all', short: 'Все', label: 'Все сессии' },
+  { value: 'older30', short: '30д+', label: 'Старше 30 дней' },
+  { value: 'older90', short: '90д+', label: 'Старше 90 дней' },
+  { value: 'older365', short: '1г+', label: 'Старше года' },
 ];
 
 const gridGrouped =
-  'grid-cols-[minmax(0,1fr)_56px_76px_56px_72px_72px] @max-[720px]:grid-cols-[minmax(0,1fr)_56px_72px]';
+  'grid-cols-[minmax(0,1fr)_56px_76px_64px_72px_72px] @max-[720px]:grid-cols-[minmax(0,1fr)_56px_72px]';
 const gridFlat =
-  'grid-cols-[minmax(0,1fr)_108px_76px_56px_72px_72px] @max-[720px]:grid-cols-[minmax(0,1fr)_108px_72px]';
+  'grid-cols-[minmax(0,1fr)_108px_76px_64px_72px_72px] @max-[720px]:grid-cols-[minmax(0,1fr)_108px_72px]';
 
 function compareSessions(a: SessionMeta, b: SessionMeta, by: SortBy): number {
   switch (by) {
@@ -124,7 +125,7 @@ function AgeFilterSegment({
 }) {
   return (
     <fieldset className="m-0 flex h-10 shrink-0 gap-0.5 rounded-full border-0 bg-[var(--color-bg-tertiary)] p-1">
-      <legend className="sr-only">Session age</legend>
+      <legend className="sr-only">Возраст сессий</legend>
       {ageFilterOptions.map((o) => (
         <button
           key={o.value}
@@ -182,7 +183,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
   const grid = grouped ? gridGrouped : gridFlat;
 
   if (selectedProjectName === null) {
-    return <CenterNote>Select a project to view its sessions.</CenterNote>;
+    return <CenterNote>Выберите проект, чтобы увидеть сессии.</CenterNote>;
   }
 
   if (isLoading) {
@@ -190,14 +191,14 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
       <CenterNote>
         <span className="inline-flex items-center gap-2">
           <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--color-accent)] shadow-[0_0_8px_var(--color-glow-strong)] motion-reduce:animate-none" />
-          Loading sessions…
+          Загрузка сессий…
         </span>
       </CenterNote>
     );
   }
 
   if (sessions.length === 0) {
-    return <CenterNote>No sessions in this project.</CenterNote>;
+    return <CenterNote>В проекте нет сессий.</CenterNote>;
   }
 
   const onHeaderClick = (col: SortBy) => {
@@ -226,12 +227,18 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
             </h2>
             <div className="flex flex-wrap gap-1.5">
               {ageFilter === 'all' ? (
-                <Chip value={sessions.length} unit="sessions" />
+                <Chip
+                  value={sessions.length}
+                  unit={plural(sessions.length, 'сессия', 'сессии', 'сессий')}
+                />
               ) : (
-                <Chip value={visible.length} unit={`of ${sessions.length} sessions`} />
+                <Chip
+                  value={visible.length}
+                  unit={`из ${sessions.length} ${plural(sessions.length, 'сессии', 'сессий', 'сессий')}`}
+                />
               )}
               <Chip value={sizeValue} unit={sizeUnit} />
-              <Chip value={formatDuration(totalDuration)} unit="in total" />
+              <Chip value={formatDuration(totalDuration)} unit="всего" />
             </div>
           </div>
           <AgeFilterSegment value={ageFilter} onChange={setAgeFilter} />
@@ -239,13 +246,13 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
 
         {sorted.length === 0 ? (
           <CenterNote>
-            <span>No sessions {filterLabel.toLowerCase()}.</span>
+            <span>Нет сессий: {filterLabel.toLowerCase()}.</span>
             <button
               type="button"
               onClick={() => setAgeFilter('all')}
               className="rounded-full px-2 text-[var(--color-accent)] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
             >
-              Show all sessions
+              Показать все
             </button>
           </CenterNote>
         ) : (
@@ -253,7 +260,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
             <div className="flex h-8 shrink-0 items-center gap-2.5 px-3 text-xs font-medium text-[var(--color-text-muted)] select-none">
               <CheckCircle
                 state={allChecked ? 'on' : someChecked ? 'mixed' : 'off'}
-                label="Select all visible sessions"
+                label="Выбрать все видимые"
                 onToggle={() => {
                   if (allChecked || someChecked) setBulkSelection([]);
                   else setBulkSelection(visiblePaths);
@@ -274,7 +281,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                     <span key={c.key} className={cn('min-w-0', hideNarrow)}>
                       <button
                         type="button"
-                        aria-label={`Sort by ${c.label}`}
+                        aria-label={`Сортировать: ${c.label}`}
                         onClick={() => onHeaderClick(c.key as SortBy)}
                         className={cn(
                           '-ml-2 inline-flex h-[26px] max-w-full items-center gap-1 rounded-full px-2 whitespace-nowrap outline-none transition-colors duration-120 hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]',
@@ -339,7 +346,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                     >
                       <CheckCircle
                         state={checked ? 'on' : 'off'}
-                        label={`Select session ${s.sessionId.slice(0, 8)}`}
+                        label={`Выбрать сессию ${s.sessionId.slice(0, 8)}`}
                         onToggle={() => toggleBulkPath(s.filePath)}
                       />
                       <button
@@ -371,7 +378,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                           )}
                           {s.userTitle && (
                             <span className="inline-flex h-[18px] shrink-0 items-center self-center rounded-full bg-[var(--color-accent-soft)] px-[7px] text-[11px] text-[var(--color-accent)]">
-                              renamed
+                              названа
                             </span>
                           )}
                         </span>
@@ -420,7 +427,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
             ...(menu.session.cwd
               ? [
                   {
-                    label: 'Open in Claude',
+                    label: 'Открыть в Claude',
                     icon: <ClaudeIcon />,
                     onSelect: () => {
                       openInClaudeCode(menu.session.cwd ?? undefined, menu.session.sessionId).catch(
@@ -431,12 +438,12 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                 ]
               : []),
             {
-              label: 'Rename',
+              label: 'Переименовать',
               icon: <Pencil className="h-3.5 w-3.5" />,
               onSelect: () => setRenameTarget(menu.session),
             },
             {
-              label: 'Show in Explorer',
+              label: 'В Проводнике',
               icon: <FolderOpen className="h-3.5 w-3.5" />,
               onSelect: () => {
                 revealInExplorer(menu.session.filePath).catch(() => {});
@@ -444,7 +451,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
             },
             'separator',
             {
-              label: 'Delete',
+              label: 'Удалить',
               icon: <Trash2 className="h-3.5 w-3.5" />,
               danger: true,
               onSelect: () => setDeleteTarget(menu.session),
@@ -458,10 +465,10 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
       <ConfirmDialog
         open={!!deleteTarget}
         danger
-        title="Delete conversation?"
-        description="The .jsonl file will be removed from disk. This cannot be undone via this app."
+        title="Удалить сессию?"
+        description="Файл .jsonl будет удалён с диска. Отменить это в Echo Studio нельзя."
         subject={deleteTarget ? sessionSubject(deleteTarget) : null}
-        confirmLabel="Delete"
+        confirmLabel="Удалить"
         busy={del.isPending}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => {

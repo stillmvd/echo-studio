@@ -5,6 +5,7 @@ import { ClaudeIcon } from '@/components/ui/ClaudeIcon';
 import { ContextMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
 import { menuPoint } from '@/lib/context-menu';
+import { plural } from '@/lib/dashboard';
 import { openInClaudeCode, revealInExplorer } from '@/lib/ipc';
 import { formatAgo, formatBytes, parentFolder, sortProjects } from '@/lib/projects';
 import type { ConversationProject } from '@/lib/types';
@@ -17,10 +18,10 @@ interface Props {
 }
 
 const sortOptions: { id: ProjectSort; label: string }[] = [
-  { id: 'recent', label: 'Recent activity' },
-  { id: 'name', label: 'Name' },
-  { id: 'sessions', label: 'Sessions' },
-  { id: 'size', label: 'Size' },
+  { id: 'recent', label: 'Недавние' },
+  { id: 'name', label: 'Имя' },
+  { id: 'sessions', label: 'Сессии' },
+  { id: 'size', label: 'Размер' },
 ];
 
 function SortButton() {
@@ -32,8 +33,8 @@ function SortButton() {
     <>
       <button
         type="button"
-        title="Sort projects"
-        aria-label="Sort projects"
+        title="Сортировка"
+        aria-label="Сортировка проектов"
         aria-haspopup="menu"
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
@@ -74,20 +75,23 @@ export function ConversationsProjectSidebar({ projects, selectedId, onSelect }: 
       <div className="flex flex-col gap-3.5 px-2 pt-0.5">
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-[22px] leading-[1.06] font-light tracking-[-0.02em] text-[var(--color-text-primary)]">
-            All <b className="font-bold">projects</b>
+            Все <b className="font-bold">проекты</b>
           </h2>
           <SortButton />
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <Chip value={projects.length} unit="projects" />
-          <Chip value={totalSessions} unit="sessions" />
+          <Chip
+            value={projects.length}
+            unit={plural(projects.length, 'проект', 'проекта', 'проектов')}
+          />
+          <Chip value={totalSessions} unit={plural(totalSessions, 'сессия', 'сессии', 'сессий')} />
           <Chip value={sizeValue} unit={sizeUnit} />
         </div>
       </div>
 
       {projects.length === 0 ? (
         <p className="px-2 text-xs text-[var(--color-text-muted)]">
-          No conversations found in ~/.claude/projects/
+          В ~/.claude/projects/ нет сессий
         </p>
       ) : (
         <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
@@ -164,14 +168,14 @@ export function ConversationsProjectSidebar({ projects, selectedId, onSelect }: 
           onClose={() => setMenu(null)}
           items={[
             {
-              label: 'Show in Explorer',
+              label: 'В Проводнике',
               icon: <FolderOpen className="h-3.5 w-3.5" />,
               onSelect: () => {
                 revealInExplorer(menu.project.cwd).catch(() => {});
               },
             },
             {
-              label: 'Open in Claude Code',
+              label: 'Открыть в Claude',
               icon: <ClaudeIcon />,
               onSelect: () => {
                 openInClaudeCode(menu.project.cwd).catch(() => {});
@@ -179,7 +183,7 @@ export function ConversationsProjectSidebar({ projects, selectedId, onSelect }: 
             },
             'separator',
             {
-              label: 'Copy path',
+              label: 'Копировать путь',
               icon: <Copy className="h-3.5 w-3.5" />,
               onSelect: () => {
                 navigator.clipboard.writeText(menu.project.cwd).catch(() => {});

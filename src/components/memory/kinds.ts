@@ -13,11 +13,11 @@ export const KIND_VIEW: Record<
   Exclude<KindFilter, 'all'>,
   { label: string; Icon: LucideIcon; color: string }
 > = {
-  decision: { label: 'decision', Icon: GitBranch, color: 'text-[var(--color-accent)]' },
-  gotcha: { label: 'gotcha', Icon: TriangleAlert, color: 'text-[var(--color-warning)]' },
-  bugfix: { label: 'bugfix', Icon: Bug, color: 'text-[var(--color-danger)]' },
-  feature: { label: 'feature', Icon: SquarePlus, color: 'text-[var(--color-success)]' },
-  discovery: { label: 'discovery', Icon: Lightbulb, color: 'text-[var(--color-violet)]' },
+  decision: { label: 'решение', Icon: GitBranch, color: 'text-[var(--color-accent)]' },
+  gotcha: { label: 'грабли', Icon: TriangleAlert, color: 'text-[var(--color-warning)]' },
+  bugfix: { label: 'фикс', Icon: Bug, color: 'text-[var(--color-danger)]' },
+  feature: { label: 'фича', Icon: SquarePlus, color: 'text-[var(--color-success)]' },
+  discovery: { label: 'находка', Icon: Lightbulb, color: 'text-[var(--color-violet)]' },
   other: { label: 'прочее', Icon: FileText, color: 'text-[var(--color-text-muted)]' },
 };
 

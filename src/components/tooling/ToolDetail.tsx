@@ -5,7 +5,7 @@ import { useToolCopies, useToolFile } from '@/hooks/use-tooling';
 import { cn } from '@/lib/cn';
 import { revealInExplorer } from '@/lib/ipc';
 import { formatShortDateTime } from '@/lib/projects';
-import { copiesFor, copyHash } from '@/lib/tooling';
+import { copiesFor, copyHash, ORIGIN_LABEL } from '@/lib/tooling';
 import type { ToolItem } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { McpDetail } from './McpDetail';
@@ -17,7 +17,7 @@ const KIND_LABEL: Record<ToolItem['kind'], string> = {
   command: 'Command',
   agent: 'Agent',
   plugin: 'Plugin',
-  mcp: 'MCP server',
+  mcp: 'MCP-сервер',
 };
 
 const soft = 'bg-[color-mix(in_srgb,var(--color-text-primary)_7%,transparent)]';
@@ -45,7 +45,7 @@ function source(item: ToolItem): string {
   if (item.mcp) return item.mcp.declaredIn;
   if (item.origin === 'user') return '~/.claude';
   if (item.origin === 'plugin') return item.pluginKey ?? 'plugin';
-  return item.origin;
+  return ORIGIN_LABEL[item.origin];
 }
 
 function Chip({
@@ -115,7 +115,7 @@ function FileText({ path, itemError }: { path: string; itemError: string | null 
     return (
       <span className="inline-flex items-center gap-2 text-[13px] font-medium text-[var(--color-text-muted)]">
         <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--color-accent)] motion-reduce:animate-none" />
-        Reading file…
+        Чтение файла…
       </span>
     );
   }
@@ -123,7 +123,7 @@ function FileText({ path, itemError }: { path: string; itemError: string | null 
     return (
       <div className="flex flex-col items-start gap-2.5">
         <ErrorPlate text={String(file.error)} />
-        <LinkButton onClick={() => void file.refetch()}>Try again</LinkButton>
+        <LinkButton onClick={() => void file.refetch()}>Повторить</LinkButton>
       </div>
     );
   }
@@ -134,7 +134,7 @@ function FileText({ path, itemError }: { path: string; itemError: string | null 
       <Markdown body={itemError ? text : stripFrontMatter(text)} className="tool-md" />
       {file.data?.truncatedAt != null && (
         <span className="text-xs font-medium text-[var(--color-text-muted)]">
-          The file is large — the first {Math.round(file.data.truncatedAt / 1024)} KB are shown.
+          Файл большой — показаны первые {Math.round(file.data.truncatedAt / 1024)} КБ.
         </span>
       )}
     </>
@@ -152,7 +152,7 @@ function AlsoFoundIn({ item, scopePath }: { item: ToolItem; scopePath: string | 
   return (
     <section className="flex flex-col gap-1.5">
       <h3 className="py-1 text-xs font-medium text-[var(--color-text-muted)]">
-        Also found in <b className="font-bold text-[var(--color-text-primary)]">{list.length}</b>
+        Также в: <b className="font-bold text-[var(--color-text-primary)]">{list.length}</b>
       </h3>
       {shown.map((c) => {
         const same = own !== null && c.hash === own;
@@ -164,7 +164,7 @@ function AlsoFoundIn({ item, scopePath }: { item: ToolItem; scopePath: string | 
                 strokeWidth={1.75}
               />
               <span className="truncate" title={c.filePath}>
-                {c.scope.label}
+                {c.scope.kind === 'global' ? 'Общие' : c.scope.label}
               </span>
             </span>
             <span
@@ -177,7 +177,7 @@ function AlsoFoundIn({ item, scopePath }: { item: ToolItem; scopePath: string | 
                     : 'bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)]',
               )}
             >
-              {c.hash === null ? 'Unreadable' : same ? 'Same' : 'Differs'}
+              {c.hash === null ? 'Не читается' : same ? 'Тот же' : 'Другой'}
             </span>
             {!same && c.hash !== null && c.modifiedMs !== null && (
               <span className="shrink-0 font-mono text-[11px] text-[var(--color-text-muted)]">
@@ -192,7 +192,7 @@ function AlsoFoundIn({ item, scopePath }: { item: ToolItem; scopePath: string | 
                 focusRing,
               )}
             >
-              Show in folder
+              Открыть папку
             </button>
           </div>
         );
@@ -206,7 +206,7 @@ function AlsoFoundIn({ item, scopePath }: { item: ToolItem; scopePath: string | 
             focusRing,
           )}
         >
-          and {list.length - 6} more
+          и ещё {list.length - 6}
         </button>
       )}
     </section>
@@ -244,9 +244,9 @@ export function ToolDetail({
   const [light, bold] = splitName(name);
   const meta = [
     KIND_LABEL[item.kind],
-    item.origin,
-    item.state === 'disabled' ? 'off' : null,
-    item.state === 'unavailable' ? 'plugin off' : null,
+    ORIGIN_LABEL[item.origin],
+    item.state === 'disabled' ? 'выкл.' : null,
+    item.state === 'unavailable' ? 'plugin выкл.' : null,
     item.pluginKey && item.kind !== 'plugin' ? item.pluginKey : null,
   ].filter(Boolean);
   const description = item.kind === 'mcp' ? null : item.description;
@@ -278,7 +278,7 @@ export function ToolDetail({
           {item.filePath && !removed && (
             <button
               type="button"
-              title="Show in Explorer"
+              title="В Проводнике"
               onClick={() => reveal(item.plugin?.installPath ?? item.filePath)}
               className={cn(
                 'inline-flex h-8 items-center justify-center gap-1.5 rounded-full pr-3 pl-2.5 text-xs font-medium whitespace-nowrap hover:bg-[var(--color-hover)] active:scale-[.96] @max-[600px]:w-8 @max-[600px]:px-0 @max-[420px]:hidden',
@@ -287,13 +287,13 @@ export function ToolDetail({
               )}
             >
               <Folder className="h-3.5 w-3.5 text-[var(--color-text-muted)]" strokeWidth={1.75} />
-              <span className="@max-[600px]:sr-only">Show in Explorer</span>
+              <span className="@max-[600px]:sr-only">В Проводнике</span>
             </button>
           )}
           <button
             type="button"
-            aria-label="Close details"
-            title="Close (Esc)"
+            aria-label="Закрыть"
+            title="Закрыть (Esc)"
             onClick={onClose}
             className={cn(
               'grid h-10 w-10 place-items-center rounded-full hover:bg-[var(--color-hover)]',
@@ -309,9 +309,9 @@ export function ToolDetail({
       {removed ? (
         <Note>
           <span>
-            {name} is no longer in {source(item)}.
+            {name} больше нет в {source(item)}.
           </span>
-          <LinkButton onClick={onClose}>Back to list</LinkButton>
+          <LinkButton onClick={onClose}>К списку</LinkButton>
         </Note>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pb-[88px]">

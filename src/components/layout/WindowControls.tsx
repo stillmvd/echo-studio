@@ -25,7 +25,7 @@ export function WindowControls() {
     <div className="flex items-center gap-1">
       <button
         type="button"
-        aria-label="Minimize"
+        aria-label="Свернуть"
         onClick={() => appWindow.minimize()}
         className={btn}
       >
@@ -33,7 +33,7 @@ export function WindowControls() {
       </button>
       <button
         type="button"
-        aria-label={maximized ? 'Restore' : 'Maximize'}
+        aria-label={maximized ? 'Восстановить' : 'Развернуть'}
         onClick={() => appWindow.toggleMaximize()}
         className={btn}
       >
@@ -45,7 +45,7 @@ export function WindowControls() {
       </button>
       <button
         type="button"
-        aria-label="Close"
+        aria-label="Закрыть"
         onClick={() => appWindow.close()}
         className={cn(btn, 'hover:bg-[var(--color-danger-soft)] hover:text-[var(--color-danger)]')}
       >

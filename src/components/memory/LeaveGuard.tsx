@@ -11,8 +11,8 @@ export function LeaveGuard() {
       open={guard !== null}
       title="Отменить правку?"
       description="В записи есть несохранённые изменения. Если продолжить, они пропадут."
-      confirmLabel="Отменить правку"
-      cancelLabel="Продолжить редактирование"
+      confirmLabel="Отбросить"
+      cancelLabel="Продолжить"
       danger
       onCancel={() => setGuard(null)}
       onConfirm={() => {

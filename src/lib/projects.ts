@@ -2,10 +2,10 @@ import type { ProjectSort } from '@/state/ui-store';
 import type { ConversationProject } from './types';
 
 export function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
-  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  if (n < 1024) return `${n} Б`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} КБ`;
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1).replace('.', ',')} МБ`;
+  return `${(n / (1024 * 1024 * 1024)).toFixed(2).replace('.', ',')} ГБ`;
 }
 
 export function formatAgo(iso: string | null, now = Date.now()): string {
@@ -13,15 +13,15 @@ export function formatAgo(iso: string | null, now = Date.now()): string {
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return '';
   const minutes = Math.floor(Math.max(0, now - t) / 60_000);
-  if (minutes < 1) return 'now';
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 1) return 'сейчас';
+  if (minutes < 60) return `${minutes} мин`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
+  if (hours < 24) return `${hours} ч`;
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d`;
+  if (days < 30) return `${days} д`;
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo`;
-  return `${Math.floor(days / 365)}y`;
+  if (months < 12) return `${months} мес`;
+  return `${Math.floor(days / 365)} г`;
 }
 
 export function parentFolder(cwd: string): string {
@@ -49,7 +49,7 @@ export function sortProjects(
 export function formatShortDateTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  const month = d.toLocaleString('en', { month: 'short' });
+  const month = d.toLocaleString('ru-RU', { month: 'short' });
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
   return `${d.getDate()} ${month} ${hh}:${mm}`;

@@ -565,7 +565,7 @@ export function MemoryDetail({
                     const after = pinnedChars(records) + record.bodyChars;
                     if (record.importance !== 3 && after > PINNED_LIMIT) {
                       setActionError(
-                        `Не влезет в старт сессии: ${after.toLocaleString('ru-RU')} из ${PINNED_LIMIT.toLocaleString('ru-RU')} символов. Сначала открепи другие записи.`,
+                        `Не влезет в старт сессии: ${after.toLocaleString('ru-RU')} из ${PINNED_LIMIT.toLocaleString('ru-RU')} символов. Сначала открепите другие записи.`,
                       );
                       return;
                     }
@@ -691,7 +691,7 @@ export function MemoryDetail({
                     focusRing,
                   )}
                 >
-                  {save.isPending ? 'Сохраняю…' : 'Сохранить'}
+                  {save.isPending ? 'Сохранение…' : 'Сохранить'}
                 </button>
               </span>
             </div>
@@ -699,7 +699,7 @@ export function MemoryDetail({
         ) : file.isLoading ? (
           <span className="inline-flex items-center gap-2 text-[13px] font-medium text-[var(--color-text-muted)]">
             <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--color-accent)] motion-reduce:animate-none" />
-            Читаю файл…
+            Чтение файла…
           </span>
         ) : file.isError ? (
           <div className="flex flex-col items-start gap-2.5">

@@ -20,7 +20,7 @@ pub fn load_titles() -> HashMap<String, String> {
 }
 
 pub fn set_title(session_id: &str, title: Option<String>) -> Result<(), String> {
-    let path = titles_path().ok_or("cannot resolve home dir")?;
+    let path = titles_path().ok_or("Не найдена домашняя папка")?;
     let mut map = load_titles();
 
     match title {
@@ -33,20 +33,21 @@ pub fn set_title(session_id: &str, title: Option<String>) -> Result<(), String> 
     }
 
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("create_dir_all: {e}"))?;
+        fs::create_dir_all(parent).map_err(|e| format!("Не удалось создать папку: {e}"))?;
     }
 
-    let json = serde_json::to_string_pretty(&map).map_err(|e| format!("serialize: {e}"))?;
+    let json = serde_json::to_string_pretty(&map)
+        .map_err(|e| format!("Не удалось сохранить JSON: {e}"))?;
     let tmp = path.with_extension("json.tmp");
-    fs::write(&tmp, json).map_err(|e| format!("write tmp: {e}"))?;
-    fs::rename(&tmp, &path).map_err(|e| format!("rename: {e}"))?;
+    fs::write(&tmp, json).map_err(|e| format!("Не удалось записать временный файл: {e}"))?;
+    fs::rename(&tmp, &path).map_err(|e| format!("Не удалось переименовать файл: {e}"))?;
     Ok(())
 }
 
 pub fn append_custom_title(path: &Path, session_id: &str, title: &str) -> Result<(), String> {
     let title = title.trim();
     if title.is_empty() {
-        return Err("title is empty".into());
+        return Err("Пустое название".into());
     }
     let line = serde_json::json!({
         "type": "custom-title",
@@ -57,13 +58,13 @@ pub fn append_custom_title(path: &Path, session_id: &str, title: &str) -> Result
         .read(true)
         .append(true)
         .open(path)
-        .map_err(|e| format!("open {}: {e}", path.display()))?;
+        .map_err(|e| format!("Не удалось открыть {}: {e}", path.display()))?;
     let mut text = String::new();
     if file.metadata().map(|m| m.len()).unwrap_or(0) > 0 {
         let mut last = [0u8; 1];
         file.seek(SeekFrom::End(-1))
             .and_then(|_| file.read_exact(&mut last))
-            .map_err(|e| format!("read {}: {e}", path.display()))?;
+            .map_err(|e| format!("Не удалось прочитать {}: {e}", path.display()))?;
         if last[0] != b'\n' {
             text.push('\n');
         }
@@ -71,7 +72,7 @@ pub fn append_custom_title(path: &Path, session_id: &str, title: &str) -> Result
     text.push_str(&line.to_string());
     text.push('\n');
     file.write_all(text.as_bytes())
-        .map_err(|e| format!("append {}: {e}", path.display()))
+        .map_err(|e| format!("Не удалось дописать в {}: {e}", path.display()))
 }
 
 #[cfg(test)]

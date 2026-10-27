@@ -79,7 +79,7 @@ export function MemoryProjectPanel({
     <div className="flex h-full min-h-0 flex-col gap-3 px-3 pt-5 pb-3">
       <div className="flex items-center justify-between gap-2 px-2">
         <h2 className="text-[22px] leading-[1.06] font-light tracking-[-0.02em] text-[var(--color-text-primary)]">
-          All <b className="font-bold">memory</b>
+          Вся <b className="font-bold">память</b>
         </h2>
         {(dupes > 0 || dupesOn) && (
           <button

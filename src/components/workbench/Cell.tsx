@@ -52,7 +52,7 @@ export function useStopSession() {
     <ConfirmDialog
       open={stopping !== null}
       title="Завершить сессию?"
-      description="Claude завершит работу. Разговор сохранится — его можно продолжить из списка проекта."
+      description="Claude завершит работу. Сессию можно продолжить из списка проекта."
       confirmLabel="Завершить"
       cancelLabel="Отмена"
       danger
@@ -577,7 +577,7 @@ export function Cell({
               onClick={() => stop.ask(current.shortId)}
             >
               <Square fill="currentColor" strokeWidth={2} />
-              <span className="wb-stop-l">Завершить сессию</span>
+              <span className="wb-stop-l">Завершить</span>
             </button>
           </>
         )}

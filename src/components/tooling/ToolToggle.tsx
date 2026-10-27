@@ -66,7 +66,7 @@ export function RowToggle({ item, className }: { item: ToolItem; className?: str
       type="button"
       role="switch"
       aria-checked={on}
-      aria-label={`${on ? 'Turn off' : 'Turn on'} ${name}`}
+      aria-label={`${on ? 'Выключить' : 'Включить'} ${name}`}
       onClick={toggle}
       disabled={busy}
       className={cn(
@@ -90,7 +90,7 @@ export function DetailToggle({ item }: { item: ToolItem }) {
         className="inline-flex h-10 items-center gap-2.5 text-[13px] font-medium whitespace-nowrap text-[var(--color-text-muted)]"
       >
         <Switch on={on} disabled />
-        Can't turn off
+        Не выключается
       </span>
     );
   }
@@ -98,7 +98,7 @@ export function DetailToggle({ item }: { item: ToolItem }) {
     <span className="inline-flex items-center gap-2.5">
       {item.toggle?.projectPath && (
         <span className="text-xs font-medium whitespace-nowrap text-[var(--color-text-muted)] @max-[440px]:hidden">
-          for this project
+          для проекта
         </span>
       )}
       <button
@@ -114,7 +114,7 @@ export function DetailToggle({ item }: { item: ToolItem }) {
         )}
       >
         <Power className="h-3.5 w-3.5" strokeWidth={2} />
-        {on ? 'Turn off' : 'Turn on'}
+        {on ? 'Выключить' : 'Включить'}
       </button>
     </span>
   );

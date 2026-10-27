@@ -9,7 +9,7 @@ function date(iso: string | null): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? iso
-    : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -51,14 +51,14 @@ export function PluginDetail({ item, members }: { item: ToolItem; members: ToolI
         ))}
       </div>
       <dl className="m-0 flex flex-col gap-2.5">
-        <Row label="Version">
+        <Row label="Версия">
           <span className="font-mono text-xs font-normal">{p.version ?? '—'}</span>
         </Row>
         <Row label="Marketplace">{p.marketplace || '—'}</Row>
-        <Row label="Installed">
-          {date(p.installedAt)} · updated {date(p.lastUpdated)}
+        <Row label="Установлен">
+          {date(p.installedAt)} · обновлён {date(p.lastUpdated)}
         </Row>
-        <Row label="Folder">
+        <Row label="Папка">
           <span className="font-mono text-xs font-normal [overflow-wrap:anywhere]">
             {p.installPath}
           </span>
@@ -70,7 +70,7 @@ export function PluginDetail({ item, members }: { item: ToolItem; members: ToolI
           <div key={kind} className="flex flex-col gap-0.5">
             <div className="px-3 pt-2 pb-1 text-xs font-medium text-[var(--color-text-muted)]">
               <b className="font-bold text-[var(--color-text-primary)]">{KIND_META[kind].label}</b>{' '}
-              {list.length} · off with the plugin
+              {list.length} · выкл. с plugin
             </div>
             {list.slice(0, SHOWN).map((c) => (
               <div
@@ -84,7 +84,7 @@ export function PluginDetail({ item, members }: { item: ToolItem; members: ToolI
             ))}
             {list.length > SHOWN && (
               <div className="px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)]">
-                and {list.length - SHOWN} more
+                и ещё {list.length - SHOWN}
               </div>
             )}
           </div>

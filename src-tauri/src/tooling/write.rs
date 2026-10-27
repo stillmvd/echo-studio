@@ -24,7 +24,7 @@ pub struct ConfigBackup {
 pub fn target_file(home: &Path, t: &ToggleTarget, known: &[String]) -> Result<PathBuf, String> {
     let project = match &t.project_path {
         Some(p) if known.iter().any(|k| same_project(k, p)) => Some(normalize_project(p)),
-        Some(p) => return Err(format!("unknown project: {p}")),
+        Some(p) => return Err(format!("Неизвестный проект: {p}")),
         None => None,
     };
     let allowed = match t.file {
@@ -44,10 +44,7 @@ pub fn target_file(home: &Path, t: &ToggleTarget, known: &[String]) -> Result<Pa
         ToggleFile::ClaudeJson => t.key == ToggleKey::DisabledMcpServers,
     };
     if !allowed || t.name.trim().is_empty() {
-        return Err(format!(
-            "refusing: {:?} cannot be written to {:?}",
-            t.key, t.file
-        ));
+        return Err(format!("Ключ {:?} нельзя писать в {:?}", t.key, t.file));
     }
     Ok(match t.file {
         ToggleFile::UserSettings => claude_dir(home).join("settings.json"),
@@ -65,20 +62,18 @@ fn object_at<'a>(
     obj.entry(key.to_string())
         .or_insert_with(|| Value::Object(Map::new()))
         .as_object_mut()
-        .ok_or_else(|| format!("{key} is not an object"))
+        .ok_or_else(|| format!("{key} — не объект"))
 }
 
 fn array_at<'a>(obj: &'a mut Map<String, Value>, key: &str) -> Result<&'a mut Vec<Value>, String> {
     obj.entry(key.to_string())
         .or_insert_with(|| Value::Array(Vec::new()))
         .as_array_mut()
-        .ok_or_else(|| format!("{key} is not an array"))
+        .ok_or_else(|| format!("{key} — не массив"))
 }
 
 pub fn apply(root: &mut Value, t: &ToggleTarget, enabled: bool) -> Result<(), String> {
-    let obj = root
-        .as_object_mut()
-        .ok_or("config file is not a JSON object")?;
+    let obj = root.as_object_mut().ok_or("Конфиг — не объект JSON")?;
     let container = match (t.file, &t.project_path) {
         (ToggleFile::ClaudeJson, Some(project)) => {
             let projects = object_at(obj, "projects")?;
@@ -146,9 +141,9 @@ fn slug(file: &Path) -> String {
 
 pub fn backup(file: &Path, backups_root: &Path, now: SystemTime) -> Result<PathBuf, String> {
     let dir = backups_root.join(slug(file));
-    fs::create_dir_all(&dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
+    fs::create_dir_all(&dir).map_err(|e| format!("Не удалось создать {}: {e}", dir.display()))?;
     fs::write(dir.join(SOURCE_FILE), file.to_string_lossy().as_bytes())
-        .map_err(|e| format!("write backup source: {e}"))?;
+        .map_err(|e| format!("Не удалось подготовить копию: {e}"))?;
     let base = stamp(now);
     let ext = file
         .extension()
@@ -161,7 +156,8 @@ pub fn backup(file: &Path, backups_root: &Path, now: SystemTime) -> Result<PathB
         target = dir.join(format!("{base}-{n}.{ext}"));
         n += 1;
     }
-    fs::copy(file, &target).map_err(|e| format!("backup {}: {e}", file.display()))?;
+    fs::copy(file, &target)
+        .map_err(|e| format!("Не удалось сделать копию {}: {e}", file.display()))?;
     let mut copies = list_copies(&dir);
     while copies.len() > KEEP {
         let oldest = copies.remove(0);
@@ -215,23 +211,25 @@ pub fn list_backups(backups_root: &Path) -> Vec<ConfigBackup> {
 }
 
 fn write_atomic(file: &Path, root: &Value) -> Result<(), String> {
-    let mut text = serde_json::to_string_pretty(root).map_err(|e| format!("serialize: {e}"))?;
+    let mut text = serde_json::to_string_pretty(root)
+        .map_err(|e| format!("Не удалось сохранить JSON: {e}"))?;
     text.push('\n');
     write_text_atomic(file, &text)
 }
 
 pub fn write_text_atomic(file: &Path, text: &str) -> Result<(), String> {
-    let parent = file.parent().ok_or("file has no folder")?;
-    fs::create_dir_all(parent).map_err(|e| format!("create {}: {e}", parent.display()))?;
+    let parent = file.parent().ok_or("У файла нет папки")?;
+    fs::create_dir_all(parent)
+        .map_err(|e| format!("Не удалось создать {}: {e}", parent.display()))?;
     let name = file
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
     let tmp = parent.join(format!(".{name}.echo-studio.tmp"));
-    fs::write(&tmp, text).map_err(|e| format!("write {}: {e}", tmp.display()))?;
+    fs::write(&tmp, text).map_err(|e| format!("Не удалось записать {}: {e}", tmp.display()))?;
     fs::rename(&tmp, file).map_err(|e| {
         let _ = fs::remove_file(&tmp);
-        format!("replace {}: {e}", file.display())
+        format!("Не удалось заменить {}: {e}", file.display())
     })
 }
 

@@ -4,6 +4,7 @@ import { useConversationSessions } from '@/hooks/use-conversations';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useCrossSessionSearch } from '@/hooks/use-session';
 import { cn } from '@/lib/cn';
+import { plural } from '@/lib/dashboard';
 import { formatShortDateTime } from '@/lib/projects';
 import { sessionDisplayTitle } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
@@ -92,15 +93,15 @@ export function CrossSessionSearch({ projectId, children }: Props) {
               setDraft('');
             }
           }}
-          aria-label="Search across sessions"
-          placeholder={projectId ? 'Search across sessions' : 'Select a project first'}
+          aria-label="Поиск по сессиям"
+          placeholder={projectId ? 'Поиск по сессиям' : 'Сначала выберите проект'}
           disabled={!projectId}
           className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)] focus-visible:outline-none disabled:cursor-not-allowed"
         />
         {draft && (
           <button
             type="button"
-            aria-label="Clear search"
+            aria-label="Очистить"
             onClick={() => setDraft('')}
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] transition-colors duration-200 hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]"
           >
@@ -113,15 +114,15 @@ export function CrossSessionSearch({ projectId, children }: Props) {
         <div className="flex min-h-0 flex-1 flex-col gap-2">
           <p className="px-2 text-xs font-medium text-[var(--color-text-muted)] tabular-nums">
             {results.isLoading || debounced.trim() !== query ? (
-              'Searching…'
+              'Поиск…'
             ) : hits.length === 0 ? (
-              'No matches'
+              'Ничего не найдено'
             ) : (
               <>
                 <b className="font-bold text-[var(--color-text-primary)]">{hits.length}</b>{' '}
-                {hits.length === 1 ? 'match' : 'matches'} in{' '}
+                {plural(hits.length, 'совпадение', 'совпадения', 'совпадений')} в{' '}
                 <b className="font-bold text-[var(--color-text-primary)]">{sessionCount}</b>{' '}
-                {sessionCount === 1 ? 'session' : 'sessions'}
+                {plural(sessionCount, 'сессии', 'сессиях', 'сессиях')}
               </>
             )}
           </p>
@@ -157,7 +158,7 @@ export function CrossSessionSearch({ projectId, children }: Props) {
             ))}
             {hits.length > VISIBLE_HITS && (
               <li className="shrink-0 px-2 text-xs text-[var(--color-text-muted)]">
-                +{hits.length - VISIBLE_HITS} more — refine the query
+                Ещё {hits.length - VISIBLE_HITS} — уточните запрос
               </li>
             )}
           </ul>

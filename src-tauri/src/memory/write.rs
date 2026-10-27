@@ -24,10 +24,10 @@ fn plain(path: &Path) -> PathBuf {
 pub fn locate(path: &Path, root: &Path) -> Result<Located, String> {
     let canonical = path
         .canonicalize()
-        .map_err(|e| format!("cannot resolve {}: {e}", path.display()))?;
+        .map_err(|e| format!("Не удалось проверить {}: {e}", path.display()))?;
     let root = root
         .canonicalize()
-        .map_err(|e| format!("cannot resolve {}: {e}", root.display()))?;
+        .map_err(|e| format!("Не удалось проверить {}: {e}", root.display()))?;
     let refuse = || {
         format!(
             "refusing: {} is outside Claude memory folders",
@@ -46,7 +46,7 @@ pub fn locate(path: &Path, root: &Path) -> Result<Located, String> {
         return Err(refuse());
     }
     if canonical.extension().and_then(|e| e.to_str()) != Some("md") {
-        return Err(format!("refusing: {} is not a .md file", path.display()));
+        return Err(format!("Не файл .md: {}", path.display()));
     }
     Ok(Located {
         dir: plain(&root.join(&parts[0]).join(MEMORY_DIR)),
@@ -62,7 +62,7 @@ pub fn memory_dir(root: &Path, slug: &str) -> Result<PathBuf, String> {
     if valid && dir.is_dir() {
         Ok(dir)
     } else {
-        Err(format!("unknown memory project: {slug}"))
+        Err(format!("Неизвестный проект памяти: {slug}"))
     }
 }
 
@@ -103,7 +103,7 @@ pub fn update_index(
     let before = match fs::read_to_string(&file) {
         Ok(t) => t,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
-        Err(e) => return Err(format!("read {}: {e}", file.display())),
+        Err(e) => return Err(format!("Не удалось прочитать {}: {e}", file.display())),
     };
     let after = change(&before);
     if after == before {
@@ -127,7 +127,7 @@ fn record_line(record: &MemoryRecord) -> String {
 pub fn save_text(path: &Path, text: &str, root: &Path, backups: &Path) -> Result<PathBuf, String> {
     let at = locate(path, root)?;
     if at.rest.first().map(String::as_str) == Some(ARCHIVE_DIR) {
-        return Err("archived records are read-only — restore first".into());
+        return Err("Архивная запись только для чтения — сначала восстановите".into());
     }
     safe_write(&at.path, text, backups)?;
     Ok(at.path)
@@ -140,13 +140,15 @@ pub fn archive(
 ) -> Result<(PathBuf, Option<String>), String> {
     let at = locate(path, root)?;
     if at.rest.len() != 1 || at.rest[0] == INDEX_FILE {
-        return Err("only records can be archived".into());
+        return Err("В архив уходят только записи".into());
     }
     let archive = at.dir.join(ARCHIVE_DIR);
-    fs::create_dir_all(&archive).map_err(|e| format!("create {}: {e}", archive.display()))?;
+    fs::create_dir_all(&archive)
+        .map_err(|e| format!("Не удалось создать {}: {e}", archive.display()))?;
     let target = unique(&archive, &at.rest[0]);
     let line = index_line_of(&at.dir, &at.rest[0]);
-    fs::rename(&at.path, &target).map_err(|e| format!("archive {}: {e}", at.path.display()))?;
+    fs::rename(&at.path, &target)
+        .map_err(|e| format!("Не удалось архивировать {}: {e}", at.path.display()))?;
     update_index(&at.dir, backups, |md| remove_links(md, &at.rest[0]))?;
     Ok((target, line))
 }
@@ -164,10 +166,11 @@ pub fn restore(
 ) -> Result<MemoryRecord, String> {
     let at = locate(archived, root)?;
     if at.rest.len() != 2 || at.rest[0] != ARCHIVE_DIR {
-        return Err("not an archived record".into());
+        return Err("Запись не в архиве".into());
     }
     let target = unique(&at.dir, &at.rest[1]);
-    fs::rename(&at.path, &target).map_err(|e| format!("restore {}: {e}", at.path.display()))?;
+    fs::rename(&at.path, &target)
+        .map_err(|e| format!("Не удалось восстановить {}: {e}", at.path.display()))?;
     let record = read_record(&target, false);
     let line = relink(line, &at.rest[1], &record.file).unwrap_or_else(|| record_line(&record));
     update_index(&at.dir, backups, |md| append_line(md, &line))?;
@@ -182,18 +185,19 @@ pub fn move_to(
 ) -> Result<MemoryRecord, String> {
     let at = locate(path, root)?;
     if at.rest.len() != 1 || at.rest[0] == INDEX_FILE {
-        return Err("only records can be moved".into());
+        return Err("Переносятся только записи".into());
     }
     let target_dir = memory_dir(root, target_slug)?;
     if target_slug == at.slug {
-        return Err("the record is already in this project".into());
+        return Err("Запись уже в этом проекте".into());
     }
-    let text = fs::read_to_string(&at.path).map_err(|e| format!("read: {e}"))?;
+    let text = fs::read_to_string(&at.path).map_err(|e| format!("Не удалось прочитать: {e}"))?;
     let target = unique(&target_dir, &at.rest[0]);
     write_text_atomic(&target, &text)?;
     let old_line = index_line_of(&at.dir, &at.rest[0]);
     backup(&at.path, backups, SystemTime::now())?;
-    fs::remove_file(&at.path).map_err(|e| format!("remove {}: {e}", at.path.display()))?;
+    fs::remove_file(&at.path)
+        .map_err(|e| format!("Не удалось удалить {}: {e}", at.path.display()))?;
     update_index(&at.dir, backups, |md| remove_links(md, &at.rest[0]))?;
     let record = read_record(&target, false);
     let new_file = file_name(&target);
@@ -243,7 +247,7 @@ fn edit_meta(text: &str, change: impl FnOnce(&mut Mapping)) -> Result<String, St
         Mapping::new()
     } else {
         serde_yaml::from_str(&front.yaml)
-            .map_err(|e| format!("frontmatter is broken, fix the text by hand: {e}"))?
+            .map_err(|e| format!("Битый frontmatter, поправьте текст вручную: {e}"))?
     };
     let key = YamlValue::String("metadata".into());
     if !matches!(map.get(&key), Some(YamlValue::Mapping(_))) {
@@ -266,7 +270,8 @@ fn edit_meta(text: &str, change: impl FnOnce(&mut Mapping)) -> Result<String, St
         }
         change(meta);
     }
-    let yaml = serde_yaml::to_string(&map).map_err(|e| format!("serialize frontmatter: {e}"))?;
+    let yaml =
+        serde_yaml::to_string(&map).map_err(|e| format!("Не удалось собрать frontmatter: {e}"))?;
     let eol = front.eol;
     Ok(format!(
         "---{eol}{}---{eol}{}",
@@ -300,7 +305,7 @@ fn is_fact(r: &MemoryRecord) -> bool {
 fn live_record(path: &Path, root: &Path) -> Result<Located, String> {
     let at = locate(path, root)?;
     if at.rest.len() != 1 || at.rest[0] == INDEX_FILE {
-        return Err("only live records can be changed".into());
+        return Err("Менять можно только живые записи".into());
     }
     Ok(at)
 }
@@ -313,7 +318,7 @@ pub fn patch(
 ) -> Result<MemoryRecord, String> {
     let at = live_record(path, root)?;
     let before = read_record(&at.path, false);
-    let text = fs::read_to_string(&at.path).map_err(|e| format!("read: {e}"))?;
+    let text = fs::read_to_string(&at.path).map_err(|e| format!("Не удалось прочитать: {e}"))?;
     let next = edit_meta(&text, |meta| {
         if let Some(status) = &patch.status {
             set(meta, "status", YamlValue::String(status.clone()));
@@ -360,24 +365,27 @@ pub fn merge(
         .map(|p| live_record(p, root))
         .collect::<Result<Vec<_>, _>>()?;
     if others.is_empty() {
-        return Err("nothing to merge".into());
+        return Err("Нечего объединять".into());
     }
     if others
         .iter()
         .any(|o| o.dir != main.dir || o.path == main.path)
     {
-        return Err("records must be different files of one project".into());
+        return Err("Нужны разные файлы одного проекта".into());
     }
     let canon = read_record(&main.path, false);
-    let mut text = fs::read_to_string(&main.path).map_err(|e| format!("read: {e}"))?;
+    let mut text =
+        fs::read_to_string(&main.path).map_err(|e| format!("Не удалось прочитать: {e}"))?;
     let eol = split_front(&text).eol;
     let today = humantime::format_rfc3339_seconds(SystemTime::now()).to_string()[..10].to_string();
     let (mut tags, mut files) = (canon.tags.clone(), canon.files.clone());
     let (mut seen, mut importance) = (canon.seen, canon.importance);
     for other in &others {
         let rec = read_record(&other.path, false);
-        let body =
-            split_front(&fs::read_to_string(&other.path).map_err(|e| format!("read: {e}"))?).body;
+        let body = split_front(
+            &fs::read_to_string(&other.path).map_err(|e| format!("Не удалось прочитать: {e}"))?,
+        )
+        .body;
         text = format!(
             "{}{eol}{eol}---{eol}Merged from {} ({today}):{eol}{eol}{}{eol}",
             text.trim_end(),
@@ -401,7 +409,8 @@ pub fn merge(
     })?;
     safe_write(&main.path, &merged, backups)?;
     for other in &others {
-        let text = fs::read_to_string(&other.path).map_err(|e| format!("read: {e}"))?;
+        let text =
+            fs::read_to_string(&other.path).map_err(|e| format!("Не удалось прочитать: {e}"))?;
         let marked = edit_meta(&text, |meta| {
             set(
                 meta,

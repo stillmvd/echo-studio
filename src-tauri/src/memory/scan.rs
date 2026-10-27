@@ -81,7 +81,7 @@ pub fn read_record(path: &Path, archived: bool) -> MemoryRecord {
     let text = match fs::read_to_string(path) {
         Ok(t) => t,
         Err(e) => {
-            record.error = Some(format!("read: {e}"));
+            record.error = Some(format!("Не удалось прочитать: {e}"));
             return record;
         }
     };
@@ -149,7 +149,7 @@ pub fn read_session(path: &Path) -> SessionNote {
         error: None,
     };
     match fs::read_to_string(path)
-        .map_err(|e| format!("read: {e}"))
+        .map_err(|e| format!("Не удалось прочитать: {e}"))
         .and_then(|t| parse(&t))
     {
         Ok(parsed) => {

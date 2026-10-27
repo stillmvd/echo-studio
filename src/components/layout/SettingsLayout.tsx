@@ -17,6 +17,7 @@ import { useRef, useState } from 'react';
 import { useConversationProjects } from '@/hooks/use-conversations';
 import { useConfigBackups } from '@/hooks/use-tooling';
 import { cn } from '@/lib/cn';
+import { plural } from '@/lib/dashboard';
 import { revealInExplorer } from '@/lib/ipc';
 import { formatBytes } from '@/lib/projects';
 import { dayLabel, formatTime } from '@/lib/sessions';
@@ -28,11 +29,11 @@ import { panelCard } from './panels';
 import { EchoMark } from './Titlebar';
 
 const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
-  { id: 'claude', label: 'Claude config', icon: FileCog },
-  { id: 'backups', label: 'Config backups', icon: Database },
-  { id: 'conversations', label: 'Conversations', icon: MessageSquare },
+  { id: 'claude', label: 'Конфиг Claude', icon: FileCog },
+  { id: 'backups', label: 'Копии конфига', icon: Database },
+  { id: 'conversations', label: 'Сессии', icon: MessageSquare },
   { id: 'workbench', label: 'Рабочее место', icon: LayoutGrid },
-  { id: 'updates', label: 'Updates', icon: Download },
+  { id: 'updates', label: 'Обновления', icon: Download },
 ];
 
 const softFill = 'bg-[color-mix(in_srgb,var(--color-text-primary)_7%,transparent)]';
@@ -122,7 +123,7 @@ export function SettingsLayout() {
 
           <div className="grid grid-cols-[188px_minmax(0,1fr)] items-start gap-5 @max-[640px]:grid-cols-1">
             <nav
-              aria-label="Settings sections"
+              aria-label="Разделы настроек"
               className="sticky top-0 flex flex-col gap-1 @max-[640px]:static @max-[640px]:flex-row @max-[640px]:overflow-x-auto"
             >
               {SECTIONS.map(({ id, label, icon: Icon }) => (
@@ -148,19 +149,19 @@ export function SettingsLayout() {
             <div className="flex min-w-0 flex-col gap-3.5">
               <Section
                 id="claude"
-                title="Claude config"
-                subtitle="Claude Code configuration the Tools tab reads."
+                title="Конфиг Claude"
+                subtitle="Конфигурация Claude Code, которую читает вкладка «Инструменты»."
               >
                 <Rows>
-                  <Row label="Config folder">
+                  <Row label="Папка конфига">
                     <PathValue path={paths.data?.claudeDir ?? '~/.claude'} />
                     {paths.data && <RevealButton path={paths.data.claudeDir} />}
                   </Row>
-                  <Row label="User settings">
+                  <Row label="Настройки">
                     <PathValue path={paths.data?.userSettings ?? '~/.claude/settings.json'} />
                     {paths.data && <RevealButton path={paths.data.userSettings} />}
                   </Row>
-                  <Row label="MCP & projects">
+                  <Row label="MCP и проекты">
                     <PathValue path={paths.data?.claudeJson ?? '~/.claude.json'} />
                     {paths.data && <RevealButton path={paths.data.claudeJson} />}
                   </Row>
@@ -169,14 +170,14 @@ export function SettingsLayout() {
 
               <Section
                 id="backups"
-                title="Config backups"
-                subtitle="Copy of a Claude config file before every switch in Tools. Last 20 per file kept."
+                title="Копии конфига"
+                subtitle="Копия файла конфига Claude перед каждым переключением в «Инструментах». Хранятся последние 20 на файл."
               >
                 {backups.isLoading ? (
                   <Skeleton />
                 ) : backups.isError ? (
                   <Tag tone="warn" title={String(backups.error)}>
-                    couldn't list copies
+                    не удалось получить копии
                   </Tag>
                 ) : (
                   <Backups items={backups.data ?? []} />
@@ -185,25 +186,30 @@ export function SettingsLayout() {
 
               <Section
                 id="conversations"
-                title="Conversations"
-                subtitle="Claude Code session logs, read-only until you rename or delete a session."
+                title="Сессии"
+                subtitle="Логи сессий Claude Code. Только чтение, пока вы не переименуете или не удалите сессию."
               >
                 <Rows>
-                  <Row label="Projects root">
+                  <Row label="Корень проектов">
                     <PathValue path={paths.data?.projectsRoot ?? '~/.claude/projects'} />
                     {paths.data && <RevealButton path={paths.data.projectsRoot} />}
                   </Row>
-                  <Row label="Total">
+                  <Row label="Всего">
                     {projects.isLoading ? (
                       <Skeleton short />
                     ) : projects.isError ? (
                       <Tag tone="warn" title={String(projects.error)}>
-                        couldn't scan projects
+                        не удалось прочитать проекты
                       </Tag>
                     ) : (
                       <>
-                        <Tag tone="ok">{projects.data?.length ?? 0} projects</Tag>
-                        <Tag tone="ok">{totalSessions} sessions</Tag>
+                        <Tag tone="ok">
+                          {projects.data?.length ?? 0}{' '}
+                          {plural(projects.data?.length ?? 0, 'проект', 'проекта', 'проектов')}
+                        </Tag>
+                        <Tag tone="ok">
+                          {totalSessions} {plural(totalSessions, 'сессия', 'сессии', 'сессий')}
+                        </Tag>
                         <Tag tone="ok">{formatBytes(totalConvSize)}</Tag>
                       </>
                     )}
@@ -221,8 +227,8 @@ export function SettingsLayout() {
 
               <Section
                 id="updates"
-                title="Updates"
-                subtitle="New versions download in the background from GitHub releases. Restart installs them: Windows asks for admin rights once, then the app reopens."
+                title="Обновления"
+                subtitle="Новые версии скачиваются в фоне из GitHub Releases. «Перезапустить» ставит их: Windows один раз запросит права администратора, затем приложение откроется снова."
               >
                 <Updates />
               </Section>
@@ -236,9 +242,9 @@ export function SettingsLayout() {
 
 function checkedAgo(ms: number): string {
   const minutes = Math.floor((Date.now() - ms) / 60_000);
-  if (minutes < 1) return 'checked just now';
-  if (minutes < 60) return `checked ${minutes} min ago`;
-  return `checked at ${formatTime(new Date(ms).toISOString())}`;
+  if (minutes < 1) return 'проверено только что';
+  if (minutes < 60) return `проверено ${minutes} мин назад`;
+  return `проверено в ${formatTime(new Date(ms).toISOString())}`;
 }
 
 function Updates() {
@@ -261,12 +267,12 @@ function Updates() {
 
   return (
     <Rows>
-      <Row label="Installed">
+      <Row label="Установлена">
         <span>v{status?.current ?? version}</span>
         {checking || phase === 'checking' ? (
-          <Tag>checking…</Tag>
+          <Tag>проверка…</Tag>
         ) : status?.lastCheck && !available && !status.error ? (
-          <Tag tone="ok">latest version</Tag>
+          <Tag tone="ok">последняя версия</Tag>
         ) : null}
         {status?.lastCheck && !checking && phase !== 'checking' ? (
           <Tag>{checkedAgo(status.lastCheck)}</Tag>
@@ -288,22 +294,22 @@ function Updates() {
             )}
             strokeWidth={1.75}
           />
-          Check now
+          Проверить
         </button>
       </Row>
       {available && (
-        <Row label="Available">
+        <Row label="Доступна">
           <span>v{available.version}</span>
           {phase === 'downloading' ? (
             <Tag>
               {status?.downloaded
-                ? `downloading ${formatBytes(status.downloaded)}${status.total ? ` of ${formatBytes(status.total)}` : ''}`
-                : 'downloading…'}
+                ? `загрузка ${formatBytes(status.downloaded)}${status.total ? ` из ${formatBytes(status.total)}` : ''}`
+                : 'загрузка…'}
             </Tag>
           ) : phase === 'installing' ? (
-            <Tag>installing, the app will restart</Tag>
+            <Tag>установка, приложение перезапустится</Tag>
           ) : phase === 'ready' ? (
-            <Tag tone="ok">downloaded</Tag>
+            <Tag tone="ok">загружена</Tag>
           ) : null}
           {(phase === 'ready' || phase === 'installing') && (
             <button
@@ -319,13 +325,13 @@ function Updates() {
               )}
             >
               <Download className="h-3.5 w-3.5" strokeWidth={2} />
-              Restart to update
+              Перезапустить
             </button>
           )}
           {phase === 'downloading' && (
             <span
               role="progressbar"
-              aria-label="Downloading update"
+              aria-label="Загрузка обновления"
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={percent ?? undefined}
@@ -340,7 +346,7 @@ function Updates() {
         </Row>
       )}
       {status?.error && (
-        <Row label="Last error">
+        <Row label="Ошибка">
           <span className="min-w-0 text-xs font-medium text-[var(--color-warning)] [overflow-wrap:anywhere]">
             {status.error}
           </span>
@@ -449,7 +455,7 @@ function PathValue({ path }: { path: string }) {
 
 function RevealButton({
   path,
-  label = 'Show in Explorer',
+  label = 'В Проводнике',
   inline,
 }: {
   path: string;
@@ -518,7 +524,7 @@ function Skeleton({ short }: { short?: boolean }) {
   const widths = short ? ['w-40'] : ['w-[62%]', 'w-[44%]', 'w-[70%]'];
   return (
     <span className="flex w-full flex-col gap-2.5" aria-busy="true">
-      <span className="sr-only">Loading</span>
+      <span className="sr-only">Загрузка</span>
       {widths.map((w) => (
         <i
           key={w}
@@ -552,7 +558,7 @@ function Backups({ items }: { items: ConfigBackup[] }) {
   if (!latest) {
     return (
       <p className="text-[13px] font-medium text-[var(--color-text-muted)]">
-        No copies yet. They appear before the first switch changes a config file.
+        Копий пока нет. Появятся перед первым переключением, меняющим конфиг.
       </p>
     );
   }
@@ -566,14 +572,14 @@ function Backups({ items }: { items: ConfigBackup[] }) {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex flex-1 flex-wrap gap-1.5">
-          <SoftChip value={items.length} unit={items.length === 1 ? 'copy' : 'copies'} />
+          <SoftChip value={items.length} unit={plural(items.length, 'копия', 'копии', 'копий')} />
           <SoftChip value={totalValue} unit={totalUnit} />
           <SoftChip
             value={`${latestDay.lead ?? latestDay.date} ${formatTime(latestIso)}`}
-            unit="latest"
+            unit="последняя"
           />
         </span>
-        <RevealButton path={folder} label="Open folder" inline />
+        <RevealButton path={folder} label="Папка" inline />
         <button
           type="button"
           onClick={() => setOpenList((v) => !v)}
@@ -584,7 +590,7 @@ function Backups({ items }: { items: ConfigBackup[] }) {
             focusRing,
           )}
         >
-          {openList ? 'Hide list' : 'Show list'}
+          {openList ? 'Скрыть' : 'Список'}
           <ChevronDown
             className={cn(
               'h-3.5 w-3.5 text-[var(--color-text-muted)] transition-transform duration-200 ease-[var(--ease-trail)]',
@@ -618,8 +624,8 @@ function Backups({ items }: { items: ConfigBackup[] }) {
                 <button
                   type="button"
                   onClick={() => reveal(b.backupPath)}
-                  title="Show in Explorer"
-                  aria-label={`Show copy of ${fileName(b.file)} in Explorer`}
+                  title="В Проводнике"
+                  aria-label={`Показать копию ${fileName(b.file)} в Проводнике`}
                   className={cn(
                     'grid h-8 w-8 place-items-center rounded-full text-[var(--color-text-muted)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]',
                     softFill,

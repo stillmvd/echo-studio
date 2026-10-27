@@ -18,6 +18,7 @@ import { useSessionEvents } from '@/hooks/use-session';
 import { useDeleteSession } from '@/hooks/use-session-actions';
 import { parseAsk } from '@/lib/ask-question';
 import { cn } from '@/lib/cn';
+import { plural } from '@/lib/dashboard';
 import { openInClaudeCode } from '@/lib/ipc';
 import { eventsToMarkdown } from '@/lib/session-export';
 import {
@@ -137,17 +138,17 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
     if (!events.data) return;
     try {
       const target = await save({
-        title: 'Export session as markdown',
+        title: 'Экспорт сессии в Markdown',
         defaultPath: exportFileName(title, session),
         filters: [{ name: 'Markdown', extensions: ['md'] }],
       });
       if (!target) return;
       const md = eventsToMarkdown(title, events.data);
       await invoke<void>('write_text_file', { filePath: target, content: md });
-      setExportStatus(`Saved to ${target}`);
+      setExportStatus(`Сохранено: ${target}`);
       setTimeout(() => setExportStatus(null), 2000);
     } catch (e) {
-      setExportStatus(`Export failed: ${String(e)}`);
+      setExportStatus(`Не удалось экспортировать: ${String(e)}`);
     }
   };
 
@@ -166,8 +167,8 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
           <button
             type="button"
             onClick={onBack}
-            title="Back to sessions"
-            aria-label="Back to sessions"
+            title="К сессиям"
+            aria-label="К сессиям"
             className={circle}
           >
             <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
@@ -195,21 +196,21 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Find in session"
-                aria-label="Find in session"
+                placeholder="Найти в сессии"
+                aria-label="Найти в сессии"
                 className="min-w-0 flex-1 bg-transparent text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
               />
               {q && events.data && (
                 <span className="inline-flex h-[26px] shrink-0 items-center rounded-full bg-[var(--color-bg-tertiary)] px-[9px] text-[11px] tabular-nums">
-                  {feed.length} of {allNodes.length}
+                  {feed.length} из {allNodes.length}
                 </span>
               )}
               {query && (
                 <button
                   type="button"
                   onClick={() => setQuery('')}
-                  title="Clear search"
-                  aria-label="Clear search"
+                  title="Очистить"
+                  aria-label="Очистить"
                   className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--color-bg-tertiary)] outline-none hover:text-[var(--color-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -222,8 +223,8 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
                 onClick={() => {
                   openInClaudeCode(session.cwd ?? undefined, session.sessionId).catch(() => {});
                 }}
-                title="Open in Claude"
-                aria-label="Open in Claude"
+                title="Открыть в Claude"
+                aria-label="Открыть в Claude"
                 className={circle}
               >
                 <ClaudeIcon className="h-4 w-4" />
@@ -233,8 +234,8 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
               <button
                 type="button"
                 onClick={() => setRenameOpen(true)}
-                title="Rename"
-                aria-label="Rename"
+                title="Переименовать"
+                aria-label="Переименовать"
                 className={circle}
               >
                 <Pencil className="h-4 w-4" strokeWidth={1.75} />
@@ -244,8 +245,8 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
               type="button"
               onClick={onExport}
               disabled={!events.data || events.data.length === 0}
-              title="Export as Markdown"
-              aria-label="Export as Markdown"
+              title="Экспорт в Markdown"
+              aria-label="Экспорт в Markdown"
               className={circle}
             >
               <Download className="h-4 w-4" strokeWidth={1.75} />
@@ -254,8 +255,8 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
               type="button"
               onClick={() => setConfirmDelete(true)}
               disabled={del.isPending}
-              title="Delete session"
-              aria-label="Delete session"
+              title="Удалить сессию"
+              aria-label="Удалить сессию"
               className={cn(
                 circle,
                 'hover:bg-[var(--color-danger-soft)] hover:text-[var(--color-danger)]',
@@ -267,10 +268,10 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
         </div>
         <div className="flex gap-1.5">
           <Toggle checked={showThinking} onClick={toggleShowThinking}>
-            Thinking
+            Мысли
           </Toggle>
           <Toggle checked={showSystem} onClick={toggleShowSystem}>
-            System events
+            Системные
           </Toggle>
         </div>
       </header>
@@ -279,26 +280,26 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
         <CenterNote>
           <span className="inline-flex items-center gap-2">
             <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--color-accent)] shadow-[0_0_8px_var(--color-glow-strong)] motion-reduce:animate-none" />
-            Loading session…
+            Загрузка сессии…
           </span>
         </CenterNote>
       ) : events.isError ? (
         <CenterNote>
-          <span>Couldn't read this session.</span>
+          <span>Не удалось прочитать сессию.</span>
           <span className="max-w-[460px] rounded-2xl bg-[var(--color-danger-soft)] px-4 py-3 text-left font-mono text-xs break-words text-[var(--color-danger)]">
             {String(events.error)}
           </span>
-          <LinkButton onClick={() => void events.refetch()}>Try again</LinkButton>
+          <LinkButton onClick={() => void events.refetch()}>Повторить</LinkButton>
         </CenterNote>
       ) : feed.length === 0 ? (
         <CenterNote>
           {q ? (
             <>
-              <span>No messages match «{query.trim()}».</span>
-              <LinkButton onClick={() => setQuery('')}>Clear search</LinkButton>
+              <span>Нет сообщений по «{query.trim()}».</span>
+              <LinkButton onClick={() => setQuery('')}>Очистить</LinkButton>
             </>
           ) : (
-            <span>No messages to show.</span>
+            <span>Нет сообщений.</span>
           )}
         </CenterNote>
       ) : (
@@ -319,10 +320,10 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
       <ConfirmDialog
         open={confirmDelete}
         busy={del.isPending}
-        title="Delete this session permanently?"
-        description="The .jsonl file will be removed from disk. This cannot be undone via this app."
+        title="Удалить сессию насовсем?"
+        description="Файл .jsonl будет удалён с диска. Отменить это в Echo Studio нельзя."
         subject={session ? sessionSubject(session) : { title }}
-        confirmLabel="Delete"
+        confirmLabel="Удалить"
         danger
         onConfirm={async () => {
           await del.mutateAsync(filePath);
@@ -409,7 +410,7 @@ function FeedRow({ node, showThinking }: { node: FeedNode; showThinking: boolean
     case 'image':
       return (
         <p className="px-1 text-xs font-medium text-[var(--color-text-muted)]">
-          Image attached · {formatTime(node.item.timestamp)}
+          Изображение ·{formatTime(node.item.timestamp)}
         </p>
       );
     case 'system':
@@ -441,12 +442,12 @@ function MessageCard({
             user ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-primary)]',
           )}
         >
-          {user ? 'You' : 'Claude'}
+          {user ? 'Вы' : 'Claude'}
         </span>
         <span>{formatTime(node.item.timestamp)}</span>
         {showThinking && node.thought && (
           <span className="inline-flex h-5 items-center rounded-full bg-[var(--color-bg-secondary)] px-2 text-[11px]">
-            thought
+            мысли
           </span>
         )}
       </header>
@@ -459,7 +460,7 @@ function MessageCard({
       {node.paste !== null && <PastedBlock text={node.paste} />}
       {node.turnMs !== null && (
         <span className="mt-1 text-[11px] font-medium text-[var(--color-text-muted)] tabular-nums">
-          turn {formatDuration(node.turnMs)}
+          ответ {formatDuration(node.turnMs)}
         </span>
       )}
     </article>
@@ -472,15 +473,15 @@ function PastedBlock({ text }: { text: string }) {
   return (
     <div className="mt-1 overflow-hidden rounded-2xl bg-[var(--color-bg-primary)]">
       <div className="flex h-9 items-center gap-2 pr-2 pl-3.5 text-xs font-medium text-[var(--color-text-muted)]">
-        <b className="text-[var(--color-text-primary)]">Pasted</b>· {lines.length}{' '}
-        {lines.length === 1 ? 'line' : 'lines'}
+        <b className="text-[var(--color-text-primary)]">Вставка</b>· {lines.length}{' '}
+        {plural(lines.length, 'строка', 'строки', 'строк')}
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           className="ml-auto inline-flex h-[26px] items-center rounded-full bg-[var(--color-bg-tertiary)] px-3 text-[var(--color-text-primary)] outline-none hover:bg-[var(--color-hover)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
         >
-          {open ? 'Collapse' : 'Show all'}
+          {open ? 'Скрыть' : 'Показать'}
         </button>
       </div>
       <pre
@@ -565,7 +566,7 @@ function ToolStepRow({ step }: { step: ToolStep }) {
     [use, result],
   );
   const summary = ask
-    ? `${ask.questions.length} ${ask.questions.length === 1 ? 'question' : 'questions'}`
+    ? `${ask.questions.length} ${plural(ask.questions.length, 'вопрос', 'вопроса', 'вопросов')}`
     : (use?.toolInputSummary ?? '');
   return (
     <div
@@ -588,7 +589,7 @@ function ToolStepRow({ step }: { step: ToolStep }) {
             error ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-primary)]',
           )}
         >
-          {use?.toolName ?? 'Result'}
+          {use?.toolName ?? 'Результат'}
         </b>
         <span className="min-w-0 truncate font-mono text-xs">{summary}</span>
         <span className="ml-auto shrink-0 text-[11px] tabular-nums">
@@ -598,10 +599,8 @@ function ToolStepRow({ step }: { step: ToolStep }) {
       {ask && <AskQuestionCard card={ask} />}
       {open ? (
         <div className="flex flex-col gap-1.5">
-          {use && <CodeBlock label="Input" text={stepInput(use)} />}
-          {result && (
-            <CodeBlock label={error ? 'Error' : 'Output'} text={output || '(no output)'} />
-          )}
+          {use && <CodeBlock label="Ввод" text={stepInput(use)} />}
+          {result && <CodeBlock label={error ? 'Ошибка' : 'Вывод'} text={output || '(пусто)'} />}
         </div>
       ) : (
         output &&

@@ -33,7 +33,7 @@ pub fn same_project(a: &str, b: &str) -> bool {
 pub fn ensure_allowed(path: &Path, roots: &[PathBuf]) -> Result<PathBuf, String> {
     let canonical = path
         .canonicalize()
-        .map_err(|e| format!("cannot resolve {}: {e}", path.display()))?;
+        .map_err(|e| format!("Не удалось проверить {}: {e}", path.display()))?;
     let allowed = roots
         .iter()
         .filter_map(|r| r.canonicalize().ok())
@@ -41,10 +41,7 @@ pub fn ensure_allowed(path: &Path, roots: &[PathBuf]) -> Result<PathBuf, String>
     if allowed {
         Ok(canonical)
     } else {
-        Err(format!(
-            "refusing: {} is outside allowed folders",
-            path.display()
-        ))
+        Err(format!("Путь вне разрешённых папок: {}", path.display()))
     }
 }
 

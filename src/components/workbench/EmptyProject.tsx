@@ -157,12 +157,12 @@ export function EmptyProject({ project, server, visible, busy, onStart }: Props)
       <ConfirmDialog
         open={!!removing}
         danger
-        title="Удалить разговор?"
+        title="Удалить сессию?"
         description="Файл .jsonl удалится с диска, вернуть его из Echo нельзя."
         subject={removing ? sessionSubject(removing) : null}
         confirmLabel="Удалить"
-        doneToast="Разговор удалён"
-        failToast="Разговор не удалился"
+        doneToast="Сессия удалена"
+        failToast="Сессия не удалилась"
         busy={del.isPending}
         onCancel={() => setRemoving(null)}
         onConfirm={async () => {

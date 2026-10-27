@@ -6,9 +6,9 @@ use tauri::AppHandle;
 pub async fn write_text_file(file_path: String, content: String) -> Result<(), String> {
     let path = PathBuf::from(&file_path);
     if path.extension().and_then(|e| e.to_str()) != Some("md") {
-        return Err(format!("refusing to write non-markdown file: {file_path}"));
+        return Err(format!("Запись только в .md: {file_path}"));
     }
-    std::fs::write(&path, content).map_err(|e| format!("write_text_file: {e}"))
+    std::fs::write(&path, content).map_err(|e| format!("Не удалось записать файл: {e}"))
 }
 
 #[tauri::command]
@@ -19,10 +19,10 @@ pub async fn reveal_in_explorer(app: AppHandle, path: String) -> Result<(), Stri
             .command("explorer")
             .args([format!("/select,{path}")])
             .spawn()
-            .map_err(|e| format!("spawn explorer: {e}"))?;
+            .map_err(|e| format!("Не удалось открыть Проводник: {e}"))?;
         Ok(())
     } else {
-        Err("reveal_in_explorer is windows-only".into())
+        Err("Только для Windows".into())
     }
 }
 
@@ -34,11 +34,11 @@ pub async fn open_in_claude_code(
 ) -> Result<String, String> {
     let target_dir = resolve_cwd(cwd);
     if !std::path::Path::new(&target_dir).is_dir() {
-        return Err(format!("not a directory: {target_dir}"));
+        return Err(format!("Не папка: {target_dir}"));
     }
     let claude = match session_id {
         Some(id) if is_session_id(&id) => format!("claude --resume {id}"),
-        Some(id) => return Err(format!("invalid session id: {id}")),
+        Some(id) => return Err(format!("Неверный id сессии: {id}")),
         None => "claude".to_string(),
     };
 
@@ -67,7 +67,7 @@ pub async fn open_in_claude_code(
         .command("wt")
         .args(args)
         .spawn()
-        .map_err(|e| format!("failed to spawn `wt`: {e}"))?;
+        .map_err(|e| format!("Не удалось запустить `wt`: {e}"))?;
 
     Ok(target_dir)
 }

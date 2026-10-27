@@ -127,7 +127,7 @@ fn read_item(
     fallback_name: String,
 ) -> ToolItem {
     let parsed = fs::read_to_string(file)
-        .map_err(|e| format!("read: {e}"))
+        .map_err(|e| format!("Не удалось прочитать: {e}"))
         .and_then(|t| parse(&t));
     let (name, description, fields, error) = match parsed {
         Ok(p) => {

@@ -115,7 +115,7 @@ export function ClaudeTerminal({
           </button>
           <button type="button" className="wb-btn wb-stop" onClick={onStop}>
             <Square fill="currentColor" strokeWidth={2} />
-            Завершить сессию
+            Завершить
           </button>
         </div>
       )}

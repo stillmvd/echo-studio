@@ -128,7 +128,7 @@ pub fn is_session_id(id: &str) -> bool {
 
 pub fn parse_agents(text: &str) -> Result<Vec<AgentEntry>, String> {
     let list = serde_json::from_str::<Vec<Value>>(text.trim())
-        .map_err(|e| format!("claude agents --json: {e}"))?;
+        .map_err(|e| format!("Не удалось выполнить claude agents --json: {e}"))?;
     Ok(list
         .into_iter()
         .filter_map(|v| serde_json::from_value(v).ok())
@@ -201,7 +201,7 @@ fn claude(args: &[&str], cwd: Option<&Path>) -> Result<Output, String> {
             None if Instant::now() >= deadline => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err(format!("{what}: no answer in {}s", timeout.as_secs()));
+                return Err(format!("{what}: нет ответа за {} с", timeout.as_secs()));
             }
             None => std::thread::sleep(Duration::from_millis(50)),
         }
@@ -260,7 +260,7 @@ pub fn run_agents() -> Result<Vec<AgentEntry>, String> {
 
 fn shell_agent(short_id: &str, max_age: Duration) -> Result<Option<AgentEntry>, String> {
     if !is_short_id(short_id) {
-        return Err(format!("invalid short id: {short_id}"));
+        return Err(format!("Неверный короткий id: {short_id}"));
     }
     let Some(agent) = run_agents_cached(max_age)?
         .into_iter()
@@ -269,16 +269,16 @@ fn shell_agent(short_id: &str, max_age: Duration) -> Result<Option<AgentEntry>, 
         return Ok(None);
     };
     if agent.kind.as_deref() != Some("background") {
-        return Err(format!("session {short_id} is not a background session"));
+        return Err(format!("Сессия {short_id} не фоновая"));
     }
-    let root = projects_root().ok_or("cannot resolve Projects root")?;
+    let root = projects_root().ok_or("Не найдена папка Projects")?;
     let tree = projects::scan(&root);
     let inside = agent
         .cwd
         .as_deref()
         .is_some_and(|cwd| projects::place_for(&tree, cwd).is_some());
     if !inside {
-        return Err(format!("session {short_id} is outside known projects"));
+        return Err(format!("Сессия {short_id} вне известных проектов"));
     }
     Ok(Some(agent))
 }
@@ -491,7 +491,7 @@ pub fn list() -> Result<Vec<ClaudeSession>, String> {
 
 pub fn session_pid(session_id: &str) -> Result<u32, String> {
     if !is_session_id(session_id) {
-        return Err(format!("invalid session id: {session_id}"));
+        return Err(format!("Неверный id сессии: {session_id}"));
     }
     let agents = run_agents_cached(AGENTS_FRESH);
     let from_agents = agents.as_ref().ok().and_then(|list| {
@@ -502,8 +502,8 @@ pub fn session_pid(session_id: &str) -> Result<u32, String> {
     let pid = from_agents
         .or_else(|| hook_pid(session_id))
         .ok_or_else(|| match &agents {
-            Err(e) => format!("no claude pid for session {session_id}: {e}"),
-            Ok(_) => format!("no claude pid for session {session_id}"),
+            Err(e) => format!("Не найден pid claude для сессии {session_id}: {e}"),
+            Ok(_) => format!("Не найден pid claude для сессии {session_id}"),
         })?;
     ensure_claude(pid)
 }
@@ -521,7 +521,7 @@ fn ensure_claude(pid: u32) -> Result<u32, String> {
     if pid != 0 && alive_claudes(&[pid]) == [pid] {
         Ok(pid)
     } else {
-        Err("session process is not running".to_owned())
+        Err("Процесс сессии не запущен".to_owned())
     }
 }
 
@@ -536,7 +536,7 @@ pub fn parse_backgrounded(text: &str) -> Option<String> {
 pub fn start(project: &Path, resume: Option<&str>) -> Result<Started, String> {
     if let Some(id) = resume {
         if !is_session_id(id) {
-            return Err(format!("invalid session id: {id}"));
+            return Err(format!("Неверный id сессии: {id}"));
         }
         let live = run_agents()?
             .into_iter()
@@ -547,7 +547,7 @@ pub fn start(project: &Path, resume: Option<&str>) -> Result<Started, String> {
                     session_id: Some(id.to_string()),
                     short_id,
                 }),
-                None => Err("the conversation is open outside the workbench".into()),
+                None => Err("Сессия открыта вне Рабочего места".into()),
             };
         }
     }
@@ -564,7 +564,7 @@ pub fn start(project: &Path, resume: Option<&str>) -> Result<Started, String> {
         return Err(UNTRUSTED.into());
     }
     let short_id = parse_backgrounded(&text)
-        .ok_or_else(|| format!("unexpected claude --bg output: {}", text.trim()))?;
+        .ok_or_else(|| format!("Неожиданный ответ claude --bg: {}", text.trim()))?;
     invalidate_agents();
     for _ in 0..10 {
         let found = run_agents()
@@ -590,7 +590,7 @@ pub fn start(project: &Path, resume: Option<&str>) -> Result<Started, String> {
 
 pub fn stop(short_id: &str) -> Result<(), String> {
     match shell_agent(short_id, Duration::ZERO)? {
-        None => Err(format!("no session {short_id}")),
+        None => Err(format!("Нет сессии {short_id}")),
         Some(agent) if !is_live(&agent) => Ok(()),
         Some(_) => claude(&["stop", short_id], None).map(|_| invalidate_agents()),
     }
@@ -599,7 +599,7 @@ pub fn stop(short_id: &str) -> Result<(), String> {
 pub fn restart(project: &Path, session_id: &str, short_id: &str) -> Result<Started, String> {
     let pid = shell_agent(short_id, Duration::ZERO)?
         .filter(|a| a.session_id.as_deref() == Some(session_id))
-        .ok_or_else(|| format!("no session {short_id}"))?
+        .ok_or_else(|| format!("Нет сессии {short_id}"))?
         .pid;
     stop(short_id)?;
     let deadline = Instant::now() + RESTART_WAIT;
@@ -612,7 +612,7 @@ pub fn restart(project: &Path, session_id: &str, short_id: &str) -> Result<Start
             break;
         }
         if Instant::now() >= deadline {
-            return Err(format!("session {short_id} did not stop in time"));
+            return Err(format!("Сессия {short_id} не остановилась вовремя"));
         }
         std::thread::sleep(Duration::from_millis(300));
     }
@@ -622,7 +622,7 @@ pub fn restart(project: &Path, session_id: &str, short_id: &str) -> Result<Start
 pub fn forget(short_id: &str) -> Result<(), String> {
     match shell_agent(short_id, Duration::ZERO)? {
         None => Ok(()),
-        Some(agent) if is_live(&agent) => Err(format!("session {short_id} is still running")),
+        Some(agent) if is_live(&agent) => Err(format!("Сессия {short_id} ещё работает")),
         Some(_) => claude(&["rm", short_id], None).map(|_| invalidate_agents()),
     }
 }
@@ -630,7 +630,7 @@ pub fn forget(short_id: &str) -> Result<(), String> {
 pub fn ensure_attachable(short_id: &str) -> Result<(), String> {
     shell_agent(short_id, AGENTS_FRESH)?
         .map(|_| ())
-        .ok_or_else(|| format!("no session {short_id}"))
+        .ok_or_else(|| format!("Нет сессии {short_id}"))
 }
 
 #[cfg(test)]

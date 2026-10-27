@@ -68,7 +68,7 @@ export function NoticeStep({ notice }: { notice: AgentNotice }) {
                 <Markdown body={notice.result} className="feed-md text-[13px]" />
               </div>
               <button type="button" onClick={() => setOpen(false)} className={more}>
-                Show less
+                Скрыть
               </button>
             </>
           ) : (
@@ -77,7 +77,7 @@ export function NoticeStep({ notice }: { notice: AgentNotice }) {
                 {preview}
               </pre>
               <button type="button" onClick={() => setOpen(true)} className={more}>
-                Show more
+                Показать
               </button>
             </>
           )}

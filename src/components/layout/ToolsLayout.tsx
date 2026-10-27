@@ -8,7 +8,7 @@ import type { ScopeRef, ToolItem } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { PanelSeparator, panelCard } from './panels';
 
-const GLOBAL: ScopeRef = { kind: 'global', path: null, name: 'Global', available: true };
+const GLOBAL: ScopeRef = { kind: 'global', path: null, name: 'Общие', available: true };
 
 export function ToolsLayout() {
   const scopePath = useUiStore((s) => s.toolsScope);

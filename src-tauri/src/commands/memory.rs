@@ -30,21 +30,21 @@ pub struct Archived {
 fn root() -> Result<PathBuf, String> {
     dirs::home_dir()
         .map(|h| projects_root(&h))
-        .ok_or_else(|| "cannot resolve home folder".to_string())
+        .ok_or_else(|| "Не найдена домашняя папка".to_string())
 }
 
 fn ignored_file(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
         .app_data_dir()
         .map(|d| d.join("memory-dupes-ignored.json"))
-        .map_err(|e| format!("cannot resolve app data folder: {e}"))
+        .map_err(|e| format!("Нет доступа к папке данных приложения: {e}"))
 }
 
 fn backups_root(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
         .app_data_dir()
         .map(|d| d.join("memory-backups"))
-        .map_err(|e| format!("cannot resolve app data folder: {e}"))
+        .map_err(|e| format!("Нет доступа к папке данных приложения: {e}"))
 }
 
 #[tauri::command]
@@ -71,7 +71,7 @@ pub async fn read_memory_file(path: String) -> Result<MemoryFile, String> {
         let at = locate(&PathBuf::from(&path), &root)?;
         fs::read_to_string(&at.path)
             .map(|text| MemoryFile { text })
-            .map_err(|e| format!("read {}: {e}", at.path.display()))
+            .map_err(|e| format!("Не удалось прочитать {}: {e}", at.path.display()))
     })
     .await?
 }

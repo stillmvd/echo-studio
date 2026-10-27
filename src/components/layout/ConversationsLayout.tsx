@@ -40,7 +40,7 @@ export function ConversationsLayout() {
         <div className="flex h-full flex-col overflow-hidden">
           <CrossSessionSearch projectId={projectId}>
             {projects.isLoading ? (
-              <p className="px-2 text-sm text-[var(--color-text-muted)]">Loading…</p>
+              <p className="px-2 text-sm text-[var(--color-text-muted)]">Загрузка…</p>
             ) : (
               <ConversationsProjectSidebar
                 projects={projects.data ?? []}
@@ -65,7 +65,7 @@ export function ConversationsLayout() {
                 : (selectedSessionPath
                     .split(/[/\\]/)
                     .pop()
-                    ?.replace(/\.jsonl$/, '') ?? 'session')
+                    ?.replace(/\.jsonl$/, '') ?? 'сессия')
             }
             session={selectedSession}
             onBack={() => setSelectedSessionPath(null)}

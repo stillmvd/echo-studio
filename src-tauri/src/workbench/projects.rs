@@ -274,15 +274,15 @@ fn ensure_in<'a>(mut list: impl Iterator<Item = &'a Project>, path: &str) -> Opt
 }
 
 pub fn ensure_project(path: &str) -> Result<Project, String> {
-    let root = super::projects_root().ok_or("cannot resolve Projects root")?;
+    let root = super::projects_root().ok_or("Не найдена папка Projects")?;
     let tree = scan(&root);
-    ensure_in(all_projects(&tree), path).ok_or_else(|| format!("not a known project: {path}"))
+    ensure_in(all_projects(&tree), path).ok_or_else(|| format!("Неизвестный проект: {path}"))
 }
 
 pub fn ensure_place(path: &str) -> Result<Project, String> {
-    let root = super::projects_root().ok_or("cannot resolve Projects root")?;
+    let root = super::projects_root().ok_or("Не найдена папка Projects")?;
     let tree = scan(&root);
-    ensure_in(places(&tree), path).ok_or_else(|| format!("not a known project or folder: {path}"))
+    ensure_in(places(&tree), path).ok_or_else(|| format!("Неизвестный проект или папка: {path}"))
 }
 
 #[cfg(test)]

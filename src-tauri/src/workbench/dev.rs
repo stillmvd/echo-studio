@@ -374,7 +374,7 @@ fn files() -> std::sync::MutexGuard<'static, ()> {
 
 fn update_file(dir: &Path, slug: &str, change: impl FnOnce(&mut DevFile)) -> Result<(), String> {
     let _lock = files();
-    let mut file = read_file(dir, slug).ok_or("dev server was never started")?;
+    let mut file = read_file(dir, slug).ok_or("dev-сервер не запускался")?;
     change(&mut file);
     write_file(dir, slug, &file)
 }
@@ -722,7 +722,7 @@ fn launch(
             .and_then(|f| f.exit_code)
             .is_some_and(|code| code != 0);
         if !failed || !ports_for(&members, &listeners()).is_empty() {
-            return Err("dev server is already running".into());
+            return Err("dev-сервер уже запущен".into());
         }
         stop_in(dir, project_path)?;
     }
@@ -733,7 +733,7 @@ fn launch(
         Err(e) if e.raw_os_error() == Some(ERROR_ACCESS_DENIED) => spawn(cwd, &line, &log, false),
         other => other,
     }
-    .map_err(|e| format!("failed to start `{line}`: {e}"))?;
+    .map_err(|e| format!("Не удалось запустить `{line}`: {e}"))?;
     if let Err(e) = job.assign(&child) {
         let _ = child.kill();
         return Err(e);
@@ -763,7 +763,7 @@ fn launch(
             drop(rt);
             job.terminate();
             let _ = child.kill();
-            return Err("dev server was stopped during the restart".into());
+            return Err("dev-сервер остановлен во время перезапуска".into());
         }
         rt.insert(slug.clone(), Runtime::default());
     }
@@ -803,8 +803,8 @@ pub fn start(
 ) -> Result<DevServer, String> {
     let project = super::projects::ensure_project(project_path)?;
     let cwd = PathBuf::from(&project.path);
-    let (args, _) = super::projects::dev_args(&cwd).ok_or("project has no dev command")?;
-    let dir = state_dir().ok_or("cannot resolve state dir")?;
+    let (args, _) = super::projects::dev_args(&cwd).ok_or("У проекта нет dev-команды")?;
+    let dir = state_dir().ok_or("Нет папки состояния dev")?;
     start_in(&dir, &project.path, &cwd, &args, on_exit)
 }
 
@@ -963,7 +963,7 @@ fn plan_stop(
 
 pub fn stop_in(dir: &Path, project_path: &str) -> Result<(), String> {
     let slug = slug(project_path);
-    let file = read_file(dir, &slug).ok_or("dev server was never started")?;
+    let file = read_file(dir, &slug).ok_or("dev-сервер не запускался")?;
     runtime().entry(slug.clone()).or_default().stopping = true;
     if let Some(job) = Job::open(&slug) {
         let mut seen: HashSet<(u32, u64)> = file.seen.iter().copied().collect();
@@ -1019,7 +1019,7 @@ pub fn stop_in(dir: &Path, project_path: &str) -> Result<(), String> {
 
 pub fn stop(project_path: &str) -> Result<(), String> {
     let project = super::projects::ensure_project(project_path)?;
-    let dir = state_dir().ok_or("cannot resolve state dir")?;
+    let dir = state_dir().ok_or("Нет папки состояния dev")?;
     stop_in(&dir, &project.path)
 }
 
@@ -1059,7 +1059,7 @@ pub fn read_new(path: &Path, pos: u64) -> std::io::Result<(Vec<u8>, u64)> {
 }
 
 pub fn tail(project_path: &str, channel: Channel<Vec<u8>>) -> Result<u32, String> {
-    let dir = state_dir().ok_or("cannot resolve state dir")?;
+    let dir = state_dir().ok_or("Нет папки состояния dev")?;
     let path = dir.join(format!("{}.log", slug(project_path)));
     let id = NEXT_TAIL.fetch_add(1, Ordering::Relaxed);
     let alive = Arc::new(AtomicBool::new(true));

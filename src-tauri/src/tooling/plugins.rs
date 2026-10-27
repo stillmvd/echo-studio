@@ -102,7 +102,7 @@ pub fn scan_plugin(p: &Installed) -> PluginScan {
     if !p.install_path.is_dir() {
         plugin.state = State::Unavailable;
         plugin.error = Some(format!(
-            "plugin folder not found: {}",
+            "Папка plugin не найдена: {}",
             p.install_path.display()
         ));
         plugin.file_path = Some(p.install_path.to_string_lossy().into_owned());

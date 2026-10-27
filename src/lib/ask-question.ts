@@ -110,8 +110,8 @@ export function askToMarkdown(card: AskCard): string {
     .map((q) => {
       const chosen = q.options.filter((o) => o.picked).map((o) => o.label);
       if (q.other) chosen.push(q.other);
-      const answer = card.answered ? chosen.join(', ') || '—' : 'No answer';
-      const note = q.notes ? `\n  Note: ${q.notes}` : '';
+      const answer = card.answered ? chosen.join(', ') || '—' : 'нет ответа';
+      const note = q.notes ? `\n  Заметка: ${q.notes}` : '';
       return `- **${q.question}** → ${answer}${note}`;
     })
     .join('\n');

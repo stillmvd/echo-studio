@@ -13,9 +13,9 @@ use super::{
 };
 use crate::conversations::paths::display_name;
 
-pub const HINT_PLUGIN_CHILD: &str = "Turns on and off with its plugin";
-pub const HINT_COMMAND: &str = "Claude Code has no switch for commands";
-pub const HINT_AGENT: &str = "Claude Code has no switch for agents";
+pub const HINT_PLUGIN_CHILD: &str = "Включается и выключается вместе с plugin";
+pub const HINT_COMMAND: &str = "У Claude Code нет переключателя для commands";
+pub const HINT_AGENT: &str = "У Claude Code нет переключателя для agents";
 
 fn load(path: &Path, sources: &mut Vec<SourceStatus>) -> Option<Value> {
     match read_json(path) {

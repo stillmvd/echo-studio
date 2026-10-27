@@ -29,24 +29,21 @@ pub struct BulkDeleteResult {
 }
 
 fn ensure_path_within_projects(path: &Path) -> Result<(), String> {
-    let root = projects_root().ok_or("cannot resolve projects root")?;
+    let root = projects_root().ok_or("Не найдена папка проектов Claude")?;
     let canonical_root = root
         .canonicalize()
-        .map_err(|e| format!("canonicalize root: {e}"))?;
+        .map_err(|e| format!("Не удалось проверить путь: {e}"))?;
     let canonical_path = path
         .canonicalize()
-        .map_err(|e| format!("canonicalize path: {e}"))?;
+        .map_err(|e| format!("Не удалось проверить путь: {e}"))?;
     if !canonical_path.starts_with(&canonical_root) {
         return Err(format!(
-            "refusing: {} is outside ~/.claude/projects",
+            "Файл вне ~/.claude/projects: {}",
             canonical_path.display()
         ));
     }
     if canonical_path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
-        return Err(format!(
-            "refusing: {} is not a .jsonl file",
-            canonical_path.display()
-        ));
+        return Err(format!("Не файл .jsonl: {}", canonical_path.display()));
     }
     Ok(())
 }
@@ -56,7 +53,7 @@ pub(crate) async fn blocking<T: Send + 'static>(
 ) -> Result<T, String> {
     tauri::async_runtime::spawn_blocking(f)
         .await
-        .map_err(|e| format!("task failed: {e}"))
+        .map_err(|e| format!("Сбой фоновой задачи: {e}"))
 }
 
 #[tauri::command]
@@ -96,12 +93,12 @@ pub async fn rename_session(
         .path()
         .app_data_dir()
         .map(|d| d.join("session-backups"))
-        .map_err(|e| format!("cannot resolve app data folder: {e}"))?;
+        .map_err(|e| format!("Нет доступа к папке данных приложения: {e}"))?;
     blocking(move || {
         let session_id = path
             .file_stem()
             .map(|s| s.to_string_lossy().into_owned())
-            .ok_or("no session id")?;
+            .ok_or("У файла нет id сессии")?;
         backup(&path, &backups, SystemTime::now())?;
         append_custom_title(&path, &session_id, &title)?;
         set_title(&session_id, None)
@@ -113,7 +110,7 @@ pub async fn rename_session(
 pub async fn delete_conversation_session(file_path: String) -> Result<(), String> {
     let path = PathBuf::from(&file_path);
     ensure_path_within_projects(&path)?;
-    fs::remove_file(&path).map_err(|e| format!("remove_file: {e}"))?;
+    fs::remove_file(&path).map_err(|e| format!("Не удалось удалить файл: {e}"))?;
     Ok(())
 }
 
@@ -125,9 +122,9 @@ pub async fn bulk_delete_conversation_sessions(
     let mut failed = Vec::new();
     for fp in file_paths {
         let path = PathBuf::from(&fp);
-        match ensure_path_within_projects(&path)
-            .and_then(|()| fs::remove_file(&path).map_err(|e| format!("remove_file: {e}")))
-        {
+        match ensure_path_within_projects(&path).and_then(|()| {
+            fs::remove_file(&path).map_err(|e| format!("Не удалось удалить файл: {e}"))
+        }) {
             Ok(()) => deleted.push(fp),
             Err(e) => failed.push(DeleteFailure { path: fp, error: e }),
         }

@@ -6,7 +6,7 @@ const chip =
   'inline-flex h-5 items-center rounded-full px-2 text-[11px] font-medium whitespace-nowrap';
 
 function Question({ q, answered }: { q: AskQuestion; answered: boolean }) {
-  const tags = [q.header, q.multiSelect ? 'multiple' : null].filter(Boolean);
+  const tags = [q.header, q.multiSelect ? 'несколько' : null].filter(Boolean);
   return (
     <div className="flex flex-col gap-1.5">
       {(tags.length > 0 || !answered) && (
@@ -26,7 +26,7 @@ function Question({ q, answered }: { q: AskQuestion; answered: boolean }) {
                 'bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)]',
               )}
             >
-              No answer
+              Пропущен
             </span>
           )}
         </div>
@@ -63,9 +63,7 @@ function Question({ q, answered }: { q: AskQuestion; answered: boolean }) {
       </ul>
       {q.other && (
         <div className="flex flex-col gap-0.5 rounded-[14px] bg-[var(--color-bg-primary)] px-3.5 py-2.5 text-[13px] leading-normal [overflow-wrap:anywhere] whitespace-pre-wrap text-[var(--color-text-primary)]">
-          <span className="text-[11px] font-medium text-[var(--color-text-muted)]">
-            Your answer
-          </span>
+          <span className="text-[11px] font-medium text-[var(--color-text-muted)]">Ваш ответ</span>
           {q.other}
         </div>
       )}

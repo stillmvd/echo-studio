@@ -59,11 +59,11 @@ impl Terminals {
         on_data: Channel<Response>,
     ) -> Result<String, String> {
         if !is_short_id(short_id) {
-            return Err(format!("invalid short id: {short_id}"));
+            return Err(format!("Неверный короткий id: {short_id}"));
         }
         let pair = native_pty_system()
             .openpty(size(cols, rows))
-            .map_err(|e| format!("openpty: {e}"))?;
+            .map_err(|e| format!("Не удалось открыть терминал: {e}"))?;
         let mut cmd = CommandBuilder::new(claude_exe());
         cmd.args(["attach", short_id]);
         if let Some(home) = dirs::home_dir() {
@@ -79,17 +79,17 @@ impl Terminals {
         let mut child = pair
             .slave
             .spawn_command(cmd)
-            .map_err(|e| format!("claude attach: {e}"))?;
+            .map_err(|e| format!("Не удалось запустить claude attach: {e}"))?;
         let killer = child.clone_killer();
         drop(pair.slave);
         let mut reader = pair
             .master
             .try_clone_reader()
-            .map_err(|e| format!("pty reader: {e}"))?;
+            .map_err(|e| format!("Не удалось читать терминал: {e}"))?;
         let writer = pair
             .master
             .take_writer()
-            .map_err(|e| format!("pty writer: {e}"))?;
+            .map_err(|e| format!("Не удалось писать в терминал: {e}"))?;
         let id = format!("t{}", self.next.fetch_add(1, Ordering::Relaxed));
 
         let pending = Arc::new((Mutex::new(Pending::default()), Condvar::new()));
@@ -138,7 +138,7 @@ impl Terminals {
             }
         });
         let replaced: Vec<Term> = {
-            let mut map = self.map.lock().map_err(|_| "terminal registry poisoned")?;
+            let mut map = self.map.lock().map_err(|_| "Сбой реестра терминалов")?;
             let same: Vec<String> = map
                 .iter()
                 .filter(|(_, t)| t.short_id == short_id)
@@ -186,8 +186,10 @@ impl Terminals {
         id: &str,
         f: impl FnOnce(&mut Term) -> Result<T, String>,
     ) -> Result<T, String> {
-        let mut map = self.map.lock().map_err(|_| "terminal registry poisoned")?;
-        let term = map.get_mut(id).ok_or_else(|| format!("no terminal {id}"))?;
+        let mut map = self.map.lock().map_err(|_| "Сбой реестра терминалов")?;
+        let term = map
+            .get_mut(id)
+            .ok_or_else(|| format!("Нет терминала {id}"))?;
         f(term)
     }
 
@@ -196,7 +198,7 @@ impl Terminals {
             t.writer
                 .write_all(data.as_bytes())
                 .and_then(|_| t.writer.flush())
-                .map_err(|e| format!("pty write: {e}"))
+                .map_err(|e| format!("Не удалось записать в терминал: {e}"))
         })
     }
 
@@ -204,7 +206,7 @@ impl Terminals {
         self.with(id, |t| {
             t.master
                 .resize(size(cols, rows))
-                .map_err(|e| format!("pty resize: {e}"))
+                .map_err(|e| format!("Не удалось изменить размер терминала: {e}"))
         })
     }
 
@@ -212,7 +214,7 @@ impl Terminals {
         let term = self
             .map
             .lock()
-            .map_err(|_| "terminal registry poisoned")?
+            .map_err(|_| "Сбой реестра терминалов")?
             .remove(id);
         if let Some(mut t) = term {
             let _ = t.killer.kill();

@@ -4,6 +4,7 @@ import { useMemo, useRef } from 'react';
 import { useConversationProjects } from '@/hooks/use-conversations';
 import { useToolCopies } from '@/hooks/use-tooling';
 import { cn } from '@/lib/cn';
+import { plural } from '@/lib/dashboard';
 import { splitTitle } from '@/lib/sessions';
 import {
   alsoInProjects,
@@ -14,6 +15,7 @@ import {
   nestOverrides,
   overrideKey,
   samePath,
+  scopeTitle,
   splitInherited,
   type ToolRowModel,
 } from '@/lib/tooling';
@@ -54,7 +56,7 @@ function Tiles({
   const kinds = ['skill', 'plugin', 'mcp', 'command', 'agent'] as const;
   return (
     <fieldset
-      aria-label="Filter by type"
+      aria-label="Фильтр по типу"
       className={cn(
         'm-0 min-w-0 border-0 p-0',
         compact ? 'flex flex-wrap gap-1.5' : 'grid grid-cols-5 gap-2 @max-[560px]:grid-cols-3',
@@ -116,19 +118,19 @@ function SearchField({ total, shown }: { total: number; shown: number }) {
         onKeyDown={(e) => {
           if (e.key === 'Escape') setQuery('');
         }}
-        placeholder="Search tools"
-        aria-label="Search tools"
+        placeholder="Поиск"
+        aria-label="Поиск инструментов"
         spellCheck={false}
         className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
       />
       {query && (
         <>
           <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-[var(--color-bg-tertiary)] px-[9px] text-[11px] font-medium whitespace-nowrap text-[var(--color-text-muted)] tabular-nums">
-            {shown} of {total}
+            {shown} из {total}
           </span>
           <button
             type="button"
-            aria-label="Clear search"
+            aria-label="Очистить поиск"
             onClick={() => setQuery('')}
             className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]"
           >
@@ -161,7 +163,7 @@ function ScopeChips({
     <div className="flex flex-wrap gap-1.5">
       {isProject && (
         <span className={`${chip} bg-[var(--color-accent-soft)] text-[var(--color-text-primary)]`}>
-          <b className="mr-1 font-bold">{own}</b>from this project
+          <b className="mr-1 font-bold">{own}</b>из проекта
         </span>
       )}
       {overridden > 0 && (
@@ -169,9 +171,7 @@ function ScopeChips({
           type="button"
           aria-pressed={overriddenOnly}
           onClick={onOverridden}
-          title={
-            overriddenOnly ? 'Show all tools' : 'Show only overridden tools and what overrides them'
-          }
+          title={overriddenOnly ? 'Показать все' : 'Только заменённые и их замены'}
           className={cn(
             chip,
             'outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] active:scale-[.96]',
@@ -180,13 +180,13 @@ function ScopeChips({
               : 'bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] text-[var(--color-warning)] hover:bg-[color-mix(in_srgb,var(--color-warning)_22%,transparent)]',
           )}
         >
-          <b className="mr-1 font-bold">{overridden}</b>overridden
+          <b className="mr-1 font-bold">{overridden}</b>заменено
         </button>
       )}
       {isProject && (
         <span className={`${chip} bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]`}>
           <b className="mr-1 font-bold text-[var(--color-text-primary)]">{items.length}</b>
-          Claude sees in total
+          видно Claude
         </span>
       )}
     </div>
@@ -210,7 +210,7 @@ function InheritedRow({
       className="flex h-full w-full items-center gap-2.5 rounded-full bg-[var(--color-bg-tertiary)] px-3.5 text-left text-[13px] font-medium text-[var(--color-text-muted)] outline-none select-none hover:bg-[var(--color-hover)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
     >
       <Globe className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-      <b className="truncate font-bold text-[var(--color-text-primary)]">From Global</b>
+      <b className="truncate font-bold text-[var(--color-text-primary)]">Из общих</b>
       <span className="shrink-0 tabular-nums">{count}</span>
       <ChevronRight
         className={cn(
@@ -265,7 +265,7 @@ function MissingScope({ path }: { path: string }) {
   const sessions = project?.sessionCount ?? 0;
   return (
     <CenterNote>
-      <span>This project folder no longer exists.</span>
+      <span>Папки проекта больше нет.</span>
       <span className="font-mono text-xs font-normal [overflow-wrap:anywhere]">{path}</span>
       {!projects.isLoading &&
         (project && sessions > 0 ? (
@@ -277,10 +277,10 @@ function MissingScope({ path }: { path: string }) {
             }}
             className="mt-2 inline-flex h-10 items-center rounded-full bg-[color-mix(in_srgb,var(--color-text-primary)_7%,transparent)] px-[18px] text-[13px] font-bold text-[var(--color-text-primary)] outline-none hover:bg-[var(--color-hover)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] active:scale-[.96]"
           >
-            Open {sessions} {sessions === 1 ? 'session' : 'sessions'} in Conversations
+            Открыть {sessions} {plural(sessions, 'сессию', 'сессии', 'сессий')}
           </button>
         ) : (
-          <span className="mt-2">No sessions</span>
+          <span className="mt-2">Сессий нет</span>
         ))}
     </CenterNote>
   );
@@ -384,7 +384,7 @@ export function ToolList({
     overscan: 8,
   });
 
-  const [lightName, boldName] = splitTitle(scope.name);
+  const [lightName, boldName] = splitTitle(scopeTitle(scope));
 
   let body: React.ReactNode;
   if (!scope.available) {
@@ -394,7 +394,7 @@ export function ToolList({
       <CenterNote>
         <span className="inline-flex items-center gap-2">
           <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--color-accent)] motion-reduce:animate-none" />
-          Reading Claude config…
+          Чтение конфига Claude…
         </span>
       </CenterNote>
     );
@@ -409,7 +409,7 @@ export function ToolList({
           onClick={onRetry}
           className="rounded-full px-2 text-[var(--color-accent)] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
         >
-          Try again
+          Повторить
         </button>
       </CenterNote>
     );
@@ -418,17 +418,17 @@ export function ToolList({
       <CenterNote>
         {query ? (
           <>
-            <span>No tools match «{query}»</span>
+            <span>Ничего не найдено: «{query}»</span>
             <button
               type="button"
               onClick={() => setQuery('')}
               className="rounded-full px-2 text-[var(--color-accent)] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
             >
-              Clear search
+              Очистить
             </button>
           </>
         ) : (
-          <span>No {KIND_META[type].label.toLowerCase()} in this scope.</span>
+          <span>{type === 'all' ? 'Инструментов нет' : `Нет ${KIND_META[type].label}`}</span>
         )}
       </CenterNote>
     );
@@ -536,9 +536,9 @@ export function ToolList({
         >
           <CircleAlert className="mt-px h-4 w-4 shrink-0" strokeWidth={1.75} />
           <span className="min-w-0">
-            Couldn't read{' '}
+            Не удалось прочитать{' '}
             <code className="font-mono [overflow-wrap:anywhere]">{s.error ?? s.path}</code>.
-            Everything else is shown.
+            Остальное показано.
           </span>
         </div>
       ))}

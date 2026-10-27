@@ -170,7 +170,7 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
         <div className="wb-swf">
           <span className="wb-kbd">Ctrl</span>
           <span className="wb-kbd">Tab</span> дальше · <span className="wb-kbd">Shift</span> назад ·
-          отпусти — перейти
+          отпустить — перейти
         </div>
       </div>
     </>

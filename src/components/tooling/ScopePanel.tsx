@@ -102,19 +102,19 @@ export function ScopePanel({ scopes, selectedPath, globalCount, onSelect }: Prop
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 px-3 pt-5 pb-3">
       <h2 className="px-2 text-[22px] leading-[1.06] font-light tracking-[-0.02em] text-[var(--color-text-primary)]">
-        All <b className="font-bold">scopes</b>
+        <b className="font-bold">Области</b>
       </h2>
       <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
         <ScopeRow
           icon={Globe}
-          name="Global"
-          title="~/.claude, ~/.claude.json and installed plugins"
+          name="Общие"
+          title="~/.claude, ~/.claude.json и plugins"
           selected={selectedPath === null}
           count={globalCount}
           onClick={() => onSelect(null)}
         />
         <li className="shrink-0 px-3.5 pt-2.5 pb-1 text-xs font-medium text-[var(--color-text-muted)]">
-          Projects · {live.length}
+          Проекты · {live.length}
         </li>
         {live.map(projectRow)}
         {missing.length > 0 && (
@@ -131,7 +131,7 @@ export function ScopePanel({ scopes, selectedPath, globalCount, onSelect }: Prop
               ) : (
                 <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
               )}
-              Missing · {missing.length}
+              Удалены · {missing.length}
             </button>
           </li>
         )}
@@ -144,14 +144,14 @@ export function ScopePanel({ scopes, selectedPath, globalCount, onSelect }: Prop
           onClose={() => setMenu(null)}
           items={[
             {
-              label: 'Show in Explorer',
+              label: 'В Проводнике',
               icon: <FolderOpen className="h-3.5 w-3.5" />,
               onSelect: () => {
                 revealInExplorer(menu.path).catch(() => {});
               },
             },
             {
-              label: 'Open in Claude Code',
+              label: 'Открыть в Claude',
               icon: <ClaudeIcon />,
               onSelect: () => {
                 openInClaudeCode(menu.path).catch(() => {});
@@ -159,7 +159,7 @@ export function ScopePanel({ scopes, selectedPath, globalCount, onSelect }: Prop
             },
             'separator',
             {
-              label: 'Copy path',
+              label: 'Копировать путь',
               icon: <Copy className="h-3.5 w-3.5" />,
               onSelect: () => {
                 navigator.clipboard.writeText(menu.path).catch(() => {});

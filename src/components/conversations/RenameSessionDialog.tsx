@@ -32,9 +32,9 @@ export function RenameSessionDialog({ session, onClose }: Props) {
   return (
     <ConfirmDialog
       open={!!session}
-      title="Rename conversation"
+      title="Переименовать"
       description="Имя запишется в сессию, как /rename в Claude, — его покажут и Echo Studio, и claude --resume."
-      confirmLabel="Save"
+      confirmLabel="Сохранить"
       busy={rename.isPending}
       confirmDisabled={trimmed.length === 0 || trimmed === initialValue}
       onConfirm={async () => {
@@ -44,7 +44,7 @@ export function RenameSessionDialog({ session, onClose }: Props) {
       }}
       onCancel={onClose}
     >
-      <Field label="Name">
+      <Field label="Имя">
         {(id) => (
           <input
             id={id}

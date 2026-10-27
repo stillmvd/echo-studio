@@ -3,12 +3,12 @@ import { askToMarkdown, parseAsk } from './ask-question';
 import type { DisplayItem } from './types';
 
 function labelFor(item: DisplayItem): string {
-  if (item.kind === 'user_text') return parseAgentNotice(item) ? 'Background task' : 'User';
-  if (item.kind === 'assistant_text') return 'Assistant';
-  if (item.kind === 'thinking') return 'Assistant (thinking)';
-  if (item.kind === 'tool_use') return `Tool: ${item.toolName ?? '?'}`;
-  if (item.kind === 'tool_result') return item.isError ? 'Tool error' : 'Tool result';
-  if (item.kind === 'image') return 'Image';
+  if (item.kind === 'user_text') return parseAgentNotice(item) ? 'Фоновая задача' : 'Пользователь';
+  if (item.kind === 'assistant_text') return 'Ассистент';
+  if (item.kind === 'thinking') return 'Ассистент (мысли)';
+  if (item.kind === 'tool_use') return `Инструмент: ${item.toolName ?? '?'}`;
+  if (item.kind === 'tool_result') return item.isError ? 'Ошибка инструмента' : 'Результат';
+  if (item.kind === 'image') return 'Изображение';
   return item.kind;
 }
 
@@ -34,12 +34,12 @@ export function eventsToMarkdown(sessionId: string, events: DisplayItem[]): stri
   const last = events[events.length - 1];
 
   const header = [
-    `# Session ${sessionId}`,
+    `# Сессия ${sessionId}`,
     '',
-    `- Items: **${events.length}**`,
-    first?.timestamp ? `- First: ${first.timestamp}` : null,
-    last?.timestamp ? `- Last: ${last.timestamp}` : null,
-    `- Exported: ${new Date().toISOString()}`,
+    `- Записей: **${events.length}**`,
+    first?.timestamp ? `- Начало: ${first.timestamp}` : null,
+    last?.timestamp ? `- Конец: ${last.timestamp}` : null,
+    `- Экспорт: ${new Date().toISOString()}`,
     '',
     '---',
     '',
@@ -74,7 +74,7 @@ ${notice.result}`
         const text = ev.text ?? '';
         content = `\`\`\`\n${text}\n\`\`\``;
       } else {
-        content = ev.text ?? '(empty)';
+        content = ev.text ?? '(пусто)';
       }
 
       return [heading, '', content, ''].join('\n');

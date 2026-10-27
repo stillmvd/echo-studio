@@ -18,7 +18,7 @@ function Secrets({ values }: { values: Record<string, string> }) {
             <span className="font-mono text-[var(--color-text-muted)]">{k}</span>
             <button
               type="button"
-              title={shown ? undefined : 'Show value'}
+              title={shown ? undefined : 'Показать'}
               onClick={() => setOpen((s) => new Set(s).add(k))}
               className={cn(
                 'inline-flex h-[26px] max-w-full items-center gap-2 justify-self-start rounded-full bg-[var(--color-bg-primary)] px-2.5 font-mono outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]',
@@ -63,8 +63,8 @@ export function McpDetail({ mcp }: { mcp: McpInfo }) {
         </code>
         <button
           type="button"
-          aria-label="Copy command"
-          title="Copy"
+          aria-label="Копировать команду"
+          title="Копировать"
           onClick={() => {
             navigator.clipboard
               .writeText(line)
@@ -84,22 +84,20 @@ export function McpDetail({ mcp }: { mcp: McpInfo }) {
         </button>
       </div>
       <dl className="m-0 flex flex-col gap-2.5">
-        <Row label="Transport">
+        <Row label="Транспорт">
           <span className="inline-flex h-6 items-center rounded-full bg-[var(--color-bg-tertiary)] px-[9px] text-[11px] font-medium text-[var(--color-text-muted)]">
             {mcp.transport}
           </span>
         </Row>
-        <Row label="Environment">
+        <Row label="Окружение">
           {env ? (
             <Secrets values={mcp.env} />
           ) : (
-            <span className="text-[13px] text-[var(--color-text-muted)]">
-              No environment variables
-            </span>
+            <span className="text-[13px] text-[var(--color-text-muted)]">Переменных нет</span>
           )}
         </Row>
         {headers && (
-          <Row label="Headers">
+          <Row label="Заголовки">
             <Secrets values={mcp.headers} />
           </Row>
         )}

@@ -5,10 +5,10 @@ import type { ConversationProject } from './types';
 describe('formatAgo', () => {
   const now = Date.parse('2026-09-25T18:00:00Z');
   it('buckets minutes, hours and days', () => {
-    expect(formatAgo('2026-09-25T17:59:40Z', now)).toBe('now');
-    expect(formatAgo('2026-09-25T17:57:00Z', now)).toBe('3m');
-    expect(formatAgo('2026-09-25T11:00:00Z', now)).toBe('7h');
-    expect(formatAgo('2026-09-14T18:00:00Z', now)).toBe('11d');
+    expect(formatAgo('2026-09-25T17:59:40Z', now)).toBe('сейчас');
+    expect(formatAgo('2026-09-25T17:57:00Z', now)).toBe('3 мин');
+    expect(formatAgo('2026-09-25T11:00:00Z', now)).toBe('7 ч');
+    expect(formatAgo('2026-09-14T18:00:00Z', now)).toBe('11 д');
     expect(formatAgo(null, now)).toBe('');
   });
 });

@@ -46,15 +46,15 @@ pub fn parse(text: &str) -> Result<Parsed, String> {
 
 fn strict_yaml(yaml: &str) -> Result<Map<String, Value>, String> {
     let value: serde_yaml::Value =
-        serde_yaml::from_str(yaml).map_err(|e| format!("front matter: {e}"))?;
+        serde_yaml::from_str(yaml).map_err(|e| format!("frontmatter: {e}"))?;
     match value {
         serde_yaml::Value::Null => Ok(Map::new()),
         serde_yaml::Value::Mapping(_) => match serde_json::to_value(&value) {
             Ok(Value::Object(map)) => Ok(map),
-            Ok(_) => Err("front matter: not a mapping".into()),
-            Err(e) => Err(format!("front matter: {e}")),
+            Ok(_) => Err("frontmatter: не набор ключей".into()),
+            Err(e) => Err(format!("frontmatter: {e}")),
         },
-        _ => Err("front matter: not a mapping".into()),
+        _ => Err("frontmatter: не набор ключей".into()),
     }
 }
 
