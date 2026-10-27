@@ -10,11 +10,11 @@ import type {
   GitState,
   KillResult,
   KillTarget,
+  Load,
   MemoryHit,
   MemoryListing,
   MemoryProject,
   MemoryRecord,
-  ProcessRow,
   ProjectTree,
   RateLimits,
   RecordPatch,
@@ -28,7 +28,7 @@ import type {
   ToolCopy,
   ToolFile,
   ToolItem,
-  Usage,
+  UsageReport,
 } from './types';
 
 export async function listToolScopes(): Promise<ScopeRef[]> {
@@ -171,16 +171,19 @@ export async function readRateLimits(): Promise<RateLimits | null> {
   return invoke<RateLimits | null>('read_rate_limits');
 }
 
-export async function readUsage(): Promise<Record<string, Usage>> {
-  return invoke<Record<string, Usage>>('read_usage');
+export async function readUsage(
+  offsetMinutes: number,
+  windowStart: number | null,
+): Promise<UsageReport> {
+  return invoke<UsageReport>('read_usage', { offsetMinutes, windowStart });
 }
 
 export async function readGitStates(paths: string[]): Promise<Record<string, GitState | null>> {
   return invoke<Record<string, GitState | null>>('read_git_states', { paths });
 }
 
-export async function listProcesses(): Promise<ProcessRow[]> {
-  return invoke<ProcessRow[]>('list_processes');
+export async function readLoad(): Promise<Load> {
+  return invoke<Load>('read_load');
 }
 
 export async function killProcesses(

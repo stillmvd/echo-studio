@@ -6,7 +6,7 @@ import type {
 } from '@/lib/memory';
 import type { KindFilter } from '@/lib/tooling';
 
-export type AppTab = 'workbench' | 'tools' | 'memory' | 'conversations' | 'settings';
+export type AppTab = 'dashboard' | 'workbench' | 'tools' | 'memory' | 'conversations' | 'settings';
 export type MemoryTab = 'records' | 'sessions' | 'archive';
 export type ProjectSort = 'recent' | 'name' | 'sessions' | 'size';
 

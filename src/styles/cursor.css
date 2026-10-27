@@ -1,0 +1,26 @@
+.cc-layer { position: fixed; top: 0; left: 0; z-index: 60; pointer-events: none; will-change: transform; }
+.cc-card { position: relative; overflow: hidden; width: max-content; max-width: 300px; padding: 12px 14px; border-radius: 16px; background: color-mix(in srgb, var(--color-bg-secondary) 90%, transparent); backdrop-filter: blur(14px) saturate(1.6); box-shadow: 0 12px 32px rgb(0 0 0 / 32%), 0 0 0 1px var(--color-border); color: var(--color-text-primary); font-size: 13px; font-weight: 500; line-height: 1.45; transform-origin: bottom; opacity: 0; scale: 0.7; transition: opacity 160ms cubic-bezier(0.22, 1, 0.36, 1), scale 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+.cc-card::after { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size: 140px; opacity: 0.32; mix-blend-mode: overlay; }
+.cc-layer[data-on] .cc-card { opacity: 1; scale: 1; }
+.cc-card b { font-weight: 700; }
+.tt { --tt-a: var(--color-accent); width: 220px; display: flex; flex-direction: column; gap: 10px; font-size: 12px; line-height: 1.35; }
+.tt-h { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.tt-h b { min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tt-v { margin-left: auto; display: inline-flex; align-items: baseline; gap: 4px; font-size: 20px; font-weight: 300; letter-spacing: -0.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tt-v span { color: var(--color-text-muted); font-size: 11.5px; font-weight: 500; letter-spacing: 0; }
+.tt-day, .tt-mix { display: flex; flex-direction: column; gap: 4px; }
+.tt-mix { gap: 6px; }
+.tt-bar { display: block; height: 8px; border-radius: 999px; background: var(--color-hover); overflow: hidden; }
+.tt-bar i { display: block; height: 100%; border-radius: 999px; background: var(--tt-a); }
+.tt-cap, .tt-leg { color: var(--color-text-muted); font-size: 11.5px; }
+.tt-leg { display: flex; gap: 10px; }
+.tt-leg > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.tt-leg i, .tt-dots i { border-radius: 2px; }
+.tt-leg i { width: 7px; height: 7px; }
+.tt-dots { display: flex; gap: 3px; }
+.tt-dots i { flex: 1; height: 9px; }
+.tt :is(.tt-leg, .tt-dots) i.n { background: var(--tt-a); }
+.tt :is(.tt-leg, .tt-dots) i.c { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tt-a) 55%, transparent); }
+@media (prefers-reduced-motion: reduce) {
+  .cc-card { scale: 1; transition: opacity 160ms linear; }
+}

@@ -1,25 +1,10 @@
-import type { ClaudeSession, GitState, GitStatus, Limit, ProcessRow, Usage } from './types';
-import { type StatusView, samePath, statusView, URGENCY, urgency } from './workbench';
+import type { GitState, GitStatus, Limit, ProcessRow, Usage } from './types';
 
 const MB = 1024 * 1024;
 
 export function mb(bytes: number): string {
   const m = Math.round(bytes / MB);
   return m >= 1000 ? `${(m / 1024).toFixed(1).replace('.', ',')} ГБ` : `${m} МБ`;
-}
-
-export function mt(tokens: number): string {
-  return `${(tokens / 1e6).toFixed(1).replace('.', ',')}M`;
-}
-
-export function resetText(limit: Limit | null, weekly: boolean, now = Date.now()): string {
-  if (!limit) return 'нет данных';
-  if (limit.reset || limit.resetsAt * 1000 <= now) return 'сброшен';
-  const at = new Date(limit.resetsAt * 1000);
-  const time = at.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  return weekly
-    ? `сброс ${at.toLocaleDateString('ru-RU', { weekday: 'short' })} ${time}`
-    : `сброс в ${time}`;
 }
 
 export function percent(limit: Limit | null, now = Date.now()): number | null {
@@ -86,99 +71,10 @@ export function describe(row: ProcessRow, now = Date.now()): string {
   return `вне проектов · ${args(row.commandLine)}`;
 }
 
-export type GroupSession = Pick<
-  ClaudeSession,
-  'sessionId' | 'name' | 'status' | 'since' | 'phase' | 'tool'
->;
-
-export interface SessionGroup {
-  sessionId: string;
-  name: string;
-  status: StatusView | null;
-  phase: ClaudeSession['phase'];
-  tool: string | null;
-  rows: ProcessRow[];
-  memory: number;
-}
-
-export interface ProcessGroup {
-  key: string | null;
-  rows: ProcessRow[];
-  sessions: SessionGroup[];
-  memory: number;
-}
-
 const heavier = (a: { memory: number }, b: { memory: number }) => b.memory - a.memory;
-const total = (rows: ProcessRow[]) => rows.reduce((s, r) => s + r.memory, 0);
 
 export function orphans(rows: ProcessRow[]): ProcessRow[] {
   return rows.filter((r) => r.orphan && !r.guard).sort(heavier);
-}
-
-export function groupName(path: string | null, root: string): string {
-  return path && samePath(path, root) ? ROOT_GROUP : nameOf(path);
-}
-
-export const ROOT_GROUP = 'Projects (корень)';
-
-function sessionGroups(
-  rows: ProcessRow[],
-  sessions: GroupSession[],
-  seen: Record<string, number>,
-): SessionGroup[] {
-  const map = new Map<string, ProcessRow[]>();
-  for (const r of rows) {
-    if (!r.session) continue;
-    map.set(r.session, [...(map.get(r.session) ?? []), r]);
-  }
-  return [...map.entries()]
-    .map(([sessionId, list]) => {
-      const s = sessions.find((x) => x.sessionId === sessionId);
-      return {
-        sessionId,
-        name: s?.name || `Claude ${sessionId.slice(0, 8)}`,
-        status: s ? statusView(s, seen) : null,
-        phase: s?.phase ?? null,
-        tool: s?.tool ?? null,
-        rows: list.sort(heavier),
-        memory: total(list),
-      };
-    })
-    .sort(
-      (a, b) =>
-        (a.status ? urgency(a.status) : URGENCY.length) -
-          (b.status ? urgency(b.status) : URGENCY.length) || heavier(a, b),
-    );
-}
-
-export function groupProcesses(
-  rows: ProcessRow[],
-  root: string,
-  sessions: GroupSession[],
-  seen: Record<string, number> = {},
-): {
-  stray: ProcessRow[];
-  groups: ProcessGroup[];
-} {
-  const stray = rows.filter((r) => r.orphan?.reason === 'no-project').sort(heavier);
-  const map = new Map<string | null, ProcessRow[]>();
-  for (const r of rows) {
-    if (r.orphan?.reason === 'no-project') continue;
-    const key = r.projectPath && samePath(r.projectPath, root) ? root : r.projectPath;
-    map.set(key, [...(map.get(key) ?? []), r]);
-  }
-  const groups = [...map.entries()]
-    .map(([key, list]) => {
-      const own = list.filter((r) => r.session && !r.orphan);
-      return {
-        key,
-        rows: list.filter((r) => !own.includes(r)).sort(heavier),
-        sessions: sessionGroups(own, sessions, seen),
-        memory: total(list),
-      };
-    })
-    .sort(heavier);
-  return { stray, groups };
 }
 
 export function topUsage(

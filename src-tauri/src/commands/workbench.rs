@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
-use std::time::Duration;
+use std::sync::{LazyLock, Mutex};
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::ipc::{Channel, Response};
@@ -17,7 +18,7 @@ use crate::workbench::{
 
 #[tauri::command]
 pub async fn list_workbench_projects() -> Result<projects::ProjectTree, String> {
-    let root = projects_root().ok_or("cannot resolve Projects root")?;
+    let root = projects_root().ok_or("Не найдена папка Projects")?;
     blocking(move || projects::scan(&root)).await
 }
 
@@ -27,9 +28,12 @@ pub async fn read_rate_limits() -> Result<Option<limits::RateLimits>, String> {
 }
 
 #[tauri::command]
-pub async fn read_usage() -> Result<HashMap<String, usage::Usage>, String> {
-    let root = projects_root().ok_or("cannot resolve Projects root")?;
-    blocking(move || usage::read_usage(&projects::scan(&root))).await
+pub async fn read_usage(
+    offset_minutes: i32,
+    window_start: Option<i64>,
+) -> Result<usage::Report, String> {
+    let root = projects_root().ok_or("Не найдена папка Projects")?;
+    blocking(move || usage::read_usage(&projects::scan(&root), offset_minutes, window_start)).await
 }
 
 #[tauri::command]
@@ -40,17 +44,34 @@ pub async fn read_git_states(
 }
 
 #[tauri::command]
-pub async fn list_processes() -> Result<Vec<processes::ProcessRow>, String> {
-    let root = projects_root().ok_or("cannot resolve Projects root")?;
+pub async fn read_load() -> Result<processes::Load, String> {
+    let root = projects_root().ok_or("Не найдена папка Projects")?;
     blocking(move || {
-        Ok(processes::list_processes(
-            &projects::scan(&root),
-            live_agents(sessions::AGENTS_FRESH)?,
+        Ok(processes::load(
+            &cached_tree(&root),
+            live_agents(LOAD_FRESH)?,
             dev::jobs(),
             &root,
         ))
     })
     .await?
+}
+
+const LOAD_FRESH: Duration = Duration::from_secs(30);
+
+static TREE: LazyLock<Mutex<Option<(Instant, projects::ProjectTree)>>> =
+    LazyLock::new(|| Mutex::new(None));
+
+fn cached_tree(root: &Path) -> projects::ProjectTree {
+    let mut slot = TREE.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((at, tree)) = slot.as_ref() {
+        if at.elapsed() < LOAD_FRESH {
+            return tree.clone();
+        }
+    }
+    let tree = projects::scan(root);
+    *slot = Some((Instant::now(), tree.clone()));
+    tree
 }
 
 fn live_agents(max_age: Duration) -> Result<Vec<processes::AgentRef>, String> {
@@ -71,7 +92,7 @@ pub async fn kill_processes(
     targets: Vec<processes::KillTarget>,
     confirmed: bool,
 ) -> Result<processes::KillResult, String> {
-    let root = projects_root().ok_or("cannot resolve Projects root")?;
+    let root = projects_root().ok_or("Не найдена папка Projects")?;
     blocking(move || {
         Ok(processes::kill_processes(
             &targets,
@@ -94,7 +115,7 @@ pub async fn list_claude_sessions() -> Result<Vec<ClaudeSession>, String> {
 pub async fn focus_session_window(pid: u32, session_id: String) -> Result<window::Focus, String> {
     blocking(move || {
         if sessions::session_pid(&session_id)? != pid {
-            return Err("pid is not the session's claude".to_owned());
+            return Err("Этот pid не принадлежит claude сессии".to_owned());
         }
         Ok(window::focus(pid))
     })
@@ -120,7 +141,7 @@ pub async fn open_in_vscode(project_path: String) -> Result<(), String> {
     child_command(&code.to_string_lossy())
         .arg(&project.path)
         .spawn()
-        .map_err(|e| format!("failed to start VS Code: {e}"))?;
+        .map_err(|e| format!("Не удалось запустить VS Code: {e}"))?;
     Ok(())
 }
 
@@ -171,7 +192,7 @@ pub async fn open_terminal_path(
             }
         },
     };
-    spawned.map_err(|e| format!("failed to open: {e}"))?;
+    spawned.map_err(|e| format!("Не удалось открыть: {e}"))?;
     Ok(())
 }
 
@@ -331,12 +352,12 @@ pub async fn untail_dev_log(subscription_id: u32) -> Result<(), String> {
 pub async fn open_dev_server(project_path: String) -> Result<(), String> {
     let port = blocking(move || {
         let project = projects::ensure_project(&project_path)?;
-        dev::first_port(&project.path).ok_or_else(|| "dev server has no port yet".to_owned())
+        dev::first_port(&project.path).ok_or_else(|| "У dev-сервера ещё нет порта".to_owned())
     })
     .await??;
     child_command("explorer.exe")
         .arg(format!("http://localhost:{port}"))
         .spawn()
-        .map_err(|e| format!("failed to open the browser: {e}"))?;
+        .map_err(|e| format!("Не удалось открыть браузер: {e}"))?;
     Ok(())
 }

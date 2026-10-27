@@ -19,9 +19,9 @@ describe('conversationMenu', () => {
     expect(labels(conversationMenu({ live: false, actions }))).toEqual([
       'Продолжить',
       '—',
-      'Удалить разговор',
+      'Удалить сессию',
     ]);
-    expect(labels(conversationMenu({ live: true, actions }))).toContain('Удалить разговор (x)');
+    expect(labels(conversationMenu({ live: true, actions }))).toContain('Удалить сессию (x)');
   });
 });
 const labels = (items: MenuItem[]) =>
@@ -75,7 +75,7 @@ describe('projectMenu', () => {
       'Новая сессия Claude',
       'Запустить dev',
       '—',
-      'Открыть в проводнике',
+      'В Проводнике',
       'Открыть в VS Code',
       'Копировать путь',
       '—',
@@ -91,7 +91,7 @@ describe('projectMenu', () => {
       'Открыть папку',
       'Новая сессия Claude',
       '—',
-      'Открыть в проводнике',
+      'В Проводнике',
       'Открыть в VS Code',
       'Копировать путь',
     ]);
@@ -130,7 +130,7 @@ describe('sessionTabMenu', () => {
       actions,
     });
     expect(labels(items)).toEqual([
-      'Переместить в ячейку…',
+      'В ячейку…',
       'Переподключить',
       'Копировать id',
       'Скрыть вкладку',
@@ -151,7 +151,7 @@ describe('sessionTabMenu', () => {
       cells: { count: 1, current: 0, move: noop },
       actions,
     });
-    expect(labels(items)).not.toContain('Переместить в ячейку…');
+    expect(labels(items)).not.toContain('В ячейку…');
   });
 
   it('an ended session can only be copied and closed', () => {
@@ -184,7 +184,7 @@ describe('devTabMenu', () => {
       actions,
     });
     const sub = items[0] as ContextSubmenu;
-    expect(sub.label).toBe('Переместить в ячейку…');
+    expect(sub.label).toBe('В ячейку…');
     expect(labels(sub.items)).toEqual(['Ячейка 1 (x)', 'Ячейка 2']);
     find(sub.items, 'Ячейка 2')?.onSelect();
     expect(move).toHaveBeenCalledWith(1);
@@ -206,6 +206,7 @@ describe('processMenu', () => {
     startTime: 1,
     name: 'node.exe',
     memory: 1,
+    cpu: 0,
     commandLine: 'node vite',
     projectPath: null,
     session: null,
@@ -216,12 +217,7 @@ describe('processMenu', () => {
   it('ends with kill, the folder is disabled without a project', () => {
     const kill = vi.fn();
     const items = processMenu({ row, actions: { copyCommand: noop, openFolder: noop, kill } });
-    expect(labels(items)).toEqual([
-      'Копировать командную строку',
-      'Открыть папку проекта (x)',
-      '—',
-      'Завершить',
-    ]);
+    expect(labels(items)).toEqual(['Копировать команду', 'Открыть папку (x)', '—', 'Завершить']);
     find(items, 'Завершить')?.onSelect();
     expect(kill).toHaveBeenCalledOnce();
   });

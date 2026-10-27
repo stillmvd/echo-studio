@@ -57,7 +57,7 @@
 .wb-ib:hover { background: var(--hover-strong); color: var(--fg); }
 .wb-ib svg { width: 16px; height: 16px; }
 
-.wb-tree { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; overflow-x: hidden; }
+.wb-tree { flex: 1; min-height: 0; min-width: 0; margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; overflow-x: hidden; }
 .wb-tr { flex: none; display: flex; align-items: center; gap: 10px; width: 100%; height: 40px; padding: 0 14px 0 12px; border-radius: 999px; font-size: 14px; font-weight: 500; min-width: 0; text-align: left; white-space: nowrap; transition: background-color 200ms var(--ease-trail); }
 .wb-tr:hover { background: var(--hover-strong); }
 .wb-tr.grp b { font-weight: 700; }

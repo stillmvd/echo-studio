@@ -134,7 +134,7 @@ pub fn run() {
             commands::workbench::read_rate_limits,
             commands::workbench::read_usage,
             commands::workbench::read_git_states,
-            commands::workbench::list_processes,
+            commands::workbench::read_load,
             commands::workbench::kill_processes,
             commands::workbench::list_claude_sessions,
             commands::workbench::focus_session_window,

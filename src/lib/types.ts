@@ -308,6 +308,59 @@ export interface Usage {
   today: number;
   sessions: number;
   days: Record<string, number>;
+  todayWeight: number;
+  todayCacheRead: number;
+  todaySessions: number;
+}
+
+export interface DayTokens {
+  date: string;
+  input: number;
+  output: number;
+  cacheWrite: number;
+}
+
+export interface ModelTokens {
+  model: string;
+  tokens: number;
+}
+
+export interface UsageSummary {
+  week: number;
+  today: number;
+  cacheRead: number;
+  todayCacheRead: number;
+  sub: number;
+  days: DayTokens[];
+  models: ModelTokens[];
+  hours: number[];
+  todayWeight: number;
+  windowWeight: number;
+}
+
+export interface UsageReport {
+  projects: Record<string, Usage>;
+  summary: UsageSummary;
+}
+
+export interface OtherProcess {
+  name: string;
+  count: number;
+  memory: number;
+  cpu: number;
+}
+
+export interface Machine {
+  cpu: number;
+  cores: number;
+  memoryUsed: number;
+  memoryTotal: number;
+  others: OtherProcess[];
+}
+
+export interface Load {
+  rows: ProcessRow[];
+  machine: Machine;
 }
 
 export interface GitStatus {
@@ -335,6 +388,7 @@ export interface ProcessRow {
   startTime: number;
   name: string;
   memory: number;
+  cpu: number;
   commandLine: string;
   projectPath: string | null;
   session: string | null;

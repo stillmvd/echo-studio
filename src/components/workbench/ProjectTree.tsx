@@ -1,4 +1,4 @@
-import { ChevronRight, LayoutDashboard } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
 import { openInVscode, revealInExplorer } from '@/lib/ipc';
@@ -67,7 +67,6 @@ function ProjectRow({ project, menu }: { project: WorkbenchProject; menu: RowMen
 
 export function ProjectTree({ tree, devServers, busy, onStart }: Props) {
   const view = useWorkbenchStore((s) => s.view);
-  const select = useWorkbenchStore((s) => s.select);
   const openGroups = useWorkbenchStore((s) => s.openGroups);
   const toggleGroup = useWorkbenchStore((s) => s.toggleGroup);
   const hidden = useWorkbenchStore((s) => s.hiddenProjects);
@@ -80,20 +79,11 @@ export function ProjectTree({ tree, devServers, busy, onStart }: Props) {
   };
 
   return (
-    <div className="wb-tree">
-      <button
-        type="button"
-        className={cn('wb-tr', view.kind === 'overview' && 'on')}
-        onClick={() => select({ kind: 'overview' })}
-        onContextMenu={(e) => folderMenu(e, tree.root)}
-      >
-        <span className="wb-pi none">
-          <LayoutDashboard strokeWidth={1.75} />
-        </span>
-        <span className="wb-tn">
-          <b>Обзор</b>
-        </span>
-      </button>
+    <fieldset
+      className="wb-tree"
+      aria-label="Проекты"
+      onContextMenu={(e) => folderMenu(e, tree.root)}
+    >
       {shown(tree.roots).map((p) => (
         <ProjectRow key={p.path} project={p} menu={menu} />
       ))}
@@ -127,6 +117,6 @@ export function ProjectTree({ tree, devServers, busy, onStart }: Props) {
         );
       })}
       {dev.dialogs}
-    </div>
+    </fieldset>
   );
 }

@@ -3,15 +3,15 @@ import { ContextMenuProvider, useContextMenu } from '@/components/ui/ContextMenu
 import { useClaudeSessions, useDevServers, useWorkbenchProjects } from '@/hooks/use-workbench';
 import { cn } from '@/lib/cn';
 import { places, samePath } from '@/lib/workbench';
+import { useUiStore } from '@/state/ui-store';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { ProjectGrid } from './Cell';
+import { MetricsBar } from './MetricsBar';
 import { ModeSwitch } from './ModeSwitch';
-import { Overview } from './Overview';
 import { ProjectHeader } from './ProjectHeader';
 import { ProjectTree } from './ProjectTree';
 import { QuickSwitch } from './QuickSwitch';
 import { RunningList } from './RunningList';
-import { SessionStrip } from './SessionStrip';
 import { TreeCard } from './TreeCard';
 import { pruneMissing } from './terminals';
 import { useEndedTabs, useStoppedDevTabs } from './useEndedTabs';
@@ -21,7 +21,8 @@ import { LayoutPicker, Wall } from './Wall';
 
 export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   const { data: tree, error, dataUpdatedAt } = useWorkbenchProjects();
-  const sessions = useClaudeSessions(!hidden);
+  const dashboard = useUiStore((s) => s.activeTab === 'dashboard');
+  const sessions = useClaudeSessions(!hidden || dashboard);
   const live = useMemo(() => sessions.filter((s) => s.status !== 'exited'), [sessions]);
   const devServers = useDevServers();
   const view = useWorkbenchStore((s) => s.view);
@@ -45,6 +46,13 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   }, [tree, dataUpdatedAt, projects, tabs]);
   const selected =
     view.kind === 'project' ? projects.find((p) => samePath(p.path, view.path)) : undefined;
+  const select = useWorkbenchStore((s) => s.select);
+  useEffect(() => {
+    if (selected || !tree) return;
+    const path =
+      live.find((s) => s.projectPath)?.projectPath ?? projects.find((p) => !p.folder)?.path;
+    if (path) select({ kind: 'project', path });
+  }, [selected, tree, live, projects, select]);
   const mode = useWorkbenchStore((s) => s.mode);
   const projectLayouts = useWorkbenchStore((s) => s.projectLayouts);
   const setProjectLayout = useWorkbenchStore((s) => s.setProjectLayout);
@@ -93,7 +101,6 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
             </TreeCard>
           </div>
           <div className="wb-card wb-pv">
-            {!selected && <Overview />}
             {wall && (
               <Wall
                 hidden={hidden}
@@ -143,7 +150,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
             })}
           </div>
         </div>
-        <SessionStrip sessions={sessions} projects={byPath} />
+        <MetricsBar sessions={sessions} projects={byPath} />
         <QuickSwitch enabled={!hidden} sessions={live} projects={byPath} />
         {dialogs}
         {menu.element}

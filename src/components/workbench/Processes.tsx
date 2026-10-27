@@ -1,31 +1,13 @@
-import { CircleHelp, Cpu, FolderTree, Power } from 'lucide-react';
-import { useState } from 'react';
+import { Power } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { useKillProcesses } from '@/hooks/use-workbench-overview';
 import { cn } from '@/lib/cn';
 import { revealInExplorer } from '@/lib/ipc';
-import {
-  describe,
-  type GroupSession,
-  groupName,
-  groupProcesses,
-  mb,
-  orphans,
-  type SessionGroup,
-} from '@/lib/overview';
-import type { KillResult, ProcessRow, WorkbenchProject } from '@/lib/types';
-import { samePath } from '@/lib/workbench';
-import { useWorkbenchStore } from '@/state/workbench-store';
+import { describe, mb } from '@/lib/overview';
+import type { KillResult, ProcessRow } from '@/lib/types';
 import { copyText, processMenu } from './menus';
-import { ProjectIcon } from './ProjectIcon';
-import { StatusIcon } from './StatusIcon';
-
-const STRAY_HINT =
-  'Процессы, которые не удалось отнести ни к проекту, ни к живой сессии Claude — их можно завершать';
-
-const OUTSIDE_HINT =
-  'Работает вне папок проектов — например сессия Claude, открытая в домашней папке, и её MCP-серверы';
 
 const GUARD_TITLE = {
   'live-session': 'Завершить процесс живой сессии Claude?',
@@ -41,12 +23,20 @@ function failures(result: KillResult): string | null {
   return result.failed.length ? `не завершено: ${result.failed.length}` : null;
 }
 
-interface RowHandlers {
+export interface RowHandlers {
   kill: (row: ProcessRow) => void;
   menu: (e: React.MouseEvent, row: ProcessRow) => void;
 }
 
-function Row({ row, on, nested }: { row: ProcessRow; on: RowHandlers; nested?: boolean }) {
+export function ProcessLine({
+  row,
+  on,
+  nested,
+}: {
+  row: ProcessRow;
+  on: RowHandlers;
+  nested?: boolean;
+}) {
   return (
     <span
       role="toolbar"
@@ -71,44 +61,17 @@ function Row({ row, on, nested }: { row: ProcessRow; on: RowHandlers; nested?: b
   );
 }
 
-function SessionRows({ group, on }: { group: SessionGroup; on: RowHandlers }) {
-  return (
-    <>
-      <span className="wb-ps" title={group.sessionId}>
-        {group.status ? (
-          <StatusIcon session={{ status: group.status, phase: group.phase }} small />
-        ) : (
-          <span className="wb-gl sm" />
-        )}
-        <b>{group.name}</b>
-        <span className="wb-mb">{mb(group.memory)}</span>
-      </span>
-      {group.rows.map((r) => (
-        <Row key={r.pid} row={r} on={on} nested />
-      ))}
-    </>
-  );
-}
-
-export function Processes({
-  rows,
-  projects,
-  root,
-  sessions,
-}: {
-  rows: ProcessRow[];
-  projects: Map<string, WorkbenchProject>;
-  root: string;
-  sessions: GroupSession[];
-}) {
+export function useProcessKiller(): {
+  on: RowHandlers;
+  killAll: (rows: ProcessRow[]) => void;
+  busy: boolean;
+  note: string | null;
+  dialog: ReactNode;
+} {
   const kill = useKillProcesses();
   const openMenu = useOpenMenu();
-  const seen = useWorkbenchStore((s) => s.seen);
   const [pending, setPending] = useState<Pending | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  const { stray, groups } = groupProcesses(rows, root, sessions, seen);
-  const strayMemory = stray.reduce((s, r) => s + r.memory, 0);
-  const hanging = orphans(rows);
 
   const run = async (list: ProcessRow[], confirmed: boolean) => {
     const targets = list.map((r) => ({ pid: r.pid, startTime: r.startTime }));
@@ -145,98 +108,42 @@ export function Processes({
     ? GUARD_TITLE[single.guard]
     : `Завершить висящие процессы: ${pending?.rows.length ?? 0}?`;
 
-  return (
-    <>
-      {note && <span className="wb-pnote">{note}</span>}
-      {hanging.length > 0 && (
-        <div className="wb-pgh wb-hang">
-          <b>Висящих процессов: {hanging.length}</b>
-          <span className="wb-mb">{mb(hanging.reduce((s, r) => s + r.memory, 0))}</span>
-          <button
-            type="button"
-            className="wb-btn sm"
-            disabled={kill.isPending}
-            onClick={() => setPending({ rows: hanging, confirmed: false })}
-          >
-            <Power />
-            Завершить все висящие
-          </button>
-        </div>
-      )}
-      {stray.length > 0 && (
-        <div className="wb-pg stray hot">
-          <div className="wb-pgh" title={STRAY_HINT}>
-            <span className="wb-pi none">
-              <Cpu strokeWidth={1.75} />
-            </span>
-            <b>Без проекта</b>
-            <span className="wb-dim">висящие</span>
-            <CircleHelp className="wb-phint" strokeWidth={1.75} aria-label={STRAY_HINT} />
-            <span className="wb-mb">{mb(strayMemory)}</span>
-          </div>
-          {stray.map((r) => (
-            <Row key={r.pid} row={r} on={on} />
+  const dialog = (
+    <ConfirmDialog
+      open={!!pending}
+      danger
+      title={title}
+      description={single ? `${single.name} · ${describe(single)}` : undefined}
+      confirmLabel="Завершить"
+      cancelLabel="Отмена"
+      failToast="Процессы не завершились"
+      busy={kill.isPending}
+      onConfirm={async () => {
+        if (!pending) return;
+        await run(pending.rows, pending.confirmed);
+        setPending(null);
+      }}
+      onCancel={() => setPending(null)}
+    >
+      {pending && !single && (
+        <ul className="wb-klist">
+          {pending.rows.map((r) => (
+            <li key={r.pid}>
+              <b>{r.name}</b>
+              <span className="wb-dim">{describe(r)}</span>
+              <span className="wb-mb">{mb(r.memory)}</span>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-      {groups.map((g) => {
-        const project = g.key ? projects.get(g.key) : undefined;
-        const isRoot = !!g.key && !!root && samePath(g.key, root);
-        return (
-          <div key={g.key ?? '—'} className="wb-pg">
-            <div className="wb-pgh" title={g.key ? undefined : OUTSIDE_HINT}>
-              {isRoot ? (
-                <span className="wb-pi none">
-                  <FolderTree strokeWidth={1.75} />
-                </span>
-              ) : (
-                <ProjectIcon svg={project?.icon ?? null} />
-              )}
-              <b>{project?.name ?? (g.key ? groupName(g.key, root) : 'Без проекта')}</b>
-              {!g.key && <span className="wb-dim">работает</span>}
-              {!g.key && (
-                <CircleHelp className="wb-phint" strokeWidth={1.75} aria-label={OUTSIDE_HINT} />
-              )}
-              <span className="wb-mb">{mb(g.memory)}</span>
-            </div>
-            {g.sessions.map((s) => (
-              <SessionRows key={s.sessionId} group={s} on={on} />
-            ))}
-            {g.rows.map((r) => (
-              <Row key={r.pid} row={r} on={on} />
-            ))}
-          </div>
-        );
-      })}
-      {rows.length === 0 && <span className="wb-dim">Процессов нет</span>}
-      <ConfirmDialog
-        open={!!pending}
-        danger
-        title={title}
-        description={single ? `${single.name} · ${describe(single)}` : undefined}
-        confirmLabel="Завершить"
-        cancelLabel="Отмена"
-        failToast="Процессы не завершились"
-        busy={kill.isPending}
-        onConfirm={async () => {
-          if (!pending) return;
-          await run(pending.rows, pending.confirmed);
-          setPending(null);
-        }}
-        onCancel={() => setPending(null)}
-      >
-        {pending && !single && (
-          <ul className="wb-klist">
-            {pending.rows.map((r) => (
-              <li key={r.pid}>
-                <b>{r.name}</b>
-                <span className="wb-dim">{describe(r)}</span>
-                <span className="wb-mb">{mb(r.memory)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </ConfirmDialog>
-    </>
+    </ConfirmDialog>
   );
+
+  return {
+    on,
+    killAll: (rows) => setPending({ rows, confirmed: false }),
+    busy: kill.isPending,
+    note,
+    dialog,
+  };
 }

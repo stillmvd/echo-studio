@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
+use std::sync::{LazyLock, Mutex};
 
 use serde::{Deserialize, Serialize};
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
@@ -56,6 +57,33 @@ pub struct Proc {
     pub start_time: u64,
     #[serde(default)]
     pub memory: u64,
+    #[serde(default)]
+    pub cpu: f32,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct OtherProcess {
+    pub name: String,
+    pub count: u32,
+    pub memory: u64,
+    pub cpu: f32,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Machine {
+    pub cpu: f32,
+    pub cores: usize,
+    pub memory_used: u64,
+    pub memory_total: u64,
+    pub others: Vec<OtherProcess>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct Load {
+    pub rows: Vec<ProcessRow>,
+    pub machine: Machine,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -156,6 +184,7 @@ pub struct ProcessRow {
     pub start_time: u64,
     pub name: String,
     pub memory: u64,
+    pub cpu: f32,
     pub command_line: String,
     pub project_path: Option<String>,
     pub session: Option<String>,
@@ -761,6 +790,7 @@ pub fn rows(snap: &Snapshot, classes: &HashMap<u32, Class>) -> Vec<ProcessRow> {
                 start_time: p.start_time,
                 name: p.name.clone(),
                 memory: p.memory,
+                cpu: p.cpu,
                 command_line: short(cmd_of(p)),
                 project_path: c.project_path.clone(),
                 session: c.session.clone(),
@@ -773,7 +803,7 @@ pub fn rows(snap: &Snapshot, classes: &HashMap<u32, Class>) -> Vec<ProcessRow> {
     out
 }
 
-fn proc_of(pid: Pid, p: &sysinfo::Process) -> Proc {
+fn proc_of(pid: Pid, p: &sysinfo::Process, cores: f32) -> Proc {
     let name = p.name().to_string_lossy().into_owned();
     let exe = p.exe().map(|e| e.to_string_lossy().into_owned());
     let args: Vec<String> = p
@@ -809,21 +839,66 @@ fn proc_of(pid: Pid, p: &sysinfo::Process) -> Proc {
             .filter(|c| !c.is_empty()),
         start_time: p.start_time() * 1000,
         memory: p.memory(),
+        cpu: p.cpu_usage() / cores,
     }
+}
+
+fn refresh_kind() -> ProcessRefreshKind {
+    ProcessRefreshKind::nothing()
+        .with_cmd(UpdateKind::Always)
+        .with_cwd(UpdateKind::Always)
+        .with_exe(UpdateKind::Always)
+        .with_memory()
+}
+
+fn cores(sys: &System) -> f32 {
+    sys.cpus().len().max(1) as f32
 }
 
 fn system() -> System {
     let mut sys = System::new();
+    sys.refresh_processes_specifics(ProcessesToUpdate::All, true, refresh_kind());
+    sys
+}
+
+static SAMPLER: LazyLock<Mutex<System>> = LazyLock::new(|| Mutex::new(System::new()));
+
+fn sampled<R>(f: impl FnOnce(&System) -> R) -> R {
+    let mut sys = SAMPLER.lock().unwrap_or_else(|e| e.into_inner());
+    sys.refresh_cpu_usage();
+    sys.refresh_memory();
     sys.refresh_processes_specifics(
         ProcessesToUpdate::All,
         true,
         ProcessRefreshKind::nothing()
-            .with_cmd(UpdateKind::Always)
-            .with_cwd(UpdateKind::Always)
-            .with_exe(UpdateKind::Always)
-            .with_memory(),
+            .with_cmd(UpdateKind::OnlyIfNotSet)
+            .with_cwd(UpdateKind::OnlyIfNotSet)
+            .with_exe(UpdateKind::OnlyIfNotSet)
+            .with_memory()
+            .with_cpu(),
     );
-    sys
+    f(&sys)
+}
+
+const OTHERS: usize = 6;
+
+pub fn others(all: &HashMap<u32, Proc>, skip: &HashSet<u32>) -> Vec<OtherProcess> {
+    let mut by_name: HashMap<&str, OtherProcess> = HashMap::new();
+    for p in all.values().filter(|p| !skip.contains(&p.pid)) {
+        let o = by_name.entry(&p.name).or_insert_with(|| OtherProcess {
+            name: p.name.clone(),
+            count: 0,
+            memory: 0,
+            cpu: 0.0,
+        });
+        o.count += 1;
+        o.memory += p.memory;
+        o.cpu += p.cpu;
+    }
+    let mut out: Vec<OtherProcess> = by_name.into_values().collect();
+    out.sort_by(|a, b| b.memory.cmp(&a.memory).then_with(|| a.name.cmp(&b.name)));
+    out.truncate(OTHERS);
+    out
 }
 
 pub fn read_hook_sessions() -> Vec<HookSession> {
@@ -862,12 +937,15 @@ fn own_tree(all: &HashMap<u32, Proc>, me: u32) -> HashSet<u32> {
     out
 }
 
-fn all_but_own(sys: &System) -> HashMap<u32, Proc> {
-    let mut all: HashMap<u32, Proc> = sys
-        .processes()
+fn every(sys: &System) -> HashMap<u32, Proc> {
+    let cores = cores(sys);
+    sys.processes()
         .iter()
-        .map(|(pid, p)| (pid.as_u32(), proc_of(*pid, p)))
-        .collect();
+        .map(|(pid, p)| (pid.as_u32(), proc_of(*pid, p, cores)))
+        .collect()
+}
+
+fn all_but_own(mut all: HashMap<u32, Proc>) -> HashMap<u32, Proc> {
     for pid in own_tree(&all, std::process::id()) {
         all.remove(&pid);
     }
@@ -875,15 +953,15 @@ fn all_but_own(sys: &System) -> HashMap<u32, Proc> {
 }
 
 pub fn table() -> HashMap<u32, Proc> {
-    system()
-        .processes()
-        .iter()
-        .map(|(pid, p)| (pid.as_u32(), proc_of(*pid, p)))
-        .collect()
+    every(&system())
 }
 
-fn take(sys: &System, agents: Vec<AgentRef>, dev_jobs: Vec<DevJob>, root: &str) -> Snapshot {
-    let all = all_but_own(sys);
+fn take(
+    all: &HashMap<u32, Proc>,
+    agents: Vec<AgentRef>,
+    dev_jobs: Vec<DevJob>,
+    root: &str,
+) -> Snapshot {
     let root = root.to_lowercase();
     let job_pids: HashSet<u32> = dev_jobs
         .iter()
@@ -960,20 +1038,30 @@ fn take(sys: &System, agents: Vec<AgentRef>, dev_jobs: Vec<DevJob>, root: &str) 
     }
 }
 
-pub fn snapshot(agents: Vec<AgentRef>, dev_jobs: Vec<DevJob>, root: &str) -> Snapshot {
-    take(&system(), agents, dev_jobs, root)
+#[cfg(test)]
+fn snapshot(agents: Vec<AgentRef>, dev_jobs: Vec<DevJob>, root: &str) -> Snapshot {
+    take(&all_but_own(every(&system())), agents, dev_jobs, root)
 }
 
-pub fn list_processes(
-    tree: &ProjectTree,
-    agents: Vec<AgentRef>,
-    dev_jobs: Vec<DevJob>,
-    root: &Path,
-) -> Vec<ProcessRow> {
+pub fn load(tree: &ProjectTree, agents: Vec<AgentRef>, dev_jobs: Vec<DevJob>, root: &Path) -> Load {
     let root = root.to_string_lossy();
-    let snap = snapshot(agents, dev_jobs, &root);
-    let classes = classify(&snap, &project_refs(tree), &root);
-    rows(&snap, &classes)
+    sampled(|sys| {
+        let all = all_but_own(every(sys));
+        let snap = take(&all, agents, dev_jobs, &root);
+        let classes = classify(&snap, &project_refs(tree), &root);
+        let rows = rows(&snap, &classes);
+        let shown: HashSet<u32> = rows.iter().map(|r| r.pid).collect();
+        Load {
+            machine: Machine {
+                cpu: sys.global_cpu_usage(),
+                cores: sys.cpus().len(),
+                memory_used: sys.used_memory(),
+                memory_total: sys.total_memory(),
+                others: others(&all, &shown),
+            },
+            rows,
+        }
+    })
 }
 
 fn descendants(sys: &System, pid: u32) -> Vec<u32> {
@@ -1009,7 +1097,7 @@ pub fn kill_processes(
 ) -> KillResult {
     let root = root.to_string_lossy();
     let sys = system();
-    let snap = take(&sys, agents, dev_jobs, &root);
+    let snap = take(&all_but_own(every(&sys)), agents, dev_jobs, &root);
     let classes = classify(&snap, &project_refs(tree), &root);
     let procs: HashMap<u32, &Proc> = snap.processes.iter().map(|p| (p.pid, p)).collect();
     let mut result = KillResult::default();

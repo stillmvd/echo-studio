@@ -1,5 +1,7 @@
 import { UpdateToast } from '@stillmvd/tauri-ship';
+import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { LeaveGuard } from '@/components/memory/LeaveGuard';
+import { CursorLayer } from '@/components/ui/CursorCard';
 import { Toaster } from '@/components/ui/Toaster';
 import { WorkbenchLayout } from '@/components/workbench/WorkbenchLayout';
 import { useToolingWatch } from '@/hooks/use-tooling';
@@ -22,6 +24,7 @@ export function AppShell() {
         <NavRail />
         <main className="relative min-w-0 flex-1 pr-2 pb-2">
           <WorkbenchLayout hidden={activeTab !== 'workbench'} />
+          {activeTab === 'dashboard' && <DashboardLayout />}
           {activeTab === 'tools' && <ToolsLayout />}
           {activeTab === 'memory' && <MemoryLayout />}
           {activeTab === 'conversations' && <ConversationsLayout />}
@@ -29,7 +32,8 @@ export function AppShell() {
         </main>
       </div>
       <LeaveGuard />
-      <UpdateToast />
+      <CursorLayer />
+      <UpdateToast lang="ru" />
       <Toaster />
     </div>
   );
