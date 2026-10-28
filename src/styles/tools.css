@@ -30,6 +30,7 @@
 .tl-tabs { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px; min-width: 0; }
 .tl-tab { display: inline-flex; align-items: baseline; gap: 6px; padding: 0; color: var(--dim); font-size: 19px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; transition: color 160ms var(--ease-trail); }
 .tl-tab i { font-style: normal; font-size: 13px; font-weight: 500; letter-spacing: 0; }
+.tl-tab-upd { align-self: center; padding: 1px 6px; border-radius: 999px; background: color-mix(in oklab, var(--gb) 22%, transparent); color: var(--gb); font-style: normal; font-size: 11.5px; font-weight: 600; letter-spacing: 0; animation: tl-in 280ms var(--ease-trail); }
 .tl-tab:hover, .tl-tab[aria-selected="true"] { color: var(--fg); }
 .tl-tab:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; border-radius: 6px; }
 .has-panel .tl-tabs { column-gap: 14px; }

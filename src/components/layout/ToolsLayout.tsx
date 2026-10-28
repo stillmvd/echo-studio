@@ -57,6 +57,20 @@ export function ToolsLayout() {
   const checkErrors = check.error ? [String(check.error)] : (check.data?.errors ?? []);
 
   const updates = new Map(check.data?.updates.map((u) => [u.id, u]));
+  const runCheck = async () => {
+    const r = await check.refetch();
+    if (r.error) return toast(`Не удалось проверить: ${String(r.error)}`, 'fail');
+    const found = (tools.data ?? []).filter((e) => r.data?.updates.some((u) => u.id === e.id));
+    const per = KINDS.map(
+      ([k, label]) => [label, found.filter((e) => e.kind === k).length] as const,
+    )
+      .filter(([, n]) => n > 0)
+      .map(([label, n]) => `${label} ${n}`);
+    toast(
+      found.length ? `Есть обновления: ${per.join(', ')}` : 'Обновлений нет',
+      r.data?.errors.length ? 'fail' : 'done',
+    );
+  };
   const models = (tools.data ?? []).map(
     (entry): TileModel => ({
       entry,
@@ -116,19 +130,27 @@ export function ToolsLayout() {
       <section className="tl-body">
         <div className="tl-top">
           <div className="tl-tabs" role="tablist" aria-label="Инструменты">
-            {KINDS.map(([k, label]) => (
-              <button
-                key={k}
-                type="button"
-                role="tab"
-                aria-selected={k === kind}
-                className="tl-tab"
-                onClick={() => setKind(k)}
-              >
-                {label}
-                <i>{models.filter((m) => m.entry.kind === k).length}</i>
-              </button>
-            ))}
+            {KINDS.map(([k, label]) => {
+              const upd = models.filter((m) => m.entry.kind === k && m.update).length;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  role="tab"
+                  aria-selected={k === kind}
+                  className="tl-tab"
+                  onClick={() => setKind(k)}
+                >
+                  {label}
+                  <i>{models.filter((m) => m.entry.kind === k).length}</i>
+                  {upd > 0 && (
+                    <em className="tl-tab-upd" title={`Обновлений: ${upd}`}>
+                      ↑{upd}
+                    </em>
+                  )}
+                </button>
+              );
+            })}
           </div>
           <div className="tl-tools">
             <label className="tl-search">
@@ -151,7 +173,7 @@ export function ToolsLayout() {
                 type="button"
                 className="tl-dim tl-chk"
                 title="Проверить снова"
-                onClick={() => void check.refetch()}
+                onClick={() => void runCheck()}
               >
                 <Check className="tl-ic" strokeWidth={2.25} />
                 Проверено в {time(check.dataUpdatedAt)}
@@ -161,7 +183,7 @@ export function ToolsLayout() {
                 type="button"
                 className="tl-btn"
                 disabled={check.isFetching}
-                onClick={() => void check.refetch()}
+                onClick={() => void runCheck()}
               >
                 {check.isFetching ? 'Проверяю…' : 'Проверить обновления'}
               </button>
