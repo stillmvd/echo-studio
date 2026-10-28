@@ -30,25 +30,9 @@ pub fn same_project(a: &str, b: &str) -> bool {
     normalize_project(a).eq_ignore_ascii_case(&normalize_project(b))
 }
 
-pub fn ensure_allowed(path: &Path, roots: &[PathBuf]) -> Result<PathBuf, String> {
-    let canonical = path
-        .canonicalize()
-        .map_err(|e| format!("Не удалось проверить {}: {e}", path.display()))?;
-    let allowed = roots
-        .iter()
-        .filter_map(|r| r.canonicalize().ok())
-        .any(|r| canonical.starts_with(&r));
-    if allowed {
-        Ok(canonical)
-    } else {
-        Err(format!("Путь вне разрешённых папок: {}", path.display()))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
 
     #[test]
     fn normalizes_project_paths() {
@@ -56,29 +40,5 @@ mod tests {
         assert_eq!(normalize_project("C:\\"), "C:\\");
         assert!(same_project("c:/Users/X/p", "C:\\users\\x\\P\\"));
         assert!(!same_project("C:/a/b", "C:/a/bc"));
-    }
-
-    #[test]
-    fn allows_only_paths_inside_roots() {
-        let root = tempfile::tempdir().unwrap();
-        let other = tempfile::tempdir().unwrap();
-        let inside = root.path().join("skills").join("a.md");
-        fs::create_dir_all(inside.parent().unwrap()).unwrap();
-        fs::write(&inside, "x").unwrap();
-        let outside = other.path().join("b.md");
-        fs::write(&outside, "x").unwrap();
-        let roots = vec![root.path().to_path_buf()];
-
-        assert!(ensure_allowed(&inside, &roots).is_ok());
-        assert!(ensure_allowed(&outside, &roots).is_err());
-        let escape = root
-            .path()
-            .join("skills")
-            .join("..")
-            .join("..")
-            .join(other.path().file_name().unwrap())
-            .join("b.md");
-        assert!(ensure_allowed(&escape, &roots).is_err());
-        assert!(ensure_allowed(&root.path().join("missing.md"), &roots).is_err());
     }
 }

@@ -1,131 +1,18 @@
-use std::fs;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
 use crate::commands::conversations::blocking;
-use crate::conversations::scanner::list_projects;
-use crate::tooling::copies::{list_copies, ToolCopy};
-use crate::tooling::effective::{list_scopes, scan_global, scan_project};
-use crate::tooling::paths::{
-    claude_dir, claude_json, ensure_allowed, installed_plugins, same_project,
-};
-use crate::tooling::plugins::read_installed;
+use crate::tooling::inventory::{self, Entry, Place, Usage};
+use crate::tooling::paths::claude_dir;
 use crate::tooling::write::{list_backups, set_enabled, ConfigBackup};
-use crate::tooling::{ScanResult, ScopeKind, ScopeRef, ToggleTarget, ToolItem};
-
-const READ_LIMIT: usize = 512 * 1024;
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ScopeArg {
-    pub kind: ScopeKind,
-    pub path: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ToolFile {
-    pub text: String,
-    pub truncated_at: Option<usize>,
-}
+use crate::tooling::{actions, runs, updates, ToggleTarget};
+use crate::workbench::{projects, projects_root};
 
 fn home() -> Result<PathBuf, String> {
     dirs::home_dir().ok_or_else(|| "Не найдена домашняя папка".to_string())
-}
-
-fn known_scopes(home: &Path) -> Vec<ScopeRef> {
-    let cwds: Vec<String> = list_projects().into_iter().map(|p| p.cwd).collect();
-    list_scopes(home, &cwds)
-}
-
-fn allowed_roots(home: &Path) -> Vec<PathBuf> {
-    let mut roots = vec![claude_dir(home), claude_json(home)];
-    roots.extend(
-        known_scopes(home)
-            .into_iter()
-            .filter(|s| s.available)
-            .filter_map(|s| s.path.map(PathBuf::from)),
-    );
-    roots.extend(
-        read_installed(&installed_plugins(home))
-            .0
-            .into_iter()
-            .map(|p| p.install_path),
-    );
-    roots
-}
-
-fn read_limited(path: &Path) -> Result<ToolFile, String> {
-    let bytes =
-        fs::read(path).map_err(|e| format!("Не удалось прочитать {}: {e}", path.display()))?;
-    if bytes.len() <= READ_LIMIT {
-        return Ok(ToolFile {
-            text: String::from_utf8_lossy(&bytes).into_owned(),
-            truncated_at: None,
-        });
-    }
-    let mut cut = READ_LIMIT;
-    while cut > 0 && (bytes[cut] & 0b1100_0000) == 0b1000_0000 {
-        cut -= 1;
-    }
-    Ok(ToolFile {
-        text: String::from_utf8_lossy(&bytes[..cut]).into_owned(),
-        truncated_at: Some(cut),
-    })
-}
-
-#[tauri::command]
-pub async fn list_tool_scopes() -> Result<Vec<ScopeRef>, String> {
-    let home = home()?;
-    blocking(move || known_scopes(&home)).await
-}
-
-#[tauri::command]
-pub async fn list_tool_copies() -> Result<Vec<ToolCopy>, String> {
-    let home = home()?;
-    blocking(move || {
-        let plugins = read_installed(&installed_plugins(&home)).0;
-        list_copies(&claude_dir(&home), &known_scopes(&home), &plugins)
-    })
-    .await
-}
-
-#[tauri::command]
-pub async fn scan_tool_scope(scope: ScopeArg) -> Result<ScanResult, String> {
-    let home = home()?;
-    blocking(move || match (scope.kind, scope.path) {
-        (ScopeKind::Global, _) => Ok(scan_global(&home)),
-        (ScopeKind::Project, Some(path)) => {
-            let known = known_scopes(&home)
-                .iter()
-                .filter_map(|s| s.path.as_deref())
-                .any(|p| same_project(p, &path));
-            if known {
-                Ok(scan_project(&home, &path))
-            } else {
-                Err(format!("Неизвестный проект: {path}"))
-            }
-        }
-        (ScopeKind::Project, None) => Err("Не указан путь проекта".into()),
-    })
-    .await?
-}
-
-#[tauri::command]
-pub async fn read_tool_file(path: String) -> Result<ToolFile, String> {
-    let home = home()?;
-    blocking(move || {
-        let target = PathBuf::from(&path);
-        let ext = target.extension().and_then(|e| e.to_str()).unwrap_or("");
-        if !ext.eq_ignore_ascii_case("md") && !ext.eq_ignore_ascii_case("json") {
-            return Err(format!("Только .md и .json: {path}"));
-        }
-        let canonical = ensure_allowed(&target, &allowed_roots(&home))?;
-        read_limited(&canonical)
-    })
-    .await?
 }
 
 fn backups_root(app: &AppHandle) -> Result<PathBuf, String> {
@@ -135,54 +22,110 @@ fn backups_root(app: &AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| format!("Нет доступа к папке данных приложения: {e}"))
 }
 
+fn places() -> Vec<Place> {
+    projects_root()
+        .map(|root| {
+            projects::all_projects(&projects::scan(&root))
+                .map(|p| Place {
+                    name: p.name.clone(),
+                    path: p.path.clone(),
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn known(places: Vec<Place>) -> Vec<String> {
+    places.into_iter().map(|p| p.path).collect()
+}
+
 #[tauri::command]
 pub async fn set_tool_enabled(
     app: AppHandle,
     target: ToggleTarget,
     enabled: bool,
-) -> Result<ToolItem, String> {
+) -> Result<(), String> {
+    let home = home()?;
+    let backups = backups_root(&app)?;
+    blocking(move || set_enabled(&home, &backups, &known(places()), &target, enabled)).await?
+}
+
+#[tauri::command]
+pub async fn list_tools() -> Result<Vec<Entry>, String> {
+    let home = home()?;
+    blocking(move || inventory::list(&home, &places())).await
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolRuns {
+    pub start: Option<i64>,
+    pub usage: HashMap<String, Usage>,
+}
+
+#[tauri::command]
+pub async fn read_tool_runs(app: AppHandle) -> Result<ToolRuns, String> {
+    let home = home()?;
+    let cache = app
+        .path()
+        .app_local_data_dir()
+        .map(|d| d.join("tools-usage-cache.json"))
+        .ok();
+    blocking(move || {
+        let places = places();
+        let entries = inventory::list(&home, &places);
+        let runs = runs::collect(&claude_dir(&home).join("projects"), cache.as_deref());
+        ToolRuns {
+            start: runs.start,
+            usage: inventory::usage(&entries, &runs, &places),
+        }
+    })
+    .await
+}
+
+fn find_entry(home: &Path, places: &[Place], id: &str) -> Result<Entry, String> {
+    inventory::list(home, places)
+        .into_iter()
+        .find(|e| e.item.id == id)
+        .ok_or_else(|| format!("Инструмент не найден: {id}"))
+}
+
+#[tauri::command]
+pub async fn delete_tool(
+    app: AppHandle,
+    id: String,
+    projects: Vec<String>,
+) -> Result<actions::Done, String> {
     let home = home()?;
     let backups = backups_root(&app)?;
     blocking(move || {
-        let known: Vec<String> = known_scopes(&home)
-            .into_iter()
-            .filter(|s| s.available)
-            .filter_map(|s| s.path)
-            .collect();
-        set_enabled(&home, &backups, &known, &target, enabled)?;
-        let scan = match &target.project_path {
-            Some(p) => scan_project(&home, p),
-            None => scan_global(&home),
-        };
-        scan.items
-            .into_iter()
-            .find(|i| i.toggle.as_ref() == Some(&target))
-            .ok_or_else(|| format!("{} не найден после изменения", target.name))
+        let places = places();
+        let steps = actions::plan_delete(&find_entry(&home, &places, &id)?, &projects)?;
+        actions::execute(&steps, &home, &backups, &known(places))
     })
     .await?
+}
+
+#[tauri::command]
+pub async fn update_tool(app: AppHandle, id: String) -> Result<(), String> {
+    let home = home()?;
+    let backups = backups_root(&app)?;
+    blocking(move || {
+        let places = places();
+        let step = actions::plan_update(&find_entry(&home, &places, &id)?)?;
+        actions::execute(&[step], &home, &backups, &known(places)).map(|_| ())
+    })
+    .await?
+}
+
+#[tauri::command]
+pub async fn check_tool_updates() -> Result<updates::Check, String> {
+    let home = home()?;
+    blocking(move || updates::check(&home)).await
 }
 
 #[tauri::command]
 pub async fn list_config_backups(app: AppHandle) -> Result<Vec<ConfigBackup>, String> {
     let backups = backups_root(&app)?;
     blocking(move || list_backups(&backups)).await
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn truncates_on_char_boundary() {
-        let dir = tempfile::tempdir().unwrap();
-        let file = dir.path().join("big.md");
-        let text = "я".repeat(READ_LIMIT);
-        fs::write(&file, &text).unwrap();
-        let out = read_limited(&file).unwrap();
-        assert_eq!(out.truncated_at, Some(READ_LIMIT));
-        assert!(out.text.chars().all(|c| c == 'я'));
-
-        fs::write(&file, "small").unwrap();
-        assert!(read_limited(&file).unwrap().truncated_at.is_none());
-    }
 }

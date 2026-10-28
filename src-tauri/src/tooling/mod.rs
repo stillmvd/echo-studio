@@ -1,11 +1,14 @@
-pub mod copies;
+pub mod actions;
 pub mod effective;
 pub mod frontmatter;
+pub mod inventory;
 pub mod mcp;
 pub mod paths;
 pub mod plugins;
+pub mod runs;
 pub mod scan;
 pub mod settings;
+pub mod updates;
 pub mod watch;
 pub mod write;
 
