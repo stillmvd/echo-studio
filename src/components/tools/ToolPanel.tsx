@@ -1,5 +1,12 @@
 import { Check, ChevronRight, X } from 'lucide-react';
-import { useState } from 'react';
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useDeleteTool, useSetToolEnabled, useUpdateTool, useUpdating } from '@/hooks/use-tooling';
 import { plural } from '@/lib/dashboard';
@@ -31,6 +38,47 @@ const PARTS = [
   ['agents', 'agent', 'agents'],
   ['mcp', 'mcp', 'MCP'],
 ] as const;
+
+export const EASE = 'cubic-bezier(0.2, 0, 0, 1)';
+const SLIDE = [
+  { opacity: 0, transform: 'translateX(32px) scale(0.98)' },
+  { opacity: 1, transform: 'none' },
+];
+const still = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+export function ToolAside({
+  open,
+  label,
+  onGone,
+  children,
+}: {
+  open: boolean;
+  label: string;
+  onGone: () => void;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const a = still() ? null : ref.current?.animate(SLIDE, { duration: 320, easing: EASE });
+    return () => a?.cancel();
+  }, []);
+  useEffect(() => {
+    if (open) return;
+    const el = ref.current;
+    if (!el || still()) {
+      onGone();
+      return;
+    }
+    const a = el.animate([...SLIDE].reverse(), { duration: 200, easing: EASE, fill: 'forwards' });
+    a.finished.then(onGone).catch(() => {});
+    return () => a.cancel();
+  }, [open, onGone]);
+  return (
+    <aside ref={ref} className="tl-panel" aria-label={label}>
+      {children}
+    </aside>
+  );
+}
 
 function deletePlan(e: ToolEntry, picked: string[]): string {
   if (e.copies.length) {
@@ -78,7 +126,7 @@ export function ToolPanel({
   const pluginChild = e.origin === 'plugin' && e.kind !== 'plugin';
 
   return (
-    <aside className="tl-panel" aria-label={e.name}>
+    <div className="tl-pc">
       <div className="tl-chd">
         <span className="tl-cn">
           <b>{e.name}</b>
@@ -110,12 +158,17 @@ export function ToolPanel({
           <>
             <div className="tl-chart" aria-hidden="true">
               {series
-                .map((v, i) => ({ v, day: start + i * DAY, last: i === series.length - 1 }))
+                .map((v, i) => ({ v, i, day: start + i * DAY, last: i === series.length - 1 }))
                 .map((d) => (
                   <i
                     key={d.day}
                     className={d.last ? 'now' : undefined}
-                    style={{ height: d.v ? `${Math.max(6, (d.v / peak) * 100)}%` : 0 }}
+                    style={
+                      {
+                        height: d.v ? `${Math.max(6, (d.v / peak) * 100)}%` : 0,
+                        '--i': d.i,
+                      } as CSSProperties
+                    }
                   />
                 ))}
             </div>
@@ -281,6 +334,6 @@ export function ToolPanel({
         }}
         onCancel={() => setConfirm(false)}
       />
-    </aside>
+    </div>
   );
 }

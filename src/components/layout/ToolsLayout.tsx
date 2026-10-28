@@ -1,6 +1,7 @@
+import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { Check, Search } from 'lucide-react';
-import { useState } from 'react';
-import { ToolPanel } from '@/components/tools/ToolPanel';
+import { useCallback, useRef, useState } from 'react';
+import { EASE, ToolAside, ToolPanel } from '@/components/tools/ToolPanel';
 import { type TileModel, ToolTile } from '@/components/tools/ToolTile';
 import {
   useToolRuns,
@@ -46,6 +47,11 @@ export function ToolsLayout() {
   const update = useUpdateTool();
   const updating = useUpdating();
   const [failed, setFailed] = useState<string[]>([]);
+  const [tiles] = useAutoAnimate<HTMLDivElement>({ duration: 280, easing: EASE });
+  const [panelId, setPanelId] = useState(selectedId);
+  if (selectedId && selectedId !== panelId) setPanelId(selectedId);
+  const gone = useCallback(() => setPanelId(null), []);
+  const lastPanel = useRef<TileModel>(undefined);
   const now = Date.now();
   const start = runs.data?.start ?? null;
   const checkErrors = check.error ? [String(check.error)] : (check.data?.errors ?? []);
@@ -83,6 +89,9 @@ export function ToolsLayout() {
     );
   const max = Math.max(0, ...ofKind.map((m) => m.usage?.count ?? 0));
   const selected = models.find((m) => m.entry.id === selectedId);
+  const found = models.find((m) => m.entry.id === panelId);
+  if (found) lastPanel.current = found;
+  const panel = panelId ? (found ?? lastPanel.current) : undefined;
   const shortHistory = !!runs.data && historyDays(start, now) < STALE_DAYS;
 
   const updateAll = async () => {
@@ -103,7 +112,7 @@ export function ToolsLayout() {
   };
 
   return (
-    <div className={cn('tl-root', selected && 'has-panel')}>
+    <div className={cn('tl-root', panel && 'has-panel')}>
       <section className="tl-body">
         <div className="tl-top">
           <div className="tl-tabs" role="tablist" aria-label="Инструменты">
@@ -213,7 +222,7 @@ export function ToolsLayout() {
           ) : tools.isPending ? null : shown.length === 0 ? (
             <div className="tl-empty">{EMPTY[filter]}</div>
           ) : (
-            <div className="tl-tiles">
+            <div className="tl-tiles" key={kind} ref={tiles}>
               {shown.map((m) => (
                 <ToolTile
                   key={m.entry.id}
@@ -229,25 +238,31 @@ export function ToolsLayout() {
         </div>
       </section>
 
-      {selected && (
-        <ToolPanel
-          key={selected.entry.id}
-          m={selected}
-          start={start}
-          now={now}
-          onClose={() => select(null)}
-          onOpenPlugin={(key) => {
-            setKind('plugin');
-            setFilter('all');
-            select(`plugin:plugin:${key}`);
-          }}
-          onOpenParts={(k, plugin) => {
-            setKind(k);
-            setFilter('all');
-            setQuery(`${plugin}:`);
-            select(null);
-          }}
-        />
+      {panel && (
+        <ToolAside
+          open={!!selected && selectedId === panelId}
+          label={panel.entry.name}
+          onGone={gone}
+        >
+          <ToolPanel
+            key={panel.entry.id}
+            m={panel}
+            start={start}
+            now={now}
+            onClose={() => select(null)}
+            onOpenPlugin={(key) => {
+              setKind('plugin');
+              setFilter('all');
+              select(`plugin:plugin:${key}`);
+            }}
+            onOpenParts={(k, plugin) => {
+              setKind(k);
+              setFilter('all');
+              setQuery(`${plugin}:`);
+              select(null);
+            }}
+          />
+        </ToolAside>
       )}
     </div>
   );
