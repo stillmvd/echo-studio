@@ -4,7 +4,8 @@ import type {
   KindFilter as MemoryKindFilter,
   StatusFilter as MemoryStatusFilter,
 } from '@/lib/memory';
-import type { KindFilter } from '@/lib/tooling';
+import type { ToolsFilter } from '@/lib/tools';
+import type { ToolKind } from '@/lib/types';
 
 export type AppTab = 'dashboard' | 'workbench' | 'tools' | 'memory' | 'conversations' | 'settings';
 export type MemoryTab = 'records' | 'sessions' | 'archive';
@@ -23,13 +24,10 @@ interface UiState {
   projectsSort: ProjectSort;
   viewerShowSystem: boolean;
   viewerShowThinking: boolean;
-  toolsScope: string | null;
-  toolsType: KindFilter;
+  toolsType: ToolKind;
+  toolsFilter: ToolsFilter;
   toolsQuery: string;
   selectedToolId: string | null;
-  toolsOpenGroups: string[];
-  toolToggleError: { id: string; message: string } | null;
-  toolsOverriddenOnly: boolean;
   memorySlug: string | null;
   memoryTab: MemoryTab;
   memoryStatus: MemoryStatusFilter;
@@ -53,13 +51,10 @@ interface UiState {
   setConversationsAgeFilter: (f: 'all' | 'older30' | 'older90' | 'older365') => void;
   toggleViewerShowSystem: () => void;
   toggleViewerShowThinking: () => void;
-  setToolsScope: (path: string | null) => void;
-  setToolsType: (type: KindFilter) => void;
+  setToolsType: (type: ToolKind) => void;
+  setToolsFilter: (filter: ToolsFilter) => void;
   setToolsQuery: (q: string) => void;
   setSelectedToolId: (id: string | null) => void;
-  toggleToolsGroup: (key: string) => void;
-  setToolToggleError: (error: { id: string; message: string } | null) => void;
-  setToolsOverriddenOnly: (on: boolean) => void;
   setMemorySlug: (slug: string | null) => void;
   setMemoryTab: (tab: MemoryTab) => void;
   setMemoryStatus: (status: MemoryStatusFilter) => void;
@@ -74,8 +69,13 @@ interface UiState {
 
 export function migrateUiState(persisted: unknown): unknown {
   if (typeof persisted !== 'object' || persisted === null) return persisted;
-  const state = persisted as { activeTab?: unknown };
-  return state.activeTab === 'memories' ? { ...state, activeTab: 'tools' } : state;
+  const state = persisted as { activeTab?: unknown; toolsType?: unknown };
+  const kinds = ['skill', 'plugin', 'command', 'mcp', 'agent'];
+  return {
+    ...state,
+    ...(state.activeTab === 'memories' && { activeTab: 'tools' }),
+    ...(!kinds.includes(String(state.toolsType)) && { toolsType: 'skill' }),
+  };
 }
 
 export const useUiStore = create<UiState>()(
@@ -93,13 +93,10 @@ export const useUiStore = create<UiState>()(
       projectsSort: 'recent',
       viewerShowSystem: false,
       viewerShowThinking: false,
-      toolsScope: null,
-      toolsType: 'all',
+      toolsType: 'skill',
+      toolsFilter: 'all',
       toolsQuery: '',
       selectedToolId: null,
-      toolsOpenGroups: [],
-      toolToggleError: null,
-      toolsOverriddenOnly: false,
       memorySlug: null,
       memoryTab: 'records',
       memoryStatus: 'all',
@@ -133,28 +130,10 @@ export const useUiStore = create<UiState>()(
         set({ conversationsAgeFilter, conversationsBulkSelection: [] }),
       toggleViewerShowSystem: () => set((s) => ({ viewerShowSystem: !s.viewerShowSystem })),
       toggleViewerShowThinking: () => set((s) => ({ viewerShowThinking: !s.viewerShowThinking })),
-      setToolsScope: (toolsScope) =>
-        set({
-          toolsScope,
-          selectedToolId: null,
-          toolToggleError: null,
-          toolsOverriddenOnly: false,
-        }),
       setToolsType: (toolsType) => set({ toolsType }),
+      setToolsFilter: (toolsFilter) => set({ toolsFilter }),
       setToolsQuery: (toolsQuery) => set({ toolsQuery }),
-      setSelectedToolId: (selectedToolId) =>
-        set((s) => ({
-          selectedToolId,
-          toolToggleError: s.toolToggleError?.id === selectedToolId ? s.toolToggleError : null,
-        })),
-      toggleToolsGroup: (key) =>
-        set((s) => ({
-          toolsOpenGroups: s.toolsOpenGroups.includes(key)
-            ? s.toolsOpenGroups.filter((k) => k !== key)
-            : [...s.toolsOpenGroups, key],
-        })),
-      setToolToggleError: (toolToggleError) => set({ toolToggleError }),
-      setToolsOverriddenOnly: (toolsOverriddenOnly) => set({ toolsOverriddenOnly }),
+      setSelectedToolId: (selectedToolId) => set({ selectedToolId }),
       setMemorySlug: (memorySlug) =>
         set({
           memorySlug,
@@ -185,7 +164,7 @@ export const useUiStore = create<UiState>()(
     }),
     {
       name: 'echo-studio.ui',
-      version: 1,
+      version: 2,
       migrate: (persisted) => migrateUiState(persisted) as UiState,
       partialize: (s) => ({
         activeTab: s.activeTab,
@@ -196,9 +175,7 @@ export const useUiStore = create<UiState>()(
         projectsSort: s.projectsSort,
         viewerShowSystem: s.viewerShowSystem,
         viewerShowThinking: s.viewerShowThinking,
-        toolsScope: s.toolsScope,
         toolsType: s.toolsType,
-        toolsOpenGroups: s.toolsOpenGroups,
         memorySlug: s.memorySlug,
         memoryTab: s.memoryTab,
       }),

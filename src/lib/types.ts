@@ -73,18 +73,10 @@ export interface SessionBulkDeleteResult {
   failed: SessionDeleteFailure[];
 }
 
-export type ScopeKind = 'global' | 'project';
 export type ToolKind = 'skill' | 'command' | 'agent' | 'plugin' | 'mcp';
 export type ToolOrigin = 'user' | 'project' | 'local' | 'plugin';
 export type ToolState = 'enabled' | 'disabled' | 'unavailable' | 'error';
 export type ToolConflict = 'none' | 'overrides' | 'overridden';
-
-export interface ScopeRef {
-  kind: ScopeKind;
-  path: string | null;
-  name: string;
-  available: boolean;
-}
 
 export interface ToggleTarget {
   file: 'userSettings' | 'projectLocalSettings' | 'claudeJson';
@@ -132,33 +124,6 @@ export interface ToolItem {
   frontMatter: Record<string, unknown> | null;
   plugin: PluginInfo | null;
   mcp: McpInfo | null;
-}
-
-export interface ToolCopy {
-  kind: 'skill' | 'command' | 'agent';
-  name: string;
-  scope: { kind: 'global' | 'project' | 'plugin'; path: string | null; label: string };
-  filePath: string;
-  hash: string | null;
-  modifiedMs: number | null;
-}
-
-export interface SourceStatus {
-  path: string;
-  status: 'ok' | 'missing' | 'error';
-  error: string | null;
-}
-
-export interface ScanResult {
-  scope: ScopeRef;
-  items: ToolItem[];
-  sources: SourceStatus[];
-  counts: Partial<Record<ToolKind, number>>;
-}
-
-export interface ToolFile {
-  text: string;
-  truncatedAt: number | null;
 }
 
 export interface ConfigBackup {

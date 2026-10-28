@@ -9,21 +9,24 @@ describe('ui-store', () => {
     expect(useUiStore.getState().conversationsBulkSelection).toEqual([]);
   });
 
-  it('keeps a toggle error only while its tool is selected', () => {
-    const s = useUiStore.getState();
-    s.setToolToggleError({ id: 'a', message: 'denied' });
-    s.setSelectedToolId('a');
-    expect(useUiStore.getState().toolToggleError?.message).toBe('denied');
-    s.setSelectedToolId('b');
-    expect(useUiStore.getState().toolToggleError).toBeNull();
-  });
-
   it('turns a persisted memories tab into tools', () => {
-    expect(migrateUiState({ activeTab: 'memories', projectsSort: 'name' })).toEqual({
+    expect(
+      migrateUiState({ activeTab: 'memories', projectsSort: 'name', toolsType: 'mcp' }),
+    ).toEqual({
       activeTab: 'tools',
       projectsSort: 'name',
+      toolsType: 'mcp',
     });
-    expect(migrateUiState({ activeTab: 'conversations' })).toEqual({ activeTab: 'conversations' });
-    expect(migrateUiState({ activeTab: 'workbench' })).toEqual({ activeTab: 'workbench' });
+    expect(migrateUiState({ activeTab: 'workbench', toolsType: 'skill' })).toEqual({
+      activeTab: 'workbench',
+      toolsType: 'skill',
+    });
+  });
+
+  it('replaces the old "all" tools type with skills', () => {
+    expect(migrateUiState({ activeTab: 'tools', toolsType: 'all' })).toEqual({
+      activeTab: 'tools',
+      toolsType: 'skill',
+    });
   });
 });

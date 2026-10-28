@@ -6,7 +6,6 @@ interface NavSnapshot {
   activeTab: UiState['activeTab'];
   conversationsProjectId: string | null;
   selectedSessionPath: string | null;
-  toolsScope: string | null;
   selectedToolId: string | null;
 }
 
@@ -17,7 +16,6 @@ function snapshot(s: UiState): NavSnapshot {
     activeTab: s.activeTab,
     conversationsProjectId: s.conversationsProjectId,
     selectedSessionPath: s.selectedSessionPath,
-    toolsScope: s.toolsScope,
     selectedToolId: s.selectedToolId,
   };
 }
@@ -27,7 +25,6 @@ function same(a: NavSnapshot, b: NavSnapshot): boolean {
     a.activeTab === b.activeTab &&
     a.conversationsProjectId === b.conversationsProjectId &&
     a.selectedSessionPath === b.selectedSessionPath &&
-    a.toolsScope === b.toolsScope &&
     a.selectedToolId === b.selectedToolId
   );
 }

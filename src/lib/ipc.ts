@@ -1,4 +1,5 @@
 import { type Channel, invoke } from '@tauri-apps/api/core';
+import type { ToolEntry, ToolRuns, UpdateCheck } from './tools';
 import type {
   ClaudeSession,
   ConfigBackup,
@@ -18,40 +19,35 @@ import type {
   ProjectTree,
   RateLimits,
   RecordPatch,
-  ScanResult,
-  ScopeKind,
-  ScopeRef,
   SessionBulkDeleteResult,
   SessionMeta,
   SessionSearchHit,
   ToggleTarget,
-  ToolCopy,
-  ToolFile,
-  ToolItem,
   UsageReport,
 } from './types';
 
-export async function listToolScopes(): Promise<ScopeRef[]> {
-  return invoke<ScopeRef[]>('list_tool_scopes');
+export async function listTools(): Promise<ToolEntry[]> {
+  return invoke<ToolEntry[]>('list_tools');
 }
 
-export async function scanToolScope(scope: {
-  kind: ScopeKind;
-  path: string | null;
-}): Promise<ScanResult> {
-  return invoke<ScanResult>('scan_tool_scope', { scope });
+export async function readToolRuns(): Promise<ToolRuns> {
+  return invoke<ToolRuns>('read_tool_runs');
 }
 
-export async function listToolCopies(): Promise<ToolCopy[]> {
-  return invoke<ToolCopy[]>('list_tool_copies');
+export async function setToolEnabled(target: ToggleTarget, enabled: boolean): Promise<void> {
+  return invoke<void>('set_tool_enabled', { target, enabled });
 }
 
-export async function readToolFile(path: string): Promise<ToolFile> {
-  return invoke<ToolFile>('read_tool_file', { path });
+export async function deleteTool(id: string, projects: string[]): Promise<{ trashed: number }> {
+  return invoke<{ trashed: number }>('delete_tool', { id, projects });
 }
 
-export async function setToolEnabled(target: ToggleTarget, enabled: boolean): Promise<ToolItem> {
-  return invoke<ToolItem>('set_tool_enabled', { target, enabled });
+export async function updateTool(id: string): Promise<void> {
+  return invoke<void>('update_tool', { id });
+}
+
+export async function checkToolUpdates(): Promise<UpdateCheck> {
+  return invoke<UpdateCheck>('check_tool_updates');
 }
 
 export async function listConfigBackups(): Promise<ConfigBackup[]> {

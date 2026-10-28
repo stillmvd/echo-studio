@@ -85,9 +85,9 @@ export function isStale(
   now: number,
 ): boolean {
   if (!measurable(e) || (e.kind === 'plugin' && (e.plugin?.contents.hooks ?? 0) > 0)) return false;
-  if (start === null || now - start < STALE_DAYS * DAY) return false;
+  if (historyDays(start, now) < STALE_DAYS) return false;
   const old = !u?.last || now - u.last > STALE_DAYS * DAY;
-  return old && now - (e.installed ?? start) > STALE_DAYS * DAY;
+  return old && now - (e.installed ?? start ?? now) > STALE_DAYS * DAY;
 }
 
 const MONTHS = [
@@ -148,3 +148,4 @@ export function dailySeries(u: ToolUsage | undefined, start: number, now: number
   }
   return out;
 }
+export type ToolsFilter = 'all' | 'stale' | 'off' | 'upd';

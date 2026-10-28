@@ -1,7 +1,7 @@
 import { CircleCheck, Folder, Pin } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { highlightSegments } from '@/lib/highlight';
 import { baseName, formatMemoryDate, formatMemoryTime, kindKey } from '@/lib/memory';
-import { highlightSegments } from '@/lib/tooling';
 import type { MemoryHit, MemoryRecord, SessionNote } from '@/lib/types';
 import { chipBase, focusRing, KIND_VIEW } from './kinds';
 
