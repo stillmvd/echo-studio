@@ -75,7 +75,25 @@ export function useSetToolEnabled() {
 export function useDeleteTool() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, projects }: { id: string; projects: string[] }) => deleteTool(id, projects),
+    mutationFn: ({ id, projects }: { id: string; projects: string[]; done: string }) =>
+      deleteTool(id, projects),
+    onMutate: async ({ id, projects }) => {
+      await qc.cancelQueries({ queryKey: LIST });
+      const previous = qc.getQueryData<ToolEntry[]>(LIST);
+      qc.setQueryData<ToolEntry[]>(LIST, (list) =>
+        list?.flatMap((e) => {
+          if (e.id !== id) return [e];
+          const copies = e.copies.filter((c) => !projects.includes(c.path));
+          return e.copies.length && copies.length ? [{ ...e, copies }] : [];
+        }),
+      );
+      return { previous };
+    },
+    onSuccess: (_r, { done }) => toast(done),
+    onError: (error, _vars, context) => {
+      if (context?.previous) qc.setQueryData(LIST, context.previous);
+      toast(`Не удалось удалить: ${String(error)}`, 'fail');
+    },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ['tooling'] });
       void qc.invalidateQueries({ queryKey: RUNS });

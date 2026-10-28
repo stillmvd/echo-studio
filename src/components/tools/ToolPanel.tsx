@@ -267,13 +267,15 @@ export function ToolPanel({
         title={`Удалить ${e.name}?`}
         description={deletePlan(e, picked)}
         confirmLabel="Удалить"
-        doneToast={
-          (e.kind === 'skill' || e.kind === 'command' || e.kind === 'agent') && !e.npx
-            ? 'Удалено в Корзину'
-            : 'Удалено'
-        }
-        onConfirm={async () => {
-          await remove.mutateAsync({ id: e.id, projects: picked });
+        onConfirm={() => {
+          remove.mutate({
+            id: e.id,
+            projects: picked,
+            done:
+              (e.kind === 'skill' || e.kind === 'command' || e.kind === 'agent') && !e.npx
+                ? 'Удалено в Корзину'
+                : 'Удалено',
+          });
           setConfirm(false);
           onClose();
         }}
