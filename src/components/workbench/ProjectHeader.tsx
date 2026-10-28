@@ -4,7 +4,6 @@ import { ChromeIcon } from '@/components/ui/ChromeIcon';
 import { useGitStates } from '@/hooks/use-workbench-overview';
 import { isStatus } from '@/lib/overview';
 import type { DevServer, WorkbenchProject } from '@/lib/types';
-import { shortPath } from '@/lib/workbench';
 import { DevCapsule } from './DevCapsule';
 import { ProjectIcon } from './ProjectIcon';
 
@@ -22,10 +21,7 @@ export function ProjectHeader({ project, server, busy, onClaude, extra }: Props)
     <div className="wb-ph">
       <ProjectIcon svg={project.icon} size="lg" />
       <span className="wb-pt">
-        <b title={project.name}>{project.name}</b>
-        <span className="wb-path" title={project.path}>
-          {shortPath(project.path)}
-        </span>
+        <b title={project.path}>{project.name}</b>
       </span>
       <span className="wb-chips">
         {isStatus(git) && (

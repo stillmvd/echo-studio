@@ -99,7 +99,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
                   busy={busy}
                   onStart={(path) => void start(path)}
                   query={treeQuery}
-                  onPick={() => treeQuery.trim() && setTreeOpen(false)}
+                  onPick={() => setTreeOpen(false)}
                 />
               )}
               {error && <p className="wb-dim px-3.5 py-2 text-xs">{String(error)}</p>}

@@ -133,8 +133,8 @@
 .wb-pv { flex: 1; min-width: 0; container-type: inline-size; }
 .wb-ph, .wl-tb { flex: none; display: flex; align-items: center; gap: 8px; min-height: 76px; padding: 16px 16px 12px 24px; min-width: 0; }
 .wb-ph > .wb-pi { margin-right: 4px; }
-.wb-ph > .wb-pi.lg { width: 45px; height: 45px; border-radius: 11px; }
-.wb-ph > .wb-pi.lg.none svg { width: 26px; height: 26px; }
+.wb-ph > .wb-pi.lg { width: 38px; height: 38px; border-radius: 10px; }
+.wb-ph > .wb-pi.lg.none svg { width: 22px; height: 22px; }
 .wb-pt { flex: 0 1 auto; min-width: 72px; display: flex; flex-direction: column; gap: 4px; }
 .wb-pt b, .wl-tb > b { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.06; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wl-tb > b { flex: none; }
