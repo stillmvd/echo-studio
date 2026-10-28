@@ -30,6 +30,7 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   const { start, busy, dialogs } = useStartSession();
   const menu = useContextMenu();
   const [treeOpen, setTreeOpen] = useState(false);
+  const [treeQuery, setTreeQuery] = useState('');
   const hiddenProjects = useWorkbenchStore((s) => s.hiddenProjects);
   useEffect(() => {
     if (hidden) setTreeOpen(false);
@@ -82,6 +83,8 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
             <TreeCard
               open={treeOpen}
               onOpen={setTreeOpen}
+              query={treeQuery}
+              onQuery={setTreeQuery}
               current={selected}
               total={
                 projects.filter(
@@ -95,6 +98,8 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
                   devServers={devServers}
                   busy={busy}
                   onStart={(path) => void start(path)}
+                  query={treeQuery}
+                  onPick={() => treeQuery.trim() && setTreeOpen(false)}
                 />
               )}
               {error && <p className="wb-dim px-3.5 py-2 text-xs">{String(error)}</p>}

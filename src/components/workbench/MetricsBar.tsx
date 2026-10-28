@@ -149,9 +149,9 @@ export function MetricsBar({ sessions, projects }: Props) {
           'lim',
           <>
             <Ring value={five.used ?? 0} size={18} stroke={3} />
-            <Ring value={week.used ?? 0} size={18} stroke={3} />
             <span className="db-bl">5 ч</span>
             <b className={`t-${five.t}`}>{five.used === null ? '—' : `${five.used}%`}</b>
+            <Ring value={week.used ?? 0} size={18} stroke={3} />
             <span className="db-bl">нед</span>
             <b className={`t-${week.t}`}>{week.used === null ? '—' : `${week.used}%`}</b>
           </>,
@@ -221,9 +221,9 @@ export function MetricsBar({ sessions, projects }: Props) {
           'load',
           <>
             <Ring value={m?.cpu ?? 0} size={18} stroke={3} />
-            <Ring value={memP} size={18} stroke={3} />
             <span className="db-bl">CPU</span>
             <b className={`t-${tone(m?.cpu ?? 0)}`}>{m ? pct(m.cpu) : '—'}</b>
+            <Ring value={memP} size={18} stroke={3} />
             <span className="db-bl">RAM</span>
             <b className={`t-${tone(memP)}`}>{m ? `${Math.round(memP)}%` : '—'}</b>
           </>,

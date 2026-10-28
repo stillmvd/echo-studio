@@ -86,11 +86,56 @@ const sphere = (c: string) =>
     g('sph', () => new T.SphereGeometry(0.72, 32, 24)),
     mat(c, 0.1, false),
   );
-const torus = (c: string) =>
-  new T.Mesh(
-    g('tor', () => new T.TorusGeometry(0.7, 0.25, 18, 48)),
-    mat(c, 0.16, false),
-  );
+function slabGeo() {
+  const w = 1.7;
+  const h = 0.44;
+  const r = 0.16;
+  const s = new T.Shape();
+  s.moveTo(-w / 2 + r, -h / 2);
+  s.lineTo(w / 2 - r, -h / 2);
+  s.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
+  s.lineTo(w / 2, h / 2 - r);
+  s.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
+  s.lineTo(-w / 2 + r, h / 2);
+  s.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
+  s.lineTo(-w / 2, -h / 2 + r);
+  s.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+  const eg = new T.ExtrudeGeometry(s, {
+    depth: 1,
+    bevelEnabled: true,
+    bevelThickness: 0.05,
+    bevelSize: 0.05,
+    bevelSegments: 2,
+    curveSegments: 8,
+  });
+  eg.center();
+  return eg;
+}
+
+const server = (c: string, rate: number): Built => {
+  const grp = new T.Group();
+  const leds = [-0.62, 0, 0.62].map((y) => {
+    const slab = new T.Mesh(g('slab', slabGeo), mat(c, 0.16));
+    slab.position.y = y;
+    const led = new T.Mesh(
+      g('led', () => new T.SphereGeometry(0.075, 12, 8)),
+      new T.MeshBasicMaterial({ color: col('#eafff9'), transparent: true }),
+    );
+    led.position.set(0.6, y, 0.56);
+    grp.add(slab, led);
+    return led;
+  });
+  grp.rotation.set(0.32, -0.55, 0);
+  return [
+    grp,
+    (t) => {
+      grp.rotation.y = -0.55 + Math.sin(t * 0.6) * 0.18;
+      leds.forEach((led, i) => {
+        led.visible = Math.sin(t * rate + i * 2.1) > 0.2;
+      });
+    },
+  ];
+};
 
 const BUILD: Record<SolidLook, (c: string) => Built> = {
   idle: (c) => {
@@ -207,26 +252,8 @@ const BUILD: Record<SolidLook, (c: string) => Built> = {
       },
     ];
   },
-  dev_run: (c) => {
-    const m = torus(c);
-    return [
-      m,
-      (t) => {
-        m.rotation.x = t * 1.2;
-        m.rotation.y = t * 0.7;
-      },
-    ];
-  },
-  dev_slow: (c) => {
-    const m = torus(c);
-    return [
-      m,
-      (t) => {
-        m.rotation.x = t * 0.35;
-        m.rotation.y = t * 0.2;
-      },
-    ];
-  },
+  dev_run: (c) => server(c, 9),
+  dev_slow: (c) => server(c, 1.6),
 };
 
 interface Made {

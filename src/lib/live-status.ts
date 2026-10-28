@@ -47,8 +47,8 @@ export const SOLID_SCALE: Record<SolidLook, number> = {
   waiting: 1.109,
   done: 1.068,
   error: 1.109,
-  dev_run: 0.963,
-  dev_slow: 0.963,
+  dev_run: 0.9,
+  dev_slow: 0.9,
 };
 
 export const isFlat = (look: LiveLook): look is FlatLook => look in FLAT_VIEWBOX;

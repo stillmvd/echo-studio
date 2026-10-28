@@ -121,6 +121,7 @@
 .db-bp.bad .db-bpb { background: color-mix(in srgb, var(--danger) 16%, var(--cosmic)); }
 .db-bpb b { font-weight: 700; font-variant-numeric: tabular-nums; }
 .db-bpb b + .db-bl { margin-left: 4px; }
+.db-bpb b + .db-ring { margin-left: 8px; }
 .db-bl { color: var(--dim); }
 .db-bic { width: 16px; height: 16px; color: var(--danger); }
 .db-bpb .db-spk { width: 44px; height: 16px; }
