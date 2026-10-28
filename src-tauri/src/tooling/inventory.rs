@@ -256,15 +256,20 @@ fn run_keys(item: &ToolItem, skills: &HashSet<&str>, commands: &HashSet<&str>) -
     }
 }
 
-fn project_name<'a>(slug: &'a str, slugs: &'a [(String, String)]) -> &'a str {
+fn project_name(slug: &str, slugs: &[(String, String)]) -> String {
+    let lower = slug.to_lowercase();
     slugs
         .iter()
         .filter(|(s, _)| {
-            slug.strip_prefix(s.as_str())
+            lower
+                .strip_prefix(s.to_lowercase().as_str())
                 .is_some_and(|rest| rest.is_empty() || rest.starts_with("--"))
         })
         .max_by_key(|(s, _)| s.len())
-        .map_or(slug, |(_, n)| n.as_str())
+        .map_or_else(
+            || crate::memory::scan::name_from_slug(slug),
+            |(_, n)| n.clone(),
+        )
 }
 
 pub fn usage(entries: &[Entry], runs: &Runs, places: &[Place]) -> HashMap<String, Usage> {
@@ -291,9 +296,7 @@ pub fn usage(entries: &[Entry], runs: &Runs, places: &[Place]) -> HashMap<String
                     *acc.0.days.entry(*d).or_insert(0) += n;
                 }
                 for (slug, n) in &agg.slugs {
-                    *acc.1
-                        .entry(project_name(slug, &slugs).to_string())
-                        .or_insert(0) += n;
+                    *acc.1.entry(project_name(slug, &slugs)).or_insert(0) += n;
                 }
             }
         }
@@ -439,8 +442,8 @@ mod tests {
             *a.slugs.entry(slug.into()).or_insert(0) += n;
         };
         add("s|jira", "C--P-Echo", 3, 1000);
-        add("c|jira", "C--P-Echo--claude-worktrees-x", 1, 2000);
-        add("s|pony:review", "C--other", 5, 500);
+        add("c|jira", "c--P-Echo--claude-worktrees-x", 1, 2000);
+        add("s|pony:review", "C--Users-u-Projects-Freelance", 5, 500);
         add("m|plugin_mem_search", "C--P-Echo", 2, 10);
         let places = [Place {
             name: "Echo".into(),
@@ -455,7 +458,7 @@ mod tests {
         assert_eq!(u["plugin:plugin:pony@m"].count, 5);
         assert_eq!(
             u["plugin:plugin:pony@m"].projects,
-            vec![("C--other".to_string(), 5)]
+            vec![("Freelance".to_string(), 5)]
         );
     }
 }

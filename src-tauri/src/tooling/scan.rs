@@ -82,6 +82,12 @@ fn scan_markdown_tree(
     collect_md(dir, &mut files);
     files.sort();
     for file in files {
+        if kind == Kind::Agent
+            && !fs::read_to_string(&file)
+                .is_ok_and(|s| s.trim_start_matches('\u{feff}').starts_with("---"))
+        {
+            continue;
+        }
         let fallback = match kind {
             Kind::Command => file
                 .strip_prefix(dir)
@@ -184,6 +190,7 @@ mod tests {
         write(&r.join("commands/commit.md"), "Commit it");
         write(&r.join("agents/sub/reviewer.md"), "---\nname: rev\n---\n");
         write(&r.join("agents/broken.md"), "---\nfoo: [x\n---\n");
+        write(&r.join("agents/README.md"), "# Agents\n");
 
         let found = scan_root(r, Origin::User, None);
         let names: Vec<(Kind, &str)> = found
