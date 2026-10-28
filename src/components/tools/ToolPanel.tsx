@@ -1,3 +1,4 @@
+import { open } from '@tauri-apps/plugin-shell';
 import { Check, ChevronRight, X } from 'lucide-react';
 import {
   type CSSProperties,
@@ -260,7 +261,16 @@ export function ToolPanel({
       )}
 
       <div className="tl-acts">
-        {m.update && (
+        {m.update?.url && (
+          <button
+            type="button"
+            className="tl-btn p"
+            onClick={() => m.update?.url && open(m.update.url).catch(failOpen)}
+          >
+            Релиз {m.update.latest}
+          </button>
+        )}
+        {m.update && !m.update.url && (
           <button
             type="button"
             className="tl-btn p"

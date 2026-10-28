@@ -1,13 +1,15 @@
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use serde::Serialize;
 use serde_json::Value;
 
 use super::actions::output_within;
+use super::inventory::Entry;
 use super::paths::{claude_dir, installed_plugins};
+use super::{Kind, Origin};
 use crate::workbench::child_command;
 use crate::workbench::sessions::claude_exe;
 
@@ -17,6 +19,7 @@ pub struct Update {
     pub id: String,
     pub current: String,
     pub latest: String,
+    pub url: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -147,6 +150,7 @@ fn check_plugins(home: &Path, out: &mut Check) {
                 id: format!("plugin:plugin:{key}"),
                 current,
                 latest,
+                url: None,
             });
         }
     }
@@ -219,6 +223,7 @@ fn check_skills(home: &Path, out: &mut Check) {
                             id: format!("skill:user:{name}"),
                             current: hash.chars().take(7).collect(),
                             latest: sha.chars().take(7).collect(),
+                            url: None,
                         });
                     }
                 }
@@ -228,10 +233,190 @@ fn check_skills(home: &Path, out: &mut Check) {
     }
 }
 
-pub fn check(home: &Path) -> Check {
+fn get(url: &str) -> Result<Value, String> {
+    let body = output(
+        "curl.exe",
+        &[
+            "-sSfL",
+            "--max-time",
+            "20",
+            "-H",
+            "User-Agent: echo-studio",
+            url,
+        ],
+        None,
+    )?;
+    serde_json::from_str(&body).map_err(|e| format!("{url}: {e}"))
+}
+
+pub fn npm_pin(args: &[String]) -> Option<(usize, String, String)> {
+    args.iter().enumerate().find_map(|(i, a)| {
+        let (pkg, ver) = a.rsplit_once('@')?;
+        let core = ver.split(['-', '+']).next().unwrap_or_default();
+        let ok = !pkg.is_empty()
+            && !pkg.ends_with('/')
+            && core.split('.').count() == 3
+            && core
+                .split('.')
+                .all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()));
+        ok.then(|| (i, pkg.to_string(), ver.to_string()))
+    })
+}
+
+pub fn npm_latest(pkg: &str) -> Result<String, String> {
+    get(&format!("https://registry.npmjs.org/{pkg}/latest"))?
+        .get("version")
+        .and_then(Value::as_str)
+        .map(String::from)
+        .ok_or_else(|| format!("{pkg}: нет версии в npm"))
+}
+
+pub fn git_dir(e: &Entry) -> Option<PathBuf> {
+    let dir = match e.item.kind {
+        Kind::Skill => Path::new(e.item.file_path.as_deref()?)
+            .parent()?
+            .to_path_buf(),
+        Kind::Mcp => e
+            .item
+            .mcp
+            .as_ref()?
+            .args
+            .iter()
+            .map(PathBuf::from)
+            .find(|p| p.is_absolute() && p.join(".git").exists())?,
+        _ => return None,
+    };
+    dir.join(".git").exists().then_some(dir)
+}
+
+fn check_git(id: &str, dir: &Path, out: &mut Check) {
+    let name = dir.file_name().map(|n| n.to_string_lossy().into_owned());
+    let name = name.unwrap_or_default();
+    if let Err(e) = output("git", &["fetch", "--quiet"], Some(dir)) {
+        out.errors.push(format!("{name}: {e}"));
+        return;
+    }
+    let behind = output("git", &["rev-list", "--count", "HEAD..@{u}"], Some(dir));
+    let short = |r: &str| output("git", &["rev-parse", "--short", r], Some(dir)).ok();
+    if behind.is_ok_and(|n| n != "0") {
+        if let (Some(current), Some(latest)) = (short("HEAD"), short("@{u}")) {
+            out.updates.push(Update {
+                id: id.into(),
+                current,
+                latest,
+                url: None,
+            });
+        }
+    }
+}
+
+pub fn version_of(text: &str) -> Option<String> {
+    text.split_whitespace()
+        .rev()
+        .map(|t| t.trim_start_matches('v'))
+        .find(|t| t.starts_with(|c: char| c.is_ascii_digit()) && t.contains('.'))
+        .map(String::from)
+}
+
+fn check_release(id: &str, exe: &Path, out: &mut Check) {
+    let Some(stem) = exe.file_stem().map(|s| s.to_string_lossy().into_owned()) else {
+        return;
+    };
+    let mut cmd = child_command(&exe.to_string_lossy());
+    cmd.arg("--version");
+    let Some(current) = output_within(cmd, Duration::from_secs(5))
+        .ok()
+        .and_then(|o| version_of(&String::from_utf8_lossy(&o.stdout)))
+    else {
+        return;
+    };
+    let found = get(&format!(
+        "https://api.github.com/search/repositories?q={stem}+in:name&per_page=10"
+    ))
+    .and_then(|v| {
+        v.get("items")
+            .and_then(Value::as_array)
+            .and_then(|items| {
+                items
+                    .iter()
+                    .filter(|r| {
+                        r.get("name")
+                            .and_then(Value::as_str)
+                            .is_some_and(|n| n.eq_ignore_ascii_case(&stem))
+                    })
+                    .max_by_key(|r| r.get("stargazers_count").and_then(Value::as_u64))
+                    .and_then(|r| r.get("full_name")?.as_str().map(String::from))
+            })
+            .ok_or_else(|| format!("{stem}: репозиторий не найден"))
+    })
+    .and_then(|repo| {
+        get(&format!(
+            "https://api.github.com/repos/{repo}/releases/latest"
+        ))
+    });
+    match found {
+        Ok(rel) => {
+            let tag = rel
+                .get("tag_name")
+                .and_then(Value::as_str)
+                .and_then(version_of);
+            let url = rel
+                .get("html_url")
+                .and_then(Value::as_str)
+                .map(String::from);
+            if let Some(latest) = tag.filter(|t| t != &current) {
+                out.updates.push(Update {
+                    id: id.into(),
+                    current,
+                    latest,
+                    url,
+                });
+            }
+        }
+        Err(e) => out.errors.push(e),
+    }
+}
+
+fn check_own(entries: &[Entry], out: &mut Check) {
+    for e in entries
+        .iter()
+        .filter(|e| e.item.origin == Origin::User && !e.npx)
+    {
+        let id = e.item.id.as_str();
+        if let Some(dir) = git_dir(e) {
+            check_git(id, &dir, out);
+            continue;
+        }
+        let Some(mcp) = e.item.mcp.as_ref().filter(|_| e.item.kind == Kind::Mcp) else {
+            continue;
+        };
+        if let Some((_, pkg, current)) = npm_pin(&mcp.args) {
+            match npm_latest(&pkg) {
+                Ok(latest) if latest != current => out.updates.push(Update {
+                    id: id.into(),
+                    current,
+                    latest,
+                    url: None,
+                }),
+                Ok(_) => {}
+                Err(e) => out.errors.push(e),
+            }
+        } else if let Some(exe) = mcp
+            .command
+            .as_deref()
+            .map(Path::new)
+            .filter(|p| p.is_absolute() && p.is_file())
+        {
+            check_release(id, exe, out);
+        }
+    }
+}
+
+pub fn check(home: &Path, entries: &[Entry]) -> Check {
     let mut out = Check::default();
     check_plugins(home, &mut out);
     check_skills(home, &mut out);
+    check_own(entries, &mut out);
     out
 }
 
@@ -281,5 +466,30 @@ mod tests {
         assert_eq!(folder_sha(body, "hyperframes"), Some("abc".into()));
         assert_eq!(folder_sha(body, "README.md"), None);
         assert_eq!(folder_sha("{\"message\":\"rate limit\"}", "x"), None);
+    }
+
+    #[test]
+    fn finds_pinned_npm_package() {
+        let a = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            npm_pin(&a(&["/d", "/c", "npx", "-y", "rea-agents@6.5.0", "mcp"])),
+            Some((4, "rea-agents".into(), "6.5.0".into()))
+        );
+        assert_eq!(
+            npm_pin(&a(&["-y", "@scope/pkg@1.2.3-beta.1"])),
+            Some((1, "@scope/pkg".into(), "1.2.3-beta.1".into()))
+        );
+        assert_eq!(npm_pin(&a(&["chrome-devtools-mcp@latest"])), None);
+        assert_eq!(npm_pin(&a(&["@scope/pkg", "user@host"])), None);
+    }
+
+    #[test]
+    fn reads_version_from_output() {
+        assert_eq!(
+            version_of("codebase-memory-mcp 0.9.0\n"),
+            Some("0.9.0".into())
+        );
+        assert_eq!(version_of("v1.2.3"), Some("1.2.3".into()));
+        assert_eq!(version_of("usage: tool [options]"), None);
     }
 }

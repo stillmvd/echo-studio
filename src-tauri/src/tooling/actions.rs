@@ -9,6 +9,7 @@ use serde_json::Value;
 
 use super::inventory::Entry;
 use super::paths::{claude_dir, claude_json, installed_plugins, same_project};
+use super::updates::{git_dir, npm_latest, npm_pin};
 use super::write::{backup, write_text_atomic};
 use super::{Kind, Origin};
 use crate::workbench::child_command;
@@ -25,6 +26,12 @@ pub enum Step {
     DropMcp {
         file: PathBuf,
         name: String,
+    },
+    BumpMcp {
+        name: String,
+        index: usize,
+        from: String,
+        to: String,
     },
 }
 
@@ -150,8 +157,49 @@ pub fn plan_update(e: &Entry) -> Result<Step, String> {
         (Kind::Skill, Origin::User) if e.npx => {
             Ok(npx_skills(&["update", &e.item.name, "-g", "-y"]))
         }
+        (Kind::Skill | Kind::Mcp, Origin::User) if git_dir(e).is_some() => Ok(Step::Run {
+            program: "git".into(),
+            args: vec!["pull".into(), "--ff-only".into()],
+            cwd: git_dir(e),
+        }),
+        (Kind::Mcp, Origin::User) => {
+            let args = e
+                .item
+                .mcp
+                .as_ref()
+                .map(|m| m.args.as_slice())
+                .unwrap_or_default();
+            let (index, pkg, current) =
+                npm_pin(args).ok_or_else(|| format!("{} обновляется вручную", e.item.name))?;
+            Ok(Step::BumpMcp {
+                name: e.item.name.clone(),
+                index,
+                to: format!("{pkg}@{}", npm_latest(&pkg)?),
+                from: format!("{pkg}@{current}"),
+            })
+        }
         _ => Err(format!("{} не обновляется из Echo", e.item.name)),
     }
+}
+
+pub fn bump_mcp(
+    text: &str,
+    name: &str,
+    index: usize,
+    from: &str,
+    to: &str,
+) -> Result<String, String> {
+    let mut v: Value =
+        serde_json::from_str(text).map_err(|e| format!("Битый ~/.claude.json: {e}"))?;
+    let arg = v
+        .pointer_mut(&format!(
+            "/mcpServers/{}/args/{index}",
+            name.replace('~', "~0").replace('/', "~1")
+        ))
+        .filter(|a| a.as_str() == Some(from))
+        .ok_or_else(|| format!("{name}: настройка изменилась, проверь обновления заново"))?;
+    *arg = Value::String(to.into());
+    serde_json::to_string_pretty(&v).map_err(|e| e.to_string())
 }
 
 pub fn delete_roots(home: &Path, projects: &[String]) -> Vec<PathBuf> {
@@ -345,7 +393,7 @@ pub fn execute(
                 check_trash(p, &roots)?;
             }
             Step::DropMcp { file, .. } => check_mcp_json(file, projects)?,
-            Step::Run { .. } => {}
+            Step::Run { .. } | Step::BumpMcp { .. } => {}
         }
     }
     let now = SystemTime::now();
@@ -365,6 +413,19 @@ pub fn execute(
                     let next = drop_mcp(&text, name)?;
                     backup(file, backups, now)?;
                     write_text_atomic(file, &next)
+                }
+                Step::BumpMcp {
+                    name,
+                    index,
+                    from,
+                    to,
+                } => {
+                    let file = claude_json(home);
+                    let text = fs::read_to_string(&file)
+                        .map_err(|e| format!("{}: {e}", file.display()))?;
+                    let next = bump_mcp(&text, name, *index, from, to)?;
+                    backup(&file, backups, now)?;
+                    write_text_atomic(&file, &next)
                 }
                 Step::Run { program, args, cwd } => run(program, args, cwd.as_deref()).map(|_| ()),
             }
@@ -554,5 +615,17 @@ mod tests {
         assert!(
             check_mcp_json(&h.join(".mcp.json"), &[proj.to_string_lossy().into_owned()]).is_err()
         );
+    }
+
+    #[test]
+    fn bumps_pinned_mcp_version_only() {
+        let text = r#"{"numStartups":3,"mcpServers":{"rea":{"command":"cmd.exe","args":["/c","npx","rea-agents@6.5.0","mcp"]}},"z":1}"#;
+        let next = bump_mcp(text, "rea", 2, "rea-agents@6.5.0", "rea-agents@6.8.0").unwrap();
+        let v: Value = serde_json::from_str(&next).unwrap();
+        assert_eq!(v["mcpServers"]["rea"]["args"][2], "rea-agents@6.8.0");
+        assert_eq!(v["numStartups"], 3);
+        assert!(next.find("numStartups") < next.find("\"z\""));
+        assert!(bump_mcp(text, "rea", 2, "rea-agents@6.4.0", "x").is_err());
+        assert!(bump_mcp(text, "other", 2, "rea-agents@6.5.0", "x").is_err());
     }
 }

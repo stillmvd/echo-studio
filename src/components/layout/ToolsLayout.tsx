@@ -109,7 +109,7 @@ export function ToolsLayout() {
   const shortHistory = !!runs.data && historyDays(start, now) < STALE_DAYS;
 
   const updateAll = async () => {
-    const list = shown.filter((m) => m.update);
+    const list = shown.filter((m) => m.update && !m.update.url);
     const errors: string[] = [];
     for (const m of list) {
       try {
@@ -226,7 +226,7 @@ export function ToolsLayout() {
           ) : (
             start !== null && <span className="tl-dim">История с {shortDate(start)}</span>
           )}
-          {filter === 'upd' && shown.some((m) => m.update) && (
+          {filter === 'upd' && shown.some((m) => m.update && !m.update.url) && (
             <button
               type="button"
               className="tl-btn p"

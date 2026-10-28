@@ -121,7 +121,7 @@ pub async fn update_tool(app: AppHandle, id: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn check_tool_updates() -> Result<updates::Check, String> {
     let home = home()?;
-    blocking(move || updates::check(&home)).await
+    blocking(move || updates::check(&home, &inventory::list(&home, &places()))).await
 }
 
 #[tauri::command]
