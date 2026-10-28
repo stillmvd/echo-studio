@@ -21,6 +21,14 @@
 .tt-dots i { flex: 1; height: 9px; }
 .tt :is(.tt-leg, .tt-dots) i.n { background: var(--tt-a); }
 .tt :is(.tt-leg, .tt-dots) i.c { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tt-a) 55%, transparent); }
+.tip { position: fixed; z-index: 100; pointer-events: none; }
+.tip-box { width: max-content; white-space: nowrap; padding: 6px 10px; border-radius: 12px; background: var(--color-bg-tertiary); box-shadow: 0 0 0 1px var(--color-border), 0 10px 26px rgb(0 0 0 / 34%); color: var(--color-text-primary); font-size: 12.5px; font-weight: 500; animation: tip-in 280ms var(--ease-trail); }
+.tip[data-side="right"] .tip-box { translate: 0 -50%; transform-origin: left center; --tip-from: -4px 0; }
+.tip[data-side="bottom"] .tip-box { translate: -50% 0; transform-origin: top center; --tip-from: 0 -4px; }
+.tip-l { display: block; animation: tip-l 220ms var(--ease-trail); }
+@keyframes tip-in { from { opacity: 0; scale: 0.96; transform: translate(var(--tip-from)); } }
+@keyframes tip-l { from { opacity: 0; transform: translateY(4px); } }
 @media (prefers-reduced-motion: reduce) {
   .cc-card { scale: 1; transition: opacity 160ms linear; }
+  .tip-box, .tip-l { animation: none; }
 }
