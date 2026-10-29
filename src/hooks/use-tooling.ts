@@ -1,4 +1,10 @@
-import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useIsMutating,
+  useMutation,
+  useMutationState,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { listen } from '@tauri-apps/api/event';
 import { useEffect } from 'react';
 import {
@@ -18,6 +24,7 @@ const LIST = ['tooling', 'list'];
 const RUNS = ['tool-runs'];
 const UPDATES = ['tool-updates'];
 const UPDATE = ['tool-update'];
+const DELETE = ['tool-delete'];
 
 export const useUpdating = () => useIsMutating({ mutationKey: UPDATE }) > 0;
 
@@ -72,21 +79,34 @@ export function useSetToolEnabled() {
   });
 }
 
+interface Deleting {
+  id: string;
+  projects: string[];
+  done: string;
+}
+
+export const dropDeleted = (list: ToolEntry[], { id, projects }: Deleting) =>
+  list.flatMap((e) => {
+    if (e.id !== id) return [e];
+    const copies = e.copies.filter((c) => !projects.includes(c.path));
+    return e.copies.length && copies.length ? [{ ...e, copies }] : [];
+  });
+
+export const useDeleting = () =>
+  useMutationState({
+    filters: { mutationKey: DELETE, status: 'pending' },
+    select: (m) => m.state.variables as Deleting,
+  });
+
 export function useDeleteTool() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, projects }: { id: string; projects: string[]; done: string }) =>
-      deleteTool(id, projects),
-    onMutate: async ({ id, projects }) => {
+    mutationKey: DELETE,
+    mutationFn: ({ id, projects }: Deleting) => deleteTool(id, projects),
+    onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: LIST });
       const previous = qc.getQueryData<ToolEntry[]>(LIST);
-      qc.setQueryData<ToolEntry[]>(LIST, (list) =>
-        list?.flatMap((e) => {
-          if (e.id !== id) return [e];
-          const copies = e.copies.filter((c) => !projects.includes(c.path));
-          return e.copies.length && copies.length ? [{ ...e, copies }] : [];
-        }),
-      );
+      qc.setQueryData<ToolEntry[]>(LIST, (list) => list && dropDeleted(list, vars));
       return { previous };
     },
     onSuccess: (_r, { done }) => toast(done),

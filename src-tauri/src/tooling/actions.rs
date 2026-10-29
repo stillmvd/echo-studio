@@ -318,13 +318,15 @@ pub fn output_within(mut cmd: Command, limit: Duration) -> Result<Output, String
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
     let read = |pipe: Option<Box<dyn Read + Send>>| {
+        let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
             let mut buf = Vec::new();
             if let Some(mut p) = pipe {
                 let _ = p.read_to_end(&mut buf);
             }
-            buf
-        })
+            let _ = tx.send(buf);
+        });
+        rx
     };
     let out = read(
         child
@@ -353,10 +355,15 @@ pub fn output_within(mut cmd: Command, limit: Duration) -> Result<Output, String
         }
         std::thread::sleep(Duration::from_millis(100));
     };
+    let grace = Instant::now() + Duration::from_secs(2);
+    let take = |rx: std::sync::mpsc::Receiver<Vec<u8>>| {
+        rx.recv_timeout(grace.saturating_duration_since(Instant::now()))
+            .unwrap_or_default()
+    };
     Ok(Output {
         status,
-        stdout: out.join().unwrap_or_default(),
-        stderr: err.join().unwrap_or_default(),
+        stdout: take(out),
+        stderr: take(err),
     })
 }
 
@@ -421,11 +428,10 @@ pub fn execute(
                     to,
                 } => {
                     let file = claude_json(home);
+                    backup(&file, backups, now)?;
                     let text = fs::read_to_string(&file)
                         .map_err(|e| format!("{}: {e}", file.display()))?;
-                    let next = bump_mcp(&text, name, *index, from, to)?;
-                    backup(&file, backups, now)?;
-                    write_text_atomic(&file, &next)
+                    write_text_atomic(&file, &bump_mcp(&text, name, *index, from, to)?)
                 }
                 Step::Run { program, args, cwd } => run(program, args, cwd.as_deref()).map(|_| ()),
             }

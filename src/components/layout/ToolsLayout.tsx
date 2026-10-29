@@ -4,6 +4,8 @@ import { useCallback, useRef, useState } from 'react';
 import { EASE, ToolAside, ToolPanel } from '@/components/tools/ToolPanel';
 import { type TileModel, ToolTile } from '@/components/tools/ToolTile';
 import {
+  dropDeleted,
+  useDeleting,
   useToolRuns,
   useTools,
   useToolUpdates,
@@ -42,6 +44,7 @@ export function ToolsLayout() {
   const select = useUiStore((s) => s.setSelectedToolId);
 
   const tools = useTools();
+  const deleting = useDeleting();
   const runs = useToolRuns();
   const check = useToolUpdates();
   const update = useUpdateTool();
@@ -67,11 +70,15 @@ export function ToolsLayout() {
       .filter(([, n]) => n > 0)
       .map(([label, n]) => `${label} ${n}`);
     toast(
-      found.length ? `Есть обновления: ${per.join(', ')}` : 'Обновлений нет',
+      found.length
+        ? `Есть обновления: ${per.join(', ')}`
+        : r.data?.errors.length
+          ? `Обновлений не найдено, не проверено: ${r.data.errors.length}`
+          : 'Обновлений нет',
       r.data?.errors.length ? 'fail' : 'done',
     );
   };
-  const models = (tools.data ?? []).map(
+  const models = deleting.reduce(dropDeleted, tools.data ?? []).map(
     (entry): TileModel => ({
       entry,
       usage: runs.data?.usage[entry.id],

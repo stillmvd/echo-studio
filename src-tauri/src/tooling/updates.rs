@@ -249,12 +249,41 @@ fn get(url: &str) -> Result<Value, String> {
     serde_json::from_str(&body).map_err(|e| format!("{url}: {e}"))
 }
 
+fn semver(v: &str) -> Option<(u64, u64, u64)> {
+    let core = v.trim_start_matches('v').split(['-', '+']).next()?;
+    let mut parts = core.split('.').map(|p| p.parse::<u64>().ok());
+    let out = (
+        parts.next()??,
+        parts.next()??,
+        parts.next().flatten().unwrap_or(0),
+    );
+    parts.next().is_none().then_some(out)
+}
+
+pub fn newer(latest: &str, current: &str) -> bool {
+    matches!((semver(latest), semver(current)), (Some(l), Some(c)) if l > c)
+}
+
+fn npm_name(pkg: &str) -> bool {
+    let plain = |s: &str| {
+        !s.is_empty()
+            && s.starts_with(|c: char| c.is_ascii_alphanumeric())
+            && s.chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "._-".contains(c))
+    };
+    match pkg.strip_prefix('@') {
+        Some(scoped) => scoped
+            .split_once('/')
+            .is_some_and(|(scope, name)| plain(scope) && plain(name)),
+        None => plain(pkg),
+    }
+}
+
 pub fn npm_pin(args: &[String]) -> Option<(usize, String, String)> {
     args.iter().enumerate().find_map(|(i, a)| {
         let (pkg, ver) = a.rsplit_once('@')?;
         let core = ver.split(['-', '+']).next().unwrap_or_default();
-        let ok = !pkg.is_empty()
-            && !pkg.ends_with('/')
+        let ok = npm_name(pkg)
             && core.split('.').count() == 3
             && core
                 .split('.')
@@ -276,17 +305,14 @@ pub fn git_dir(e: &Entry) -> Option<PathBuf> {
         Kind::Skill => Path::new(e.item.file_path.as_deref()?)
             .parent()?
             .to_path_buf(),
-        Kind::Mcp => e
-            .item
-            .mcp
-            .as_ref()?
-            .args
-            .iter()
-            .map(PathBuf::from)
-            .find(|p| p.is_absolute() && p.join(".git").exists())?,
+        Kind::Mcp => {
+            let args = &e.item.mcp.as_ref()?.args;
+            let at = args.iter().position(|a| a == "--directory")?;
+            PathBuf::from(args.get(at + 1)?)
+        }
         _ => return None,
     };
-    dir.join(".git").exists().then_some(dir)
+    (dir.is_absolute() && dir.join(".git").exists()).then_some(dir)
 }
 
 fn check_git(id: &str, dir: &Path, out: &mut Check) {
@@ -313,13 +339,23 @@ fn check_git(id: &str, dir: &Path, out: &mut Check) {
 pub fn version_of(text: &str) -> Option<String> {
     text.split_whitespace()
         .rev()
-        .map(|t| t.trim_start_matches('v'))
-        .find(|t| t.starts_with(|c: char| c.is_ascii_digit()) && t.contains('.'))
+        .map(|t| {
+            t.trim_start_matches('v')
+                .trim_end_matches(|c: char| !c.is_ascii_alphanumeric())
+        })
+        .find(|t| semver(t).is_some())
         .map(String::from)
 }
 
 fn check_release(id: &str, exe: &Path, out: &mut Check) {
-    let Some(stem) = exe.file_stem().map(|s| s.to_string_lossy().into_owned()) else {
+    let Some(stem) = exe
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .filter(|s| {
+            s.chars()
+                .all(|c| c.is_ascii_alphanumeric() || "._-".contains(c))
+        })
+    else {
         return;
     };
     let mut cmd = child_command(&exe.to_string_lossy());
@@ -364,7 +400,7 @@ fn check_release(id: &str, exe: &Path, out: &mut Check) {
                 .get("html_url")
                 .and_then(Value::as_str)
                 .map(String::from);
-            if let Some(latest) = tag.filter(|t| t != &current) {
+            if let Some(latest) = tag.filter(|t| newer(t, &current)) {
                 out.updates.push(Update {
                     id: id.into(),
                     current,
@@ -377,22 +413,16 @@ fn check_release(id: &str, exe: &Path, out: &mut Check) {
     }
 }
 
-fn check_own(entries: &[Entry], out: &mut Check) {
+fn check_own(home: &Path, entries: &[Entry], out: &mut Check) {
     for e in entries
         .iter()
         .filter(|e| e.item.origin == Origin::User && !e.npx)
     {
         let id = e.item.id.as_str();
-        if let Some(dir) = git_dir(e) {
-            check_git(id, &dir, out);
-            continue;
-        }
-        let Some(mcp) = e.item.mcp.as_ref().filter(|_| e.item.kind == Kind::Mcp) else {
-            continue;
-        };
-        if let Some((_, pkg, current)) = npm_pin(&mcp.args) {
+        let mcp = e.item.mcp.as_ref().filter(|_| e.item.kind == Kind::Mcp);
+        if let Some((_, pkg, current)) = mcp.and_then(|m| npm_pin(&m.args)) {
             match npm_latest(&pkg) {
-                Ok(latest) if latest != current => out.updates.push(Update {
+                Ok(latest) if newer(&latest, &current) => out.updates.push(Update {
                     id: id.into(),
                     current,
                     latest,
@@ -401,11 +431,12 @@ fn check_own(entries: &[Entry], out: &mut Check) {
                 Ok(_) => {}
                 Err(e) => out.errors.push(e),
             }
+        } else if let Some(dir) = git_dir(e) {
+            check_git(id, &dir, out);
         } else if let Some(exe) = mcp
-            .command
-            .as_deref()
+            .and_then(|m| m.command.as_deref())
             .map(Path::new)
-            .filter(|p| p.is_absolute() && p.is_file())
+            .filter(|p| p.starts_with(home) && p.is_file())
         {
             check_release(id, exe, out);
         }
@@ -416,7 +447,7 @@ pub fn check(home: &Path, entries: &[Entry]) -> Check {
     let mut out = Check::default();
     check_plugins(home, &mut out);
     check_skills(home, &mut out);
-    check_own(entries, &mut out);
+    check_own(home, entries, &mut out);
     out
 }
 
@@ -491,5 +522,26 @@ mod tests {
         );
         assert_eq!(version_of("v1.2.3"), Some("1.2.3".into()));
         assert_eq!(version_of("usage: tool [options]"), None);
+        assert_eq!(
+            version_of("Microsoft Windows [Version 10.0.26200.1234]"),
+            None
+        );
+    }
+
+    #[test]
+    fn only_newer_versions_count() {
+        assert!(newer("6.8.0", "6.5.0"));
+        assert!(newer("v0.12.1", "0.9.0"));
+        assert!(!newer("1.2.3", "1.2.3"));
+        assert!(!newer("1.2.2", "1.3.0-beta.1"));
+        assert!(!newer("latest", "1.0.0"));
+    }
+
+    #[test]
+    fn rejects_paths_and_flags_as_npm_pins() {
+        let a = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(npm_pin(&a(&[r"C:\x@1.0.0\run.js"])), None);
+        assert_eq!(npm_pin(&a(&["--flag=a@1.2.3"])), None);
+        assert_eq!(npm_pin(&a(&["Upper@1.2.3"])), None);
     }
 }
