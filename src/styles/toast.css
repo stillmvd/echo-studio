@@ -1,0 +1,63 @@
+.toast {
+  --tc: var(--color-accent);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  max-width: min(520px, 100%);
+  padding: 8px 20px 8px 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--color-bg-tertiary) 92%, var(--tc));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--tc) 28%, var(--color-border)),
+    0 14px 36px rgb(0 0 0 / 45%),
+    0 0 28px color-mix(in oklab, var(--tc) 18%, transparent);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  transition: scale 150ms var(--ease-trail), box-shadow 200ms var(--ease-trail);
+}
+.toast[data-tone="fail"] { --tc: var(--color-danger); }
+.toast:hover {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--tc) 45%, var(--color-border)),
+    0 14px 36px rgb(0 0 0 / 45%),
+    0 0 36px color-mix(in oklab, var(--tc) 26%, transparent);
+}
+.toast:active { scale: 0.96; }
+.toast-ic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--tc);
+  color: var(--color-bg-primary);
+  animation: toast-ic 520ms cubic-bezier(0.34, 1.56, 0.64, 1) 80ms both;
+}
+.toast-ic svg { width: 18px; height: 18px; }
+.toast-ic path { stroke-dasharray: 24; animation: toast-draw 420ms var(--ease-trail) 260ms both; }
+.toast-tx { min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.toast-bar {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--tc);
+  opacity: 0.55;
+  transform-origin: left;
+  animation: toast-life linear both;
+}
+.toast:hover .toast-bar { animation-play-state: paused; }
+@keyframes toast-ic { from { opacity: 0; transform: scale(0.3) rotate(-90deg); } }
+@keyframes toast-draw { from { stroke-dashoffset: 24; } }
+@keyframes toast-life { to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .toast-ic, .toast-ic path, .toast-bar { animation: none; }
+}

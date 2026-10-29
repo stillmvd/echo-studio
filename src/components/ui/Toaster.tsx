@@ -1,12 +1,12 @@
 import type { AutoAnimationPlugin } from '@formkit/auto-animate';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
-import { CircleAlert, CircleCheck } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { cn } from '@/lib/cn';
 import { type Toast, useToastStore } from '@/state/toast-store';
 
-const SHOW_MS = { done: 3500, fail: 7000 };
+const SHOW_MS = { done: 4000, fail: 7000 };
+const still = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const EASE = 'cubic-bezier(0.2, 0, 0, 1)';
 const POP = 'cubic-bezier(0.34, 1.45, 0.64, 1)';
 
@@ -39,24 +39,24 @@ const motion: AutoAnimationPlugin = (el, action, next, prev) => {
 function Item({ toast }: { toast: Toast }) {
   const dismiss = useToastStore((s) => s.dismiss);
   useEffect(() => {
+    if (!still()) return;
     const t = setTimeout(() => dismiss(toast.id), SHOW_MS[toast.tone]);
     return () => clearTimeout(t);
   }, [toast, dismiss]);
-  const Icon = toast.tone === 'fail' ? CircleAlert : CircleCheck;
+  const Icon = toast.tone === 'fail' ? X : Check;
   return (
     <button
       type="button"
+      className="toast"
+      data-tone={toast.tone}
       onClick={() => dismiss(toast.id)}
-      className="flex min-h-12 max-w-full items-center gap-3 rounded-full bg-[var(--color-text-primary)] py-2 pr-5 pl-[18px] text-left text-[13px] font-medium text-[var(--color-bg-primary)] shadow-[0_12px_32px_rgb(0_0_0/35%)] transition-[scale] duration-150 active:scale-95"
+      onAnimationEnd={(e) => e.animationName === 'toast-life' && dismiss(toast.id)}
     >
-      <Icon
-        className={cn(
-          'h-[15px] w-[15px] shrink-0',
-          toast.tone === 'fail' && 'text-[var(--color-danger)]',
-        )}
-        strokeWidth={1.75}
-      />
-      <span className="line-clamp-2 min-w-0 [overflow-wrap:anywhere]">{toast.text}</span>
+      <span className="toast-ic">
+        <Icon strokeWidth={2.5} />
+      </span>
+      <span className="toast-tx">{toast.text}</span>
+      <i className="toast-bar" style={{ animationDuration: `${SHOW_MS[toast.tone]}ms` }} />
     </button>
   );
 }
