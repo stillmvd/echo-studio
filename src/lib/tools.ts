@@ -140,13 +140,4 @@ export function pluginParts(e: ToolEntry): string {
   return out.join(' · ') || 'LSP';
 }
 
-export function dailySeries(u: ToolUsage | undefined, start: number, now: number): number[] {
-  const d0 = dayNo(start);
-  const out = Array<number>(Math.max(1, dayNo(now) - d0 + 1)).fill(0);
-  for (const [d, n] of u?.days ?? []) {
-    const i = d - d0;
-    if (i >= 0 && i < out.length) out[i] = (out[i] ?? 0) + n;
-  }
-  return out;
-}
 export type ToolsFilter = 'all' | 'stale' | 'off' | 'upd';

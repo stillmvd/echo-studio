@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::commands::conversations::blocking;
 use crate::tooling::inventory::{self, Entry, Place, Usage};
@@ -119,9 +119,17 @@ pub async fn update_tool(app: AppHandle, id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn check_tool_updates() -> Result<updates::Check, String> {
+pub async fn check_tool_updates(app: AppHandle) -> Result<updates::Check, String> {
     let home = home()?;
-    blocking(move || updates::check(&home, &inventory::list(&home, &places()))).await
+    blocking(move || {
+        updates::check(&home, &inventory::list(&home, &places()), |done, total| {
+            let _ = app.emit(
+                "tooling://update-progress",
+                serde_json::json!({ "done": done, "total": total }),
+            );
+        })
+    })
+    .await
 }
 
 #[tauri::command]

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   ago,
   DAY,
-  dailySeries,
   formatCount,
   isStale,
   sourceLabel,
@@ -103,27 +102,5 @@ describe('labels', () => {
     expect(ago(NOW - 21 * DAY, NOW)).toBe('21 день назад');
     expect(ago(Date.parse('2026-09-12T12:00:00'), NOW)).toBe('12 сент.');
     expect(formatCount(18928)).toBe('18 928');
-  });
-
-  it('spreads runs over the history days', () => {
-    const d0 = Math.floor(START / DAY);
-    const s = dailySeries(
-      {
-        count: 3,
-        last: NOW,
-        days: [
-          [d0, 1],
-          [d0 + 45, 2],
-          [d0 - 5, 9],
-        ],
-        projects: [],
-      },
-      START,
-      NOW,
-    );
-    expect(s.length).toBe(46);
-    expect(s[0]).toBe(1);
-    expect(s[45]).toBe(2);
-    expect(s.reduce((a, b) => a + b, 0)).toBe(3);
   });
 });

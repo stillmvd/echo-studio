@@ -1,27 +1,14 @@
 import { open } from '@tauri-apps/plugin-shell';
 import { Check, ChevronRight, X } from 'lucide-react';
-import {
-  type CSSProperties,
-  type ReactNode,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import explorerIcon from '@/assets/apps/explorer.png';
+import zedIcon from '@/assets/apps/zed.png';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { tooltip } from '@/components/ui/Tooltip';
 import { useDeleteTool, useSetToolEnabled, useUpdateTool, useUpdating } from '@/hooks/use-tooling';
 import { plural } from '@/lib/dashboard';
 import { openTerminalPath, revealInExplorer } from '@/lib/ipc';
-import {
-  ago,
-  DAY,
-  dailySeries,
-  formatCount,
-  measurable,
-  shortDate,
-  sourceLabel,
-  type ToolEntry,
-} from '@/lib/tools';
+import { ago, formatCount, measurable, sourceLabel, type ToolEntry } from '@/lib/tools';
 import type { ToolKind } from '@/lib/types';
 import { toast } from '@/state/toast-store';
 import { type TileModel, ToolSwitch, toolDescription } from './ToolTile';
@@ -97,14 +84,12 @@ function deletePlan(e: ToolEntry, picked: string[]): string {
 
 export function ToolPanel({
   m,
-  start,
   now,
   onClose,
   onOpenPlugin,
   onOpenParts,
 }: {
   m: TileModel;
-  start: number | null;
   now: number;
   onClose: () => void;
   onOpenPlugin: (pluginKey: string) => void;
@@ -122,8 +107,6 @@ export function ToolPanel({
   const parts = e.plugin?.contents;
   const failOpen = (err: unknown) => toast(`Не удалось открыть: ${String(err)}`, 'fail');
   const file = e.filePath ?? e.copies[0]?.file ?? null;
-  const series = start !== null ? dailySeries(m.usage, start, now) : [];
-  const peak = Math.max(...series, 1);
   const pluginChild = e.origin === 'plugin' && e.kind !== 'plugin';
 
   return (
@@ -154,30 +137,6 @@ export function ToolPanel({
           </span>
         ) : (
           <span className="tl-dim">Использование не считается</span>
-        )}
-        {measurable(e) && start !== null && (
-          <>
-            <div className="tl-chart" aria-hidden="true">
-              {series
-                .map((v, i) => ({ v, i, day: start + i * DAY, last: i === series.length - 1 }))
-                .map((d) => (
-                  <i
-                    key={d.day}
-                    className={d.last ? 'now' : undefined}
-                    style={
-                      {
-                        height: d.v ? `${Math.max(6, (d.v / peak) * 100)}%` : 0,
-                        '--i': d.i,
-                      } as CSSProperties
-                    }
-                  />
-                ))}
-            </div>
-            <div className="tl-cax">
-              <span>{shortDate(start)}</span>
-              <span>сегодня</span>
-            </div>
-          </>
         )}
       </div>
 
@@ -288,19 +247,23 @@ export function ToolPanel({
         {file && (
           <button
             type="button"
-            className="tl-btn"
+            className="tl-btn tl-app"
+            {...tooltip('Открыть в Zed', 'bottom')}
+            aria-label="Открыть в Zed"
             onClick={() => openTerminalPath(file, null, null).catch(failOpen)}
           >
-            Открыть в Zed
+            <img src={zedIcon} alt="" draggable={false} />
           </button>
         )}
         {file && (
           <button
             type="button"
-            className="tl-btn"
+            className="tl-btn tl-app"
+            {...tooltip('Показать в Проводнике', 'bottom')}
+            aria-label="Показать в Проводнике"
             onClick={() => revealInExplorer(file).catch(failOpen)}
           >
-            Показать в Проводнике
+            <img src={explorerIcon} alt="" draggable={false} />
           </button>
         )}
         {pluginChild ? (

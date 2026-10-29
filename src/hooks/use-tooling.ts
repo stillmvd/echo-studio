@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { listen } from '@tauri-apps/api/event';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   checkToolUpdates,
   deleteTool,
@@ -45,6 +45,33 @@ export function useToolUpdates() {
     gcTime: Number.POSITIVE_INFINITY,
     retry: false,
   });
+}
+
+export interface CheckProgress {
+  done: number;
+  total: number;
+}
+
+export function useCheckProgress(active: boolean) {
+  const [progress, setProgress] = useState<CheckProgress | null>(null);
+  useEffect(() => {
+    let off: (() => void) | undefined;
+    let cancelled = false;
+    listen<CheckProgress>('tooling://update-progress', (e) => setProgress(e.payload))
+      .then((un) => {
+        if (cancelled) un();
+        else off = un;
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      off?.();
+    };
+  }, []);
+  useEffect(() => {
+    if (!active) setProgress(null);
+  }, [active]);
+  return active ? progress : null;
 }
 
 export function useConfigBackups() {
@@ -109,7 +136,9 @@ export function useDeleteTool() {
       qc.setQueryData<ToolEntry[]>(LIST, (list) => list && dropDeleted(list, vars));
       return { previous };
     },
-    onSuccess: (_r, { done }) => toast(done),
+    onSuccess: (_r, { done }) => {
+      if (done) toast(done);
+    },
     onError: (error, _vars, context) => {
       if (context?.previous) qc.setQueryData(LIST, context.previous);
       toast(`Не удалось удалить: ${String(error)}`, 'fail');

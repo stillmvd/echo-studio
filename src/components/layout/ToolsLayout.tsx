@@ -1,11 +1,22 @@
 import { useAutoAnimate } from '@formkit/auto-animate/react';
-import { Check, Search } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { Check, Search, X } from 'lucide-react';
+import {
+  type CSSProperties,
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { EASE, ToolAside, ToolPanel } from '@/components/tools/ToolPanel';
 import { type TileModel, ToolTile } from '@/components/tools/ToolTile';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import {
   dropDeleted,
+  useCheckProgress,
+  useDeleteTool,
   useDeleting,
+  useSetToolEnabled,
   useToolRuns,
   useTools,
   useToolUpdates,
@@ -13,6 +24,7 @@ import {
   useUpdating,
 } from '@/hooks/use-tooling';
 import { cn } from '@/lib/cn';
+import { plural } from '@/lib/dashboard';
 import { historyDays, isStale, KINDS, STALE_DAYS, shortDate, type ToolsFilter } from '@/lib/tools';
 import { toast } from '@/state/toast-store';
 import { useUiStore } from '@/state/ui-store';
@@ -33,6 +45,17 @@ const EMPTY: Record<ToolsFilter, string> = {
 const time = (t: number) =>
   new Date(t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
+const switchable = (m: TileModel, on: boolean) =>
+  !!m.entry.toggle && m.entry.state === (on ? 'disabled' : 'enabled');
+const pluginPart = (m: TileModel) => m.entry.origin === 'plugin' && m.entry.kind !== 'plugin';
+const names = (list: TileModel[]) =>
+  list.length > 8
+    ? `${list
+        .slice(0, 8)
+        .map((m) => m.entry.name)
+        .join(', ')} и ещё ${list.length - 8}`
+    : list.map((m) => m.entry.name).join(', ');
+
 export function ToolsLayout() {
   const kind = useUiStore((s) => s.toolsType);
   const setKind = useUiStore((s) => s.setToolsType);
@@ -49,7 +72,14 @@ export function ToolsLayout() {
   const check = useToolUpdates();
   const update = useUpdateTool();
   const updating = useUpdating();
+  const progress = useCheckProgress(check.isFetching);
+  const toggle = useSetToolEnabled();
+  const remove = useDeleteTool();
   const [failed, setFailed] = useState<string[]>([]);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [anchor, setAnchor] = useState<string | null>(null);
+  const [bulk, setBulk] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
   const [tiles] = useAutoAnimate<HTMLDivElement>({ duration: 280, easing: EASE });
   const [panelId, setPanelId] = useState(selectedId);
   if (selectedId && selectedId !== panelId) setPanelId(selectedId);
@@ -115,22 +145,98 @@ export function ToolsLayout() {
   const panel = panelId ? (found ?? lastPanel.current) : undefined;
   const shortHistory = !!runs.data && historyDays(start, now) < STALE_DAYS;
 
-  const updateAll = async () => {
-    const list = shown.filter((m) => m.update && !m.update.url);
+  const ids = shown.map((m) => m.entry.id);
+  const chosen = shown.filter((m) => picked.includes(m.entry.id));
+  const toOn = chosen.filter((m) => switchable(m, true));
+  const toOff = chosen.filter((m) => switchable(m, false));
+  const toUpd = chosen.filter((m) => m.update && !m.update.url);
+  const toDel = chosen.filter((m) => !pluginPart(m));
+  const idsRef = useRef(ids);
+  idsRef.current = ids;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (confirmDel) return;
+      const t = e.target as HTMLElement;
+      if (t.closest('input, textarea, [contenteditable="true"]')) return;
+      if (e.key === 'Escape') setPicked([]);
+      if (e.key.toLowerCase() === 'a' && (e.ctrlKey || e.metaKey) && !e.altKey) {
+        e.preventDefault();
+        setPicked(idsRef.current);
+        select(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [confirmDel, select]);
+
+  const onTile = (id: string, e: MouseEvent) => {
+    const base = picked.length ? picked : selectedId ? [selectedId] : [];
+    if (e.shiftKey) {
+      const from = ids.indexOf(anchor ?? selectedId ?? id);
+      const to = ids.indexOf(id);
+      const range = from < 0 ? [id] : ids.slice(Math.min(from, to), Math.max(from, to) + 1);
+      if (from < 0) setAnchor(id);
+      setPicked(e.ctrlKey || e.metaKey ? [...new Set([...base, ...range])] : range);
+    } else if (e.ctrlKey || e.metaKey) {
+      setPicked(base.includes(id) ? base.filter((x) => x !== id) : [...base, id]);
+      setAnchor(id);
+    } else {
+      setPicked([]);
+      setAnchor(id);
+      select(id === selectedId ? null : id);
+      return;
+    }
+    select(null);
+  };
+
+  const run = async (list: TileModel[], act: (m: TileModel) => Promise<unknown>, done: string) => {
+    setBulk(true);
     const errors: string[] = [];
     for (const m of list) {
       try {
-        await update.mutateAsync(m.entry.id);
+        await act(m);
       } catch (e) {
         errors.push(`${m.entry.name}: ${String(e)}`);
       }
     }
+    setBulk(false);
     setFailed(errors);
     toast(
-      `Обновлено ${list.length - errors.length}, ошибок ${errors.length}`,
+      errors.length
+        ? `${done} ${list.length - errors.length}, ошибок ${errors.length}`
+        : `${done} ${list.length}`,
       errors.length ? 'fail' : 'done',
     );
   };
+  const setOn = (list: TileModel[], enabled: boolean) =>
+    run(
+      list,
+      (m) =>
+        m.entry.toggle
+          ? toggle.mutateAsync({ id: m.entry.id, target: m.entry.toggle, enabled })
+          : Promise.resolve(),
+      enabled ? 'Включено' : 'Выключено',
+    );
+  const updateMany = (list: TileModel[]) =>
+    run(list, (m) => update.mutateAsync(m.entry.id), 'Обновлено');
+  const deleteMany = async () => {
+    const list = toDel;
+    setConfirmDel(false);
+    setPicked([]);
+    await run(
+      list,
+      (m) =>
+        remove.mutateAsync({
+          id: m.entry.id,
+          projects: [...new Set(m.entry.copies.map((c) => c.path))],
+          done: '',
+        }),
+      'Удалено',
+    );
+  };
+  const busy = bulk || updating;
+  const pct = progress?.total ? progress.done / progress.total : 0;
 
   return (
     <div className={cn('tl-root', panel && 'has-panel')}>
@@ -146,7 +252,10 @@ export function ToolsLayout() {
                   role="tab"
                   aria-selected={k === kind}
                   className="tl-tab"
-                  onClick={() => setKind(k)}
+                  onClick={() => {
+                    setKind(k);
+                    setPicked([]);
+                  }}
                 >
                   {label}
                   <i>{models.filter((m) => m.entry.kind === k).length}</i>
@@ -188,41 +297,99 @@ export function ToolsLayout() {
             ) : (
               <button
                 type="button"
-                className="tl-btn"
+                className="tl-btn tl-prog"
+                style={{ '--p': pct } as CSSProperties}
                 disabled={check.isFetching}
                 onClick={() => void runCheck()}
               >
-                {check.isFetching ? 'Проверяю…' : 'Проверить обновления'}
+                {!check.isFetching
+                  ? 'Проверить обновления'
+                  : progress
+                    ? `Проверено ${progress.done} из ${progress.total}`
+                    : 'Проверяю…'}
               </button>
             )}
           </div>
         </div>
 
         <div className="tl-top2">
-          <fieldset className="tl-fcs" aria-label="Фильтр">
-            {FILTERS.map(([f, label]) => {
-              const n = ofKind.filter(pass[f]).length;
-              const off = (f === 'upd' && !check.data) || (f === 'stale' && shortHistory);
-              return (
-                <button
-                  key={f}
-                  type="button"
-                  className="tl-fc"
-                  aria-pressed={f === filter}
-                  disabled={off}
-                  title={f === 'stale' && shortHistory ? 'Мало истории: меньше 30 дней' : undefined}
-                  onClick={() => setFilter(f)}
-                >
-                  {label}
-                  {!off && <i>{n}</i>}
+          {chosen.length > 0 ? (
+            <div className="tl-pick">
+              <span className="tl-pick-n">
+                Выбрано {chosen.length}
+                <button type="button" aria-label="Снять выбор" onClick={() => setPicked([])}>
+                  <X className="tl-ic" strokeWidth={2} />
                 </button>
-              );
-            })}
-          </fieldset>
+              </span>
+              {toOn.length > 0 && (
+                <button
+                  type="button"
+                  className="tl-btn"
+                  disabled={busy}
+                  onClick={() => void setOn(toOn, true)}
+                >
+                  Включить {toOn.length}
+                </button>
+              )}
+              {toOff.length > 0 && (
+                <button
+                  type="button"
+                  className="tl-btn"
+                  disabled={busy}
+                  onClick={() => void setOn(toOff, false)}
+                >
+                  Выключить {toOff.length}
+                </button>
+              )}
+              {toUpd.length > 0 && (
+                <button
+                  type="button"
+                  className="tl-btn p"
+                  disabled={busy}
+                  onClick={() => void updateMany(toUpd)}
+                >
+                  Обновить {toUpd.length}
+                </button>
+              )}
+              {toDel.length > 0 && (
+                <button
+                  type="button"
+                  className="tl-btn danger"
+                  disabled={busy}
+                  onClick={() => setConfirmDel(true)}
+                >
+                  Удалить {toDel.length}
+                </button>
+              )}
+            </div>
+          ) : (
+            <fieldset className="tl-fcs" aria-label="Фильтр">
+              {FILTERS.map(([f, label]) => {
+                const n = ofKind.filter(pass[f]).length;
+                const off = (f === 'upd' && !check.data) || (f === 'stale' && shortHistory);
+                return (
+                  <button
+                    key={f}
+                    type="button"
+                    className="tl-fc"
+                    aria-pressed={f === filter}
+                    disabled={off}
+                    title={
+                      f === 'stale' && shortHistory ? 'Мало истории: меньше 30 дней' : undefined
+                    }
+                    onClick={() => setFilter(f)}
+                  >
+                    {label}
+                    {!off && <i>{n}</i>}
+                  </button>
+                );
+              })}
+            </fieldset>
+          )}
           <span className="tl-sp" />
           {failed.length > 0 && (
             <details className="tl-fails">
-              <summary>Ошибок обновления: {failed.length}</summary>
+              <summary>Ошибок: {failed.length}</summary>
               {failed.map((f) => (
                 <span key={f}>{f}</span>
               ))}
@@ -233,12 +400,12 @@ export function ToolsLayout() {
           ) : (
             start !== null && <span className="tl-dim">История с {shortDate(start)}</span>
           )}
-          {filter === 'upd' && shown.some((m) => m.update && !m.update.url) && (
+          {filter === 'upd' && !chosen.length && shown.some((m) => m.update && !m.update.url) && (
             <button
               type="button"
               className="tl-btn p"
-              disabled={updating}
-              onClick={() => void updateAll()}
+              disabled={busy}
+              onClick={() => void updateMany(shown.filter((m) => m.update && !m.update.url))}
             >
               {updating ? 'Обновляю…' : 'Обновить всё'}
             </button>
@@ -251,7 +418,7 @@ export function ToolsLayout() {
           ) : tools.isPending ? null : shown.length === 0 ? (
             <div className="tl-empty">{EMPTY[filter]}</div>
           ) : (
-            <div className="tl-tiles" key={kind} ref={tiles}>
+            <div className={cn('tl-tiles', chosen.length > 0 && 'picking')} key={kind} ref={tiles}>
               {shown.map((m) => (
                 <ToolTile
                   key={m.entry.id}
@@ -259,7 +426,8 @@ export function ToolsLayout() {
                   max={max}
                   now={now}
                   selected={m.entry.id === selectedId}
-                  onOpen={() => select(m.entry.id === selectedId ? null : m.entry.id)}
+                  picked={picked.includes(m.entry.id)}
+                  onOpen={(e) => onTile(m.entry.id, e)}
                 />
               ))}
             </div>
@@ -276,7 +444,6 @@ export function ToolsLayout() {
           <ToolPanel
             key={panel.entry.id}
             m={panel}
-            start={start}
             now={now}
             onClose={() => select(null)}
             onOpenPlugin={(key) => {
@@ -293,6 +460,24 @@ export function ToolsLayout() {
           />
         </ToolAside>
       )}
+
+      <ConfirmDialog
+        open={confirmDel}
+        danger
+        title={`Удалить ${toDel.length} ${plural(toDel.length, 'инструмент', 'инструмента', 'инструментов')}?`}
+        description={[
+          `${names(toDel)}.`,
+          'Файлы уйдут в Корзину, plugins и MCP удалятся через claude, копии в проектах — во всех проектах.',
+          chosen.length > toDel.length
+            ? `Части plugins не удаляются: ${chosen.length - toDel.length}.`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        confirmLabel="Удалить"
+        onConfirm={() => void deleteMany()}
+        onCancel={() => setConfirmDel(false)}
+      />
     </div>
   );
 }

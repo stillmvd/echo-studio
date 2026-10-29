@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react';
 import { useSetToolEnabled } from '@/hooks/use-tooling';
 import { cn } from '@/lib/cn';
 import {
@@ -81,21 +82,24 @@ export function ToolTile({
   max,
   now,
   selected,
+  picked,
   onOpen,
 }: {
   m: TileModel;
   max: number;
   now: number;
   selected: boolean;
-  onOpen: () => void;
+  picked: boolean;
+  onOpen: (e: MouseEvent) => void;
 }) {
   return (
-    <div className={cn('tl-tile', selected && 'sel')}>
+    <div className={cn('tl-tile', selected && 'sel', picked && 'pick')}>
       <button
         type="button"
         className="tl-open"
         aria-label={`${m.entry.name}, ${sourceLabel(m.entry)}`}
-        aria-pressed={selected}
+        aria-pressed={selected || picked}
+        onMouseDown={(e) => e.shiftKey && e.preventDefault()}
         onClick={onOpen}
       />
       <span className="tl-l1">

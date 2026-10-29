@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::thread;
 use std::time::Duration;
 
 use serde::Serialize;
@@ -93,20 +95,38 @@ pub fn compare(
     }
 }
 
-fn check_plugins(home: &Path, out: &mut Check) {
-    if let Err(e) = output(
-        &claude_exe().to_string_lossy(),
-        &["plugin", "marketplace", "update"],
-        None,
-    ) {
-        out.errors.push(format!("Маркетплейсы: {e}"));
-    }
-    let markets = json(
+fn known_markets(home: &Path) -> Value {
+    json(
         &claude_dir(home)
             .join("plugins")
             .join("known_marketplaces.json"),
     )
-    .unwrap_or_default();
+    .unwrap_or_default()
+}
+
+fn remote_markets(markets: &Value) -> Vec<String> {
+    markets
+        .as_object()
+        .map(|m| {
+            m.iter()
+                .filter(|(_, v)| {
+                    v.pointer("/source/source").and_then(Value::as_str) != Some("directory")
+                })
+                .map(|(k, _)| k.clone())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn check_plugins(home: &Path, names: &[String], tick: &dyn Fn(), out: &mut Check) {
+    let claude = claude_exe().to_string_lossy().into_owned();
+    for name in names {
+        if let Err(e) = output(&claude, &["plugin", "marketplace", "update", name], None) {
+            out.errors.push(format!("{name}: {e}"));
+        }
+        tick();
+    }
+    let markets = known_markets(home);
     let installed = json(&installed_plugins(home)).unwrap_or_default();
     let Some(plugins) = installed.get("plugins").and_then(Value::as_object) else {
         return;
@@ -169,13 +189,15 @@ pub fn folder_sha(listing: &str, folder: &str) -> Option<String> {
         .map(String::from)
 }
 
-fn check_skills(home: &Path, out: &mut Check) {
+type Skill = (String, String, String);
+type SkillGroups = BTreeMap<(String, String), Vec<Skill>>;
+
+fn skill_groups(home: &Path) -> SkillGroups {
     let lock = json(&home.join(".agents").join(".skill-lock.json")).unwrap_or_default();
+    let mut groups = SkillGroups::new();
     let Some(skills) = lock.get("skills").and_then(Value::as_object) else {
-        return;
+        return groups;
     };
-    type Skill = (String, String, String);
-    let mut groups: BTreeMap<(String, String), Vec<Skill>> = BTreeMap::new();
     for (name, s) in skills {
         let g = |k: &str| s.get(k).and_then(Value::as_str);
         let (Some("github"), Some(source), Some(path), Some(hash)) = (
@@ -202,34 +224,36 @@ fn check_skills(home: &Path, out: &mut Check) {
                 hash.into(),
             ));
     }
-    for ((repo, parent), list) in groups {
-        let url = format!("https://api.github.com/repos/{repo}/contents/{parent}");
-        match output(
-            "curl.exe",
-            &[
-                "-sSfL",
-                "--max-time",
-                "20",
-                "-H",
-                "User-Agent: echo-studio",
-                &url,
-            ],
-            None,
-        ) {
-            Ok(body) => {
-                for (name, folder, hash) in list {
-                    if let Some(sha) = folder_sha(&body, &folder).filter(|s| s != &hash) {
-                        out.updates.push(Update {
-                            id: format!("skill:user:{name}"),
-                            current: hash.chars().take(7).collect(),
-                            latest: sha.chars().take(7).collect(),
-                            url: None,
-                        });
-                    }
+    groups
+}
+
+fn check_group(repo: &str, parent: &str, list: Vec<Skill>, out: &mut Check) {
+    let url = format!("https://api.github.com/repos/{repo}/contents/{parent}");
+    match output(
+        "curl.exe",
+        &[
+            "-sSfL",
+            "--max-time",
+            "20",
+            "-H",
+            "User-Agent: echo-studio",
+            &url,
+        ],
+        None,
+    ) {
+        Ok(body) => {
+            for (name, folder, hash) in list {
+                if let Some(sha) = folder_sha(&body, &folder).filter(|s| s != &hash) {
+                    out.updates.push(Update {
+                        id: format!("skill:user:{name}"),
+                        current: hash.chars().take(7).collect(),
+                        latest: sha.chars().take(7).collect(),
+                        url: None,
+                    });
                 }
             }
-            Err(e) => out.errors.push(format!("{repo}: {e}")),
         }
+        Err(e) => out.errors.push(format!("{repo}: {e}")),
     }
 }
 
@@ -413,41 +437,89 @@ fn check_release(id: &str, exe: &Path, out: &mut Check) {
     }
 }
 
-fn check_own(home: &Path, entries: &[Entry], out: &mut Check) {
-    for e in entries
-        .iter()
-        .filter(|e| e.item.origin == Origin::User && !e.npx)
-    {
-        let id = e.item.id.as_str();
-        let mcp = e.item.mcp.as_ref().filter(|_| e.item.kind == Kind::Mcp);
-        if let Some((_, pkg, current)) = mcp.and_then(|m| npm_pin(&m.args)) {
-            match npm_latest(&pkg) {
-                Ok(latest) if newer(&latest, &current) => out.updates.push(Update {
-                    id: id.into(),
-                    current,
-                    latest,
-                    url: None,
-                }),
-                Ok(_) => {}
-                Err(e) => out.errors.push(e),
-            }
-        } else if let Some(dir) = git_dir(e) {
-            check_git(id, &dir, out);
-        } else if let Some(exe) = mcp
-            .and_then(|m| m.command.as_deref())
-            .map(Path::new)
-            .filter(|p| p.starts_with(home) && p.is_file())
-        {
-            check_release(id, exe, out);
-        }
+enum Own {
+    Npm(String, String),
+    Git(PathBuf),
+    Release(PathBuf),
+}
+
+fn own_source(home: &Path, e: &Entry) -> Option<Own> {
+    if e.item.origin != Origin::User || e.npx {
+        return None;
+    }
+    let mcp = e.item.mcp.as_ref().filter(|_| e.item.kind == Kind::Mcp);
+    if let Some((_, pkg, current)) = mcp.and_then(|m| npm_pin(&m.args)) {
+        return Some(Own::Npm(pkg, current));
+    }
+    if let Some(dir) = git_dir(e) {
+        return Some(Own::Git(dir));
+    }
+    mcp.and_then(|m| m.command.as_deref())
+        .map(PathBuf::from)
+        .filter(|p| p.starts_with(home) && p.is_file())
+        .map(Own::Release)
+}
+
+fn check_own(id: &str, source: Own, out: &mut Check) {
+    match source {
+        Own::Npm(pkg, current) => match npm_latest(&pkg) {
+            Ok(latest) if newer(&latest, &current) => out.updates.push(Update {
+                id: id.into(),
+                current,
+                latest,
+                url: None,
+            }),
+            Ok(_) => {}
+            Err(e) => out.errors.push(e),
+        },
+        Own::Git(dir) => check_git(id, &dir, out),
+        Own::Release(exe) => check_release(id, &exe, out),
     }
 }
 
-pub fn check(home: &Path, entries: &[Entry]) -> Check {
+pub fn check(home: &Path, entries: &[Entry], progress: impl Fn(usize, usize) + Sync) -> Check {
+    let groups = skill_groups(home);
+    let own: Vec<_> = entries
+        .iter()
+        .filter_map(|e| own_source(home, e).map(|s| (e.item.id.clone(), s)))
+        .collect();
+    let names = remote_markets(&known_markets(home));
+    let total = names.len() + groups.len() + own.len();
+    let done = AtomicUsize::new(0);
+    progress(0, total);
+    let tick = || progress(done.fetch_add(1, Ordering::SeqCst) + 1, total);
+    let tick = &tick;
+    let parts: Vec<Check> = thread::scope(|s| {
+        let mut jobs = vec![s.spawn(move || {
+            let mut c = Check::default();
+            check_plugins(home, &names, tick, &mut c);
+            c
+        })];
+        for ((repo, parent), list) in groups {
+            jobs.push(s.spawn(move || {
+                let mut c = Check::default();
+                check_group(&repo, &parent, list, &mut c);
+                tick();
+                c
+            }));
+        }
+        for (id, source) in own {
+            jobs.push(s.spawn(move || {
+                let mut c = Check::default();
+                check_own(&id, source, &mut c);
+                tick();
+                c
+            }));
+        }
+        jobs.into_iter()
+            .map(|j| j.join().unwrap_or_default())
+            .collect()
+    });
     let mut out = Check::default();
-    check_plugins(home, &mut out);
-    check_skills(home, &mut out);
-    check_own(home, entries, &mut out);
+    for c in parts {
+        out.updates.extend(c.updates);
+        out.errors.extend(c.errors);
+    }
     out
 }
 
@@ -471,6 +543,16 @@ mod tests {
         );
         assert_eq!(compare(None, Some("ABC"), None, Some("abc")), None);
         assert_eq!(compare(Some("1.0"), None, None, None), None);
+    }
+
+    #[test]
+    fn skips_directory_marketplaces() {
+        let markets: Value = serde_json::from_str(
+            r#"{"a":{"source":{"source":"github"}},"b":{"source":{"source":"directory"}},"c":{}}"#,
+        )
+        .unwrap();
+        assert_eq!(remote_markets(&markets), vec!["a", "c"]);
+        assert!(remote_markets(&Value::Null).is_empty());
     }
 
     #[test]
