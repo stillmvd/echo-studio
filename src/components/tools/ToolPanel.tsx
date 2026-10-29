@@ -224,9 +224,13 @@ export function ToolPanel({
           <button
             type="button"
             className="tl-btn p"
+            {...tooltip(
+              'exe обновляется вручную: скачай новую версию на странице релиза',
+              'bottom',
+            )}
             onClick={() => m.update?.url && open(m.update.url).catch(failOpen)}
           >
-            Релиз {m.update.latest}
+            Открыть релиз {m.update.latest}
           </button>
         )}
         {m.update && !m.update.url && (
