@@ -112,7 +112,7 @@ pub async fn update_tool(app: AppHandle, id: String) -> Result<(), String> {
     let backups = backups_root(&app)?;
     blocking(move || {
         let places = places();
-        let step = actions::plan_update(&find_entry(&home, &places, &id)?)?;
+        let step = actions::plan_update(&find_entry(&home, &places, &id)?, &home)?;
         actions::execute(&[step], &home, &backups, &known(places)).map(|_| ())
     })
     .await?

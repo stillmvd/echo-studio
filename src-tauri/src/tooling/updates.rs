@@ -11,6 +11,7 @@ use serde_json::Value;
 use super::actions::output_within;
 use super::inventory::Entry;
 use super::paths::{claude_dir, installed_plugins};
+use super::release::{arch, pick_asset};
 use super::{Kind, Origin};
 use crate::workbench::child_command;
 use crate::workbench::sessions::claude_exe;
@@ -371,26 +372,28 @@ pub fn version_of(text: &str) -> Option<String> {
         .map(String::from)
 }
 
-fn check_release(id: &str, exe: &Path, out: &mut Check) {
-    let Some(stem) = exe
-        .file_stem()
+pub fn exe_stem(exe: &Path) -> Option<String> {
+    exe.file_stem()
         .map(|s| s.to_string_lossy().into_owned())
         .filter(|s| {
-            s.chars()
-                .all(|c| c.is_ascii_alphanumeric() || "._-".contains(c))
+            !s.is_empty()
+                && s.chars()
+                    .all(|c| c.is_ascii_alphanumeric() || "._-".contains(c))
         })
-    else {
-        return;
-    };
-    let mut cmd = child_command(&exe.to_string_lossy());
-    cmd.arg("--version");
-    let Some(current) = output_within(cmd, Duration::from_secs(5))
-        .ok()
-        .and_then(|o| version_of(&String::from_utf8_lossy(&o.stdout)))
-    else {
-        return;
-    };
-    let found = get(&format!(
+}
+
+pub fn release_exe(home: &Path, e: &Entry) -> Option<PathBuf> {
+    e.item
+        .mcp
+        .as_ref()
+        .filter(|_| e.item.kind == Kind::Mcp && e.item.origin == Origin::User && !e.npx)
+        .and_then(|m| m.command.as_deref())
+        .map(PathBuf::from)
+        .filter(|p| p.starts_with(home) && p.is_file())
+}
+
+pub fn find_release(stem: &str) -> Result<Value, String> {
+    get(&format!(
         "https://api.github.com/search/repositories?q={stem}+in:name&per_page=10"
     ))
     .and_then(|v| {
@@ -402,7 +405,7 @@ fn check_release(id: &str, exe: &Path, out: &mut Check) {
                     .filter(|r| {
                         r.get("name")
                             .and_then(Value::as_str)
-                            .is_some_and(|n| n.eq_ignore_ascii_case(&stem))
+                            .is_some_and(|n| n.eq_ignore_ascii_case(stem))
                     })
                     .max_by_key(|r| r.get("stargazers_count").and_then(Value::as_u64))
                     .and_then(|r| r.get("full_name")?.as_str().map(String::from))
@@ -413,17 +416,34 @@ fn check_release(id: &str, exe: &Path, out: &mut Check) {
         get(&format!(
             "https://api.github.com/repos/{repo}/releases/latest"
         ))
-    });
-    match found {
+    })
+}
+
+fn check_release(id: &str, exe: &Path, out: &mut Check) {
+    let Some(stem) = exe_stem(exe) else {
+        return;
+    };
+    let mut cmd = child_command(&exe.to_string_lossy());
+    cmd.arg("--version");
+    let Some(current) = output_within(cmd, Duration::from_secs(5))
+        .ok()
+        .and_then(|o| version_of(&String::from_utf8_lossy(&o.stdout)))
+    else {
+        return;
+    };
+    match find_release(&stem) {
         Ok(rel) => {
             let tag = rel
                 .get("tag_name")
                 .and_then(Value::as_str)
                 .and_then(version_of);
-            let url = rel
-                .get("html_url")
-                .and_then(Value::as_str)
-                .map(String::from);
+            let url = if pick_asset(&rel, &stem, arch()).is_some() {
+                None
+            } else {
+                rel.get("html_url")
+                    .and_then(Value::as_str)
+                    .map(String::from)
+            };
             if let Some(latest) = tag.filter(|t| newer(t, &current)) {
                 out.updates.push(Update {
                     id: id.into(),
@@ -454,10 +474,7 @@ fn own_source(home: &Path, e: &Entry) -> Option<Own> {
     if let Some(dir) = git_dir(e) {
         return Some(Own::Git(dir));
     }
-    mcp.and_then(|m| m.command.as_deref())
-        .map(PathBuf::from)
-        .filter(|p| p.starts_with(home) && p.is_file())
-        .map(Own::Release)
+    release_exe(home, e).map(Own::Release)
 }
 
 fn check_own(id: &str, source: Own, out: &mut Check) {

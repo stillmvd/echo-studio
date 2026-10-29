@@ -5,6 +5,7 @@ pub mod inventory;
 pub mod mcp;
 pub mod paths;
 pub mod plugins;
+pub mod release;
 pub mod runs;
 pub mod scan;
 pub mod settings;

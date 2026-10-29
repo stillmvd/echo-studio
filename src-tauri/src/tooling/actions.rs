@@ -9,7 +9,8 @@ use serde_json::Value;
 
 use super::inventory::Entry;
 use super::paths::{claude_dir, claude_json, installed_plugins, same_project};
-use super::updates::{git_dir, npm_latest, npm_pin};
+use super::release::install;
+use super::updates::{git_dir, npm_latest, npm_pin, release_exe};
 use super::write::{backup, write_text_atomic};
 use super::{Kind, Origin};
 use crate::workbench::child_command;
@@ -33,6 +34,7 @@ pub enum Step {
         from: String,
         to: String,
     },
+    ReplaceExe(PathBuf),
 }
 
 fn claude(args: &[&str], cwd: Option<&str>) -> Step {
@@ -140,7 +142,7 @@ pub fn plan_delete(e: &Entry, projects: &[String]) -> Result<Vec<Step>, String> 
     }])
 }
 
-pub fn plan_update(e: &Entry) -> Result<Step, String> {
+pub fn plan_update(e: &Entry, home: &Path) -> Result<Step, String> {
     safe(&e.item.qualified_name)?;
     match (e.item.kind, e.item.origin) {
         (Kind::Plugin, _) => Ok(claude(
@@ -169,8 +171,11 @@ pub fn plan_update(e: &Entry) -> Result<Step, String> {
                 .as_ref()
                 .map(|m| m.args.as_slice())
                 .unwrap_or_default();
-            let (index, pkg, current) =
-                npm_pin(args).ok_or_else(|| format!("{} обновляется вручную", e.item.name))?;
+            let Some((index, pkg, current)) = npm_pin(args) else {
+                return release_exe(home, e)
+                    .map(Step::ReplaceExe)
+                    .ok_or_else(|| format!("{} обновляется вручную", e.item.name));
+            };
             Ok(Step::BumpMcp {
                 name: e.item.name.clone(),
                 index,
@@ -400,7 +405,7 @@ pub fn execute(
                 check_trash(p, &roots)?;
             }
             Step::DropMcp { file, .. } => check_mcp_json(file, projects)?,
-            Step::Run { .. } | Step::BumpMcp { .. } => {}
+            Step::Run { .. } | Step::BumpMcp { .. } | Step::ReplaceExe(_) => {}
         }
     }
     let now = SystemTime::now();
@@ -434,6 +439,7 @@ pub fn execute(
                     write_text_atomic(&file, &bump_mcp(&text, name, *index, from, to)?)
                 }
                 Step::Run { program, args, cwd } => run(program, args, cwd.as_deref()).map(|_| ()),
+                Step::ReplaceExe(exe) => install(exe).map(|_| ()),
             }
         };
         match step() {
