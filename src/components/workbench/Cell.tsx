@@ -520,7 +520,6 @@ export function Cell({
                       status: info.status,
                       phase: info.session?.phase ?? null,
                     }}
-                    seed={info.key}
                   />
                   <TabTitle info={info} projectName={project.name} />
                 </button>

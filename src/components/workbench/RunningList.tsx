@@ -2,14 +2,7 @@ import { SquareTerminal } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
-import {
-  cardGlow,
-  devLook,
-  LIVE_COLOR,
-  type LiveLook,
-  sessionLook,
-  sweepDelay,
-} from '@/lib/live-status';
+import { devLook, LIVE_COLOR, type LiveLook, sessionLook } from '@/lib/live-status';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import {
   devStatusLabel,
@@ -72,12 +65,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
     openSession(s);
   };
 
-  const tileStyle = (look: LiveLook, key: string) =>
-    ({
-      '--c': LIVE_COLOR[look],
-      '--dl': `-${sweepDelay(key)}s`,
-      ...(look === 'waiting' && { '--spd': '3s' }),
-    }) as CSSProperties;
+  const tileStyle = (look: LiveLook) => ({ '--c': LIVE_COLOR[look] }) as CSSProperties;
 
   const devTile = (d: DevServer) => {
     const key = devTabKey(d.projectPath);
@@ -94,7 +82,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
         key={key}
         type="button"
         className={cn('wb-rt', isOn(d.projectPath, key) && 'on')}
-        style={tileStyle(look, key)}
+        style={tileStyle(look)}
         onClick={go}
         onContextMenu={(e) =>
           openMenu(
@@ -111,7 +99,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
           )
         }
       >
-        <LiveIcon look={look} seed={key} />
+        <LiveIcon look={look} />
         <span className="wb-rt-l">
           <span>{d.command}</span>
           <small>{devStatusLabel(d)}</small>
@@ -134,7 +122,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
           isOn(s.projectPath, s.sessionId) && 'on',
           external && status === 'exited' && 'ext',
         )}
-        style={tileStyle(look, s.sessionId)}
+        style={tileStyle(look)}
         disabled={!external && !s.projectPath}
         onClick={(e) => goSession(s, e.currentTarget)}
         onContextMenu={(e) => {
@@ -154,11 +142,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
           );
         }}
       >
-        <LiveIcon
-          look={look}
-          dim={external ? status === 'exited' : !s.projectPath}
-          seed={s.sessionId}
-        />
+        <LiveIcon look={look} dim={external ? status === 'exited' : !s.projectPath} />
         {external && <SquareTerminal className="wb-rt-term" strokeWidth={2} aria-hidden="true" />}
         <span className="wb-rt-l">
           <span>{s.name || (external ? folderName(s.cwd) : null) || 'Claude'}</span>
@@ -173,16 +157,8 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
       {groups.map((g) => {
         const project = g.path ? projects.get(g.path) : undefined;
         const name = project?.name ?? (g.path ? folderName(g.path) : 'Projects');
-        const looks = [
-          ...g.sessions.map((s) => sessionLook({ status: statusView(s, seen), phase: s.phase })),
-          ...g.devs.map(devLook),
-        ];
         return (
-          <article
-            key={g.path ?? ''}
-            className="wb-pc"
-            style={{ '--card-bg': cardGlow(looks.map((l) => LIVE_COLOR[l])) } as CSSProperties}
-          >
+          <article key={g.path ?? ''} className="wb-pc">
             {project ? (
               <button
                 type="button"

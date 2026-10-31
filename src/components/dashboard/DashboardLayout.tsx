@@ -248,13 +248,7 @@ export function sessionTitle(
 export function SessionStatus({ session }: { session: ClaudeSession | undefined }) {
   const seen = useWorkbenchStore((s) => s.seen);
   if (!session) return <span className="wb-gl sm" />;
-  return (
-    <StatusIcon
-      small
-      session={{ status: statusView(session, seen), phase: session.phase }}
-      seed={session.sessionId}
-    />
-  );
+  return <StatusIcon small session={{ status: statusView(session, seen), phase: session.phase }} />;
 }
 
 function Sessions({

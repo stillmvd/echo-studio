@@ -83,29 +83,40 @@
 .wb-pi.lg { width: 32px; height: 32px; border-radius: 8px; }
 .wb-pi.lg.none svg { width: 20px; height: 20px; }
 
-.live-ico > canvas { display: block; width: 100%; height: 100%; }
-.live-ico { flex: none; display: inline-block; }
+.live-ico { --lv-ic: color-mix(in oklab, var(--lv) 82%, white); position: relative; flex: none; display: inline-block; color: var(--lv-ic); }
+.live-ico.dim { opacity: .55; }
+.live-ico > i { position: absolute; inset: 0; display: block; }
 .live-ico svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.lv-spin { animation: lv-spin 4s steps(80) infinite; }
+.lv-orbit { animation: lv-spin 8s steps(160) infinite; }
+.lv-plug { animation: lv-plug 1.2s steps(12) infinite; }
+.lv-swing { animation: lv-swing 1.6s steps(16) infinite; }
+.lv-plug-blink { animation: lv-plug-blink 2s steps(20) infinite; }
+.lv-plug-blink-fast { animation: lv-plug-blink 1.2s steps(12) infinite; }
+.lv-fade { animation: lv-fade 2.4s steps(24) infinite; }
+.lv-bar { animation: lv-bar 1.2s steps(12) infinite; }
+.lv-bar-slow { animation: lv-bar 2.4s steps(24) infinite; }
+@keyframes lv-spin { to { rotate: 360deg; } }
+@keyframes lv-plug { 0%, 100% { opacity: .75; } 50% { opacity: 0; } }
+@keyframes lv-swing { 0%, 100% { rotate: -12deg; } 50% { rotate: 12deg; } }
+@keyframes lv-plug-blink { 0%, 100% { opacity: 0; } 50% { opacity: .65; } }
+@keyframes lv-fade { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes lv-bar { 0%, 100% { scale: 1 .35; } 50% { scale: 1 1; } }
 .wb-gl { flex: none; width: 22px; height: 22px; }
 .wb-gl.sm { width: 18px; height: 18px; }
 .wb-dv { flex: none; width: 18px; height: 18px; }
 
-@property --wb-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 .wb-runs { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; overflow-x: hidden; overflow-anchor: none; user-select: none; }
 .wb-pc { position: relative; isolation: isolate; flex: none; display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 18px; background: var(--raised); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 5%); overflow: hidden; clip-path: inset(0 round 18px); }
-.wb-pc::before { content: ""; position: absolute; inset: -30%; z-index: -1; pointer-events: none; background: var(--card-bg); filter: blur(28px); opacity: .55; animation: wb-drift 14s ease-in-out infinite alternate; }
-@keyframes wb-drift { 0% { transform: translate(-6%, -4%) rotate(0deg); } 100% { transform: translate(6%, 5%) rotate(25deg); } }
 .wb-pc-h { display: block; min-width: 0; padding: 0 6px; color: var(--fg); font-size: 20px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wb-pc-h:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; border-radius: 8px; }
 .wb-rts { --rt-k: .84; --rt-gap: 8px; container-type: inline-size; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--rt-gap); }
-.wb-rt { position: relative; isolation: isolate; grid-column: span 2; display: flex; align-items: center; justify-content: center; height: round(down, calc((100cqw - 2 * var(--rt-gap)) / 3 * var(--rt-k)), 1px); min-width: 0; border-radius: 14px; corner-shape: superellipse(1.05); background: color-mix(in oklab, var(--c) 10%, #17181c); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 22%, transparent); transition: box-shadow 160ms ease; }
-.wb-rt::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; corner-shape: inherit; pointer-events: none; background: conic-gradient(from var(--wb-a), transparent 0 30%, color-mix(in oklab, var(--c) 25%, transparent) 55%, color-mix(in oklab, var(--c) 55%, transparent) 75%, color-mix(in oklab, var(--c) 65%, white 10%) 84%, color-mix(in oklab, var(--c) 30%, transparent) 94%, transparent 100%); mask-image: radial-gradient(closest-side, rgb(0 0 0 / 25%), #000 75%); opacity: .5; animation: wb-sweep var(--spd, 5s) linear infinite; animation-delay: var(--dl, 0s); }
-@keyframes wb-sweep { to { --wb-a: 360deg; } }
-.wb-rt:hover { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 45%, transparent); }
-.wb-rt:focus-visible { outline: none; box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--c) 70%, white); }
-.wb-rt.on { box-shadow: inset 0 0 0 2px var(--c); }
+.wb-rt { position: relative; isolation: isolate; grid-column: span 2; display: flex; align-items: center; justify-content: center; height: round(down, calc((100cqw - 2 * var(--rt-gap)) / 3 * var(--rt-k)), 1px); min-width: 0; border-radius: 14px; corner-shape: superellipse(1.05); background: color-mix(in oklab, var(--c) 10%, #17181c); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 45%, transparent), inset 0 0 14px color-mix(in oklab, var(--c) 14%, transparent); transition: box-shadow 160ms ease; }
+.wb-rt:hover { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 70%, transparent), inset 0 0 14px color-mix(in oklab, var(--c) 14%, transparent); }
+.wb-rt:focus-visible { outline: none; box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--c) 70%, white), inset 0 0 14px color-mix(in oklab, var(--c) 14%, transparent); }
+.wb-rt.on { box-shadow: inset 0 0 0 2px var(--c), inset 0 0 14px color-mix(in oklab, var(--c) 14%, transparent); }
 .wb-rt:disabled, .wb-rt.ext { opacity: .55; }
-.wb-rt .live-ico { width: min(72px, 70%); height: auto; aspect-ratio: 1; }
+.wb-rt .live-ico { width: min(76px, 72%); height: auto; aspect-ratio: 1; }
 .wb-rt-term { position: absolute; top: 8px; left: 8px; width: 16px; height: 16px; color: color-mix(in oklab, var(--c) 45%, #c9ccd3); pointer-events: none; }
 .wb-rt-l { position: absolute; left: 6px; right: 6px; bottom: 6px; display: grid; justify-items: center; gap: 1px; padding: 5px 6px; border-radius: 9px; background: rgb(12 13 16 / 82%); opacity: 0; translate: 0 4px; transition: opacity 160ms ease, translate 160ms ease; pointer-events: none; }
 .wb-rt:hover .wb-rt-l, .wb-rt:focus-visible .wb-rt-l { opacity: 1; translate: 0 0; }
@@ -127,7 +138,8 @@
   .wb-rt { border-radius: 12px; }
   .wb-rt .live-ico { width: min(48px, 60%); }
 }
-@media (prefers-reduced-motion: reduce) { .wb-pc::before, .wb-rt::before { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .live-ico * { animation: none; } }
+:root[data-idle] .live-ico *, :root[data-idle] .wb-rr.sk { animation-play-state: paused; }
 .wb-runs-empty { flex: none; padding: 6px 14px; color: var(--dim); font-size: 13px; font-weight: 500; }
 
 .wb-pv { flex: 1; min-width: 0; container-type: inline-size; }

@@ -162,7 +162,7 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
                 <b>{s.name || 'Claude'}</b>
                 <span>{sessionPlace(s, projects)}</span>
               </span>
-              <StatusIcon session={{ status, phase: s.phase }} seed={s.sessionId} />
+              <StatusIcon session={{ status, phase: s.phase }} />
               <span className="wb-dim">{i === 0 ? 'сейчас' : STATUS_LABEL[status]}</span>
             </button>
           );

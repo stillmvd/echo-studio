@@ -5,22 +5,13 @@ import { LiveIcon } from './live/LiveIcon';
 
 type Shown = Pick<ClaudeSession, 'phase'> & { status: StatusView };
 
-export function StatusIcon({
-  session,
-  small,
-  seed,
-}: {
-  session: Shown;
-  small?: boolean;
-  seed?: string;
-}) {
+export function StatusIcon({ session, small }: { session: Shown; small?: boolean }) {
   return (
     <LiveIcon
       look={sessionLook(session)}
       size={small ? 18 : 22}
       title={statusTitle(session.status)}
       className={small ? 'wb-gl sm' : 'wb-gl'}
-      seed={seed}
     />
   );
 }
