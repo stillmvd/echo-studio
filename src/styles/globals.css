@@ -302,3 +302,6 @@
 .tool-md th {
   background: transparent;
 }
+:root[data-idle] :is(.animate-pulse, .animate-spin) {
+  animation-play-state: paused;
+}

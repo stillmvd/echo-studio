@@ -26,6 +26,7 @@ export function useRateLimits() {
     queryFn: readRateLimits,
     enabled: open,
     refetchInterval: MINUTE,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -39,6 +40,7 @@ export function useUsage() {
     placeholderData: (prev) => prev,
     enabled: open,
     refetchInterval: MINUTE,
+    refetchOnWindowFocus: true,
   });
 }
 

@@ -232,6 +232,7 @@
 .wb-devbar .wb-btn svg { width: 14px; height: 14px; }
 .wb-devbar .wb-btn:not(.p) { background: var(--cosmic); }
 .wb-term { position: relative; flex: 1; min-height: 0; min-width: 0; padding: 12px 4px 8px 16px; }
+:root[data-idle] .wb-term { display: none; }
 .wb-term .xterm { height: 100%; }
 .wb-caret { position: absolute; top: 0; left: 0; z-index: 5; width: 2px; background: var(--fg); opacity: .4; pointer-events: none; }
 .wb-caret[hidden] { display: none; }

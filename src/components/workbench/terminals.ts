@@ -17,8 +17,10 @@ import {
   terminalWrite,
   untailDevLog,
 } from '@/lib/ipc';
+import { onWindowActive } from '@/lib/window-activity';
 import {
   caretStep,
+  controlOnly,
   detectAgentView,
   echoedKeys,
   findLinks,
@@ -26,6 +28,7 @@ import {
   isImagePaste,
   isPathTitle,
   mouseReport,
+  plainTitle,
   type TermLink,
   type TypedKey,
   terminalKey,
@@ -85,6 +88,27 @@ function notify(entry: Entry) {
   entry.version++;
   for (const l of entry.listeners) l();
 }
+
+function setTitle(entry: Entry, raw: string) {
+  const title = plainTitle(raw);
+  if (!title || isPathTitle(title) || title === entry.title) return;
+  entry.title = title;
+  notify(entry);
+}
+
+let refocus: Entry | null = null;
+onWindowActive((active) => {
+  if (!active) {
+    refocus = [...entries.values()].find((e) => e.term.textarea === document.activeElement) ?? null;
+    return;
+  }
+  const entry = refocus;
+  refocus = null;
+  if (!entry) return;
+  requestAnimationFrame(() => {
+    if (entry.host.isConnected && entry.host.offsetParent) entry.term.focus();
+  });
+});
 
 const TWIN = 'Сессия уже открыта в другой вкладке';
 
@@ -209,12 +233,7 @@ function create(options: Partial<ITerminalOptions>): Entry {
     echoCaret: () => {},
     mouseCell: null,
   };
-  term.onTitleChange((t) => {
-    const title = t.trim();
-    if (!title || isPathTitle(title)) return;
-    entry.title = title;
-    notify(entry);
-  });
+  term.onTitleChange((t) => setTitle(entry, t));
   term.options.linkHandler = {
     hover: () => {
       oscHovered = true;
@@ -575,6 +594,7 @@ export function fitTerm(entry: Entry) {
   }
 }
 
+const utf8 = new TextDecoder();
 const inflight = new Map<string, Promise<unknown>>();
 const ATTACH_WAIT_MS = 15_000;
 
@@ -600,6 +620,12 @@ export function connect(key: string, shortId: string) {
   channel.onmessage = (chunk) => {
     if (entry.feed !== channel || entry.state === 'detached') return;
     const bytes = chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : new Uint8Array(chunk);
+    const control =
+      bytes[0] === 0x1b && bytes.length < 512 ? controlOnly(utf8.decode(bytes)) : null;
+    if (control) {
+      if (control.title !== null) setTitle(entry, control.title);
+      return;
+    }
     entry.term.write(bytes, () => {
       entry.echoCaret();
       watchAgentView(entry);

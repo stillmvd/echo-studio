@@ -101,6 +101,7 @@
 .tl-chip.acc { background: color-mix(in oklab, var(--gb) 22%, transparent); color: var(--gb); }
 .tl-shim { width: 96px; height: 12px; border-radius: 999px; background: linear-gradient(90deg, var(--raised) 0 40%, var(--hover-strong) 50%, var(--raised) 60% 100%); background-size: 300% 100%; animation: tl-shim 1.4s linear infinite; }
 @keyframes tl-shim { from { background-position: 100% 0; } to { background-position: 0 0; } }
+:root[data-idle] .tl-shim { animation-play-state: paused; }
 .tl-empty { display: flex; align-items: center; justify-content: center; height: 320px; color: var(--dim); font-size: 15px; }
 
 .tl-sw { position: relative; z-index: 1; flex: none; width: 36px; height: 20px; border-radius: 999px; background: var(--line); transition: background-color 200ms var(--ease-trail); }

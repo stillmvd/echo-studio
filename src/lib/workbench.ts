@@ -125,6 +125,23 @@ export function isPathTitle(title: string): boolean {
   );
 }
 
+export function plainTitle(title: string): string {
+  return title.replace(/^[⠀-⣿✠-❋·*](?:×\d+)?\s+/u, '').trim();
+}
+
+const ESC = '\x1b';
+const BEL = '\x07';
+const OSC_TITLE = `${ESC}\\][02];([^${BEL}${ESC}]*)(?:${BEL}|${ESC}\\\\)`;
+const TITLE = new RegExp(OSC_TITLE, 'g');
+const CONTROL_ONLY = new RegExp(`^(?:${OSC_TITLE}|${ESC}\\[\\?2026h${ESC}\\[\\?2026l)+$`);
+
+export function controlOnly(text: string): { title: string | null } | null {
+  if (!CONTROL_ONLY.test(text)) return null;
+  let title: string | null = null;
+  for (const m of text.matchAll(TITLE)) title = m[1] ?? null;
+  return { title };
+}
+
 export interface TermLink {
   start: number;
   end: number;

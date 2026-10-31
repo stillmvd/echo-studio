@@ -14,6 +14,7 @@ import {
   caretStep,
   cellOfTab,
   closeTabInLayout,
+  controlOnly,
   detectAgentView,
   echoedKeys,
   effectiveStatus,
@@ -34,6 +35,7 @@ import {
   normalizeCells,
   normalizeLayout,
   placeProject,
+  plainTitle,
   projectOf,
   pruneCells,
   type RunningItem,
@@ -65,6 +67,34 @@ const key = (over: Partial<KeyInput>): KeyInput => ({
   metaKey: false,
   keyCode: 0,
   ...over,
+});
+
+describe('plainTitle', () => {
+  it('drops the spinner glyph in front of the title', () => {
+    expect(plainTitle('⠴ AM 2.0 · adversary')).toBe('AM 2.0 · adversary');
+    expect(plainTitle('✳ Echo Studio')).toBe('Echo Studio');
+    expect(plainTitle('⣯×1 AM 2.0 · adversary')).toBe('AM 2.0 · adversary');
+    expect(plainTitle('Echo Studio')).toBe('Echo Studio');
+    expect(plainTitle('*')).toBe('*');
+  });
+});
+
+describe('controlOnly', () => {
+  it('takes chunks made only of title and sync-output sequences', () => {
+    expect(controlOnly('\x1b]0;⠴ AM 2.0\x07')).toEqual({ title: '⠴ AM 2.0' });
+    expect(controlOnly('\x1b]0;a\x07\x1b]2;b\x1b\\')).toEqual({ title: 'b' });
+    expect(controlOnly('\x1b[?2026h\x1b[?2026l')).toEqual({ title: null });
+  });
+
+  it('leaves chunks with screen content to the terminal', () => {
+    expect(controlOnly('\x1b[m\x1b]0;⠧ AM 2.0\x07')).toBeNull();
+    expect(controlOnly('\x1b]0;x\x07hello')).toBeNull();
+    expect(controlOnly('\x1b[H')).toBeNull();
+    expect(controlOnly('\x1b[?2026l')).toBeNull();
+    expect(controlOnly('\x1b[?2026h')).toBeNull();
+    expect(controlOnly('\x1b]0;x\x07\x1b[?2026l')).toBeNull();
+    expect(controlOnly('')).toBeNull();
+  });
 });
 
 describe('isPathTitle', () => {

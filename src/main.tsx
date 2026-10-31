@@ -8,12 +8,14 @@ import { installNativeMenuGuard } from '@/lib/context-menu';
 import { installKeyboardMode } from '@/lib/keyboard-mode';
 import { installMouseNavigation } from '@/lib/nav-history';
 import { queryClient } from '@/lib/query-client';
+import { installWindowActivity } from '@/lib/window-activity';
 import '@stillmvd/tauri-ship/ship.css';
 import '@/styles/globals.css';
 
 installNativeMenuGuard(import.meta.env.DEV);
 installMouseNavigation();
 installKeyboardMode();
+installWindowActivity();
 
 const Feedback = import.meta.env.DEV
   ? lazy(() => import('agentation').then((m) => ({ default: m.Agentation })))

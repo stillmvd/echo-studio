@@ -3,6 +3,7 @@ mod conversations;
 mod memory;
 mod splash;
 mod tooling;
+mod visibility;
 mod workbench;
 
 use tauri::Manager;
@@ -52,6 +53,7 @@ pub fn run() {
         )
         .manage(splash)
         .manage(workbench::terminal::Terminals::default())
+        .manage(visibility::Shown::default())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
                 let _ = window.app_handle().save_window_state(window_flags());
@@ -74,6 +76,7 @@ pub fn run() {
                 if let Some(s) = app.state::<Option<splash::Splash>>().inner() {
                     s.attach(window.clone());
                 }
+                visibility::start(window.clone());
                 std::thread::spawn(move || {
                     std::thread::sleep(std::time::Duration::from_secs(10));
                     if !window.is_visible().unwrap_or(true) {
@@ -138,6 +141,7 @@ pub fn run() {
             commands::workbench::read_load,
             commands::workbench::kill_processes,
             commands::workbench::list_claude_sessions,
+            visibility::window_visible,
             commands::workbench::focus_session_window,
             commands::workbench::open_in_vscode,
             commands::workbench::set_workbench_active,
