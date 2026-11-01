@@ -11,6 +11,7 @@
       "!**/*.css",
       "!.planning",
       "!.claude",
+      "!.kimi-code",
       "!.specify",
       "!brand"
     ]
