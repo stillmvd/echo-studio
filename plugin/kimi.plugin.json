@@ -1,6 +1,6 @@
 {
   "name": "echo-memory",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Память сессий: итог сессии, индекс на старте, чистка секретов — общая с Claude Code",
   "author": { "name": "stillmvd" },
   "commands": "./commands/",

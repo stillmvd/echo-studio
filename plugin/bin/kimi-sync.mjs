@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { readFileSync, rmSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,7 @@ import {
   readStatus,
   syncGlobal,
   syncProject,
+  takeLock,
   writeStatus,
 } from '../lib/kimi-sync.mjs';
 import { projectRoot } from '../lib/paths.mjs';
@@ -82,9 +83,19 @@ async function install(kimi) {
       if (removed.code !== 0) throw fail(`снятие старой версии: ${removed.msg}`);
       rmSync(join(kimi, 'plugins', 'managed', PLUGIN_ID), { recursive: true, force: true });
     }
-    const res = await api(port, token, 'POST', '/api/v1/plugins', {
-      source: pluginRoot.replaceAll('\\', '/'),
-    });
+    const managed = join(kimi, 'plugins', 'managed');
+    let res = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      if (attempt) await wait(1500 * attempt);
+      res = await api(port, token, 'POST', '/api/v1/plugins', {
+        source: pluginRoot.replaceAll('\\', '/'),
+      });
+      if (res.code === 0 || !/EPERM|EBUSY|EACCES/.test(res.msg ?? '')) break;
+      for (const name of existsSync(managed) ? readdirSync(managed) : []) {
+        if (name.startsWith(`${PLUGIN_ID}-`))
+          rmSync(join(managed, name), { recursive: true, force: true });
+      }
+    }
     if (res.code !== 0) throw fail(`установка плагина: ${res.msg}`);
     writeStatus(
       {
@@ -114,8 +125,6 @@ async function main(argv) {
   const at = argv.indexOf('--project');
   if (at >= 0 && argv[at + 1]) projects.push(projectRoot(argv[at + 1]));
   report.projects = projects.map((root) => ({ root, changed: syncProject(root) }));
-  if (argv.includes('--plugin') || argv.includes('--all'))
-    report.plugin = await installPlugin(kimi);
   writeStatus(
     {
       at: new Date().toISOString(),
@@ -125,6 +134,11 @@ async function main(argv) {
     },
     kimi,
   );
+  if (argv.includes('--plugin') || argv.includes('--all')) {
+    report.plugin = takeLock(Date.now())
+      ? await installPlugin(kimi)
+      : 'уже ставится другой сессией';
+  }
   console.log(JSON.stringify(report, null, 2));
 }
 

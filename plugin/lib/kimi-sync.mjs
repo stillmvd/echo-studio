@@ -306,7 +306,7 @@ export function pluginFingerprint(root) {
 
 export const pluginLock = () => join(workDir, 'kimi-plugin.lock');
 
-function takeLock(now) {
+export function takeLock(now) {
   mkdirSync(workDir, { recursive: true });
   const lock = pluginLock();
   try {
