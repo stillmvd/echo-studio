@@ -25,6 +25,21 @@
 
 Rust: `agent` модуль — `AgentKind { Claude, Kimi }`, пути данных, CLI, форматы; настройка «Агент» (Claude по умолчанию) в Settings. Существующие модули берут пути из профиля.
 
+Сделано:
+- `src-tauri/src/agent.rs`: `Profile { home, settings, mcp, plugins, sessions, instructions, project_dir, exe, bin, transcript, has_daemon }`, `Profile::of(kind, home)` (Kimi — `KIMI_CODE_HOME` или `~/.kimi-code`), `find_cli`/`cli` (PATH → `bin`), `resume_args` (`--resume` / `-S`). Общие для обоих: `status_dir` (`~/.claude/state/sessions`), `memory_root` (`~/.claude/projects`).
+- Выбор агента — `%APPDATA%/<app id>/agent.json` (`{"agent":"claude"}`, temp → rename, битый или нет файла — Claude), грузится в `setup`. IPC `get_agents`, `set_agent` (событие `echo://agent-changed`).
+- Модули переведены на профиль Claude без смены поведения: `tooling/paths.rs` (адаптер `claude_dir`/`claude_json`/`user_settings`/`installed_plugins`/`project_dir`), `actions`, `effective`, `inventory`, `updates`, `watch`, `write`; `workbench/{sessions,terminal,processes,usage}`; `conversations/{paths,titles}`; `memory::projects_root`; `open_in_claude_code` собирает команду из профиля (параметр `agent`, по умолчанию Claude).
+- Settings: раздел «Агент» — переключатель Claude Code / Kimi Code (Kimi недоступен без `kimi.exe`), путь CLI и папка данных каждого; «Конфиг Claude» и «Сессии» берут пути из профиля, а не собирают их в JS.
+- Решение: пока фазы 4–5 не готовы, модули работают с профилем Claude явно (`Profile::claude`, `agent::claude()`), а не с выбранным агентом — выбор Kimi ничего не ломает. Ветка не выпускается до фазы 6.
+
+Инвентарь на фазы 4–5 (что ещё зашито под Claude):
+- Rust, `workbench/processes.rs`: классификация по `claude.exe` (демон, `--bg-pty-host`, `claude-itself`, `attach`) — для Kimi нужен `kimi.exe` без демона; `workbench/dev.rs:41` — `claude.exe` в списке «не dev».
+- Rust, `workbench/sessions.rs`: `claude agents --json`, `--bg`, `stop`/`rm`, `daemon.log`; `terminal.rs` — `attach <id8>`. Для Kimi — `kimi`/`kimi -S` прямо в pty.
+- Rust, `workbench/usage.rs` (`claude_slug`, транскрипты `~/.claude/projects`), `tooling/runs.rs` — формат JSONL Claude.
+- Rust, `tooling/*`: `.claude-plugin/`, `known_marketplaces.json`, CLI `claude plugin|mcp`, ключи `enabledPlugins`/`skillOverrides`/`disabledMcp*`.
+- Фронт, `src/lib/workbench.ts` (23), `components/workbench/*` (Cell 19, QuickSwitch, RunningList, useStartSession, externalSession, Wall, ClaudeTerminal): тексты «Claude», команды `claude --bg`, короткий id из 8 hex.
+- Фронт, `components/dashboard/DashboardLayout.tsx`, `conversations/*`, `tools/ToolPanel.tsx`, `memory/*`: подписи «Claude» и пути `~/.claude` в текстах.
+
 ## Фаза 4 — Рабочее место для Kimi (FR-K04)
 
 Запуск `kimi` / `kimi -S <id>` прямо в portable-pty (демона и attach у Kimi нет); список сессий — `session_index.jsonl` + `state.json` + `locks/sessions`; статус — те же `~/.claude/state/sessions` (session-status.js уже пишет для Kimi).

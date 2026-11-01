@@ -31,15 +31,24 @@ pub async fn open_in_claude_code(
     app: AppHandle,
     cwd: Option<String>,
     session_id: Option<String>,
+    agent: Option<crate::agent::AgentKind>,
 ) -> Result<String, String> {
     let target_dir = resolve_cwd(cwd);
     if !std::path::Path::new(&target_dir).is_dir() {
         return Err(format!("Не папка: {target_dir}"));
     }
+    let home = crate::agent::home().unwrap_or_default();
+    let profile = crate::agent::Profile::of(agent.unwrap_or_default(), &home);
     let claude = match session_id {
-        Some(id) if is_session_id(&id) => format!("claude --resume {id}"),
+        Some(id) if is_session_id(&id) => {
+            format!(
+                "{} {}",
+                profile.command(),
+                profile.resume_args(&id).join(" ")
+            )
+        }
         Some(id) => return Err(format!("Неверный id сессии: {id}")),
-        None => "claude".to_string(),
+        None => profile.command().to_string(),
     };
 
     let mut args = vec!["-d".to_string(), target_dir.clone()];

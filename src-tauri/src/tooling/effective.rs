@@ -3,7 +3,9 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use super::paths::{claude_dir, claude_json, installed_plugins, normalize_project, same_project};
+use super::paths::{
+    self, claude_dir, claude_json, installed_plugins, normalize_project, project_dir, same_project,
+};
 use super::plugins::{read_installed, scan_plugin, Installed};
 use super::scan::scan_root;
 use super::settings::{project_entry, read_json, Toggles};
@@ -295,7 +297,7 @@ pub fn scan_global(home: &Path) -> ScanResult {
     let claude = claude_dir(home);
     let cj_path = claude_json(home);
     let mut sources = Vec::new();
-    let user_settings = load(&claude.join("settings.json"), &mut sources);
+    let user_settings = load(&paths::user_settings(home), &mut sources);
     let cj = load(&cj_path, &mut sources);
     let mut toggles = Toggles::merge_settings(&[user_settings.as_ref()]);
     toggles.add_claude_json(cj.as_ref(), None);
@@ -339,10 +341,10 @@ pub fn scan_project(home: &Path, path: &str) -> ScanResult {
 
     let claude = claude_dir(home);
     let cj_path = claude_json(home);
-    let project_claude = root.join(".claude");
+    let project_claude = project_dir(&root);
     let same_as_user = same_project(&project_claude.to_string_lossy(), &claude.to_string_lossy());
 
-    let user_settings = load(&claude.join("settings.json"), &mut sources);
+    let user_settings = load(&paths::user_settings(home), &mut sources);
     let (shared, local) = if same_as_user {
         (None, None)
     } else {

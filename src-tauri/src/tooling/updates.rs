@@ -13,8 +13,8 @@ use super::inventory::Entry;
 use super::paths::{claude_dir, installed_plugins};
 use super::release::{arch, pick_asset};
 use super::{Kind, Origin};
+use crate::agent::claude_cli;
 use crate::workbench::child_command;
-use crate::workbench::sessions::claude_exe;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -120,7 +120,7 @@ fn remote_markets(markets: &Value) -> Vec<String> {
 }
 
 fn check_plugins(home: &Path, names: &[String], tick: &dyn Fn(), out: &mut Check) {
-    let claude = claude_exe().to_string_lossy().into_owned();
+    let claude = claude_cli().to_string_lossy().into_owned();
     for name in names {
         if let Err(e) = output(&claude, &["plugin", "marketplace", "update", name], None) {
             out.errors.push(format!("{name}: {e}"));

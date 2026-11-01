@@ -1,3 +1,4 @@
+pub mod agent;
 pub mod conversations;
 pub mod memory;
 pub mod system;

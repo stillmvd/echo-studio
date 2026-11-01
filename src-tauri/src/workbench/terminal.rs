@@ -9,7 +9,8 @@ use tauri::ipc::{Channel, Response};
 use tauri::{AppHandle, Emitter, Manager};
 
 use super::is_claude_env;
-use super::sessions::{claude_exe, is_short_id};
+use super::sessions::is_short_id;
+use crate::agent::claude_cli;
 
 pub const EVENT_EXIT: &str = "workbench://terminal-exit";
 const PENDING_CAP: usize = 4 << 20;
@@ -64,7 +65,7 @@ impl Terminals {
         let pair = native_pty_system()
             .openpty(size(cols, rows))
             .map_err(|e| format!("Не удалось открыть терминал: {e}"))?;
-        let mut cmd = CommandBuilder::new(claude_exe());
+        let mut cmd = CommandBuilder::new(claude_cli());
         cmd.args(["attach", short_id]);
         if let Some(home) = dirs::home_dir() {
             cmd.cwd(home);

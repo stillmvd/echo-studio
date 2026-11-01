@@ -8,13 +8,15 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::inventory::Entry;
-use super::paths::{claude_dir, claude_json, installed_plugins, same_project};
+use super::paths::{
+    claude_dir, claude_json, installed_plugins, project_dir, same_project, user_settings,
+};
 use super::release::install;
 use super::updates::{git_dir, npm_latest, npm_pin, release_exe};
 use super::write::{backup, write_text_atomic};
 use super::{Kind, Origin};
+use crate::agent::claude_cli;
 use crate::workbench::child_command;
-use crate::workbench::sessions::claude_exe;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Step {
@@ -39,7 +41,7 @@ pub enum Step {
 
 fn claude(args: &[&str], cwd: Option<&str>) -> Step {
     Step::Run {
-        program: claude_exe().to_string_lossy().into_owned(),
+        program: claude_cli().to_string_lossy().into_owned(),
         args: args.iter().map(|s| s.to_string()).collect(),
         cwd: cwd.map(PathBuf::from),
     }
@@ -215,7 +217,7 @@ pub fn delete_roots(home: &Path, projects: &[String]) -> Vec<PathBuf> {
     roots.push(home.join(".agents").join("skills"));
     for p in projects {
         for k in ["skills", "commands", "agents"] {
-            roots.push(Path::new(p).join(".claude").join(k));
+            roots.push(project_dir(Path::new(p)).join(k));
         }
     }
     roots
@@ -307,7 +309,7 @@ pub struct Done {
 fn config_files(home: &Path) -> Vec<PathBuf> {
     vec![
         claude_json(home),
-        claude_dir(home).join("settings.json"),
+        user_settings(home),
         installed_plugins(home),
         home.join(".agents").join(".skill-lock.json"),
     ]

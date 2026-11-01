@@ -902,8 +902,7 @@ pub fn others(all: &HashMap<u32, Proc>, skip: &HashSet<u32>) -> Vec<OtherProcess
 }
 
 pub fn read_hook_sessions() -> Vec<HookSession> {
-    let Some(dir) = dirs::home_dir().map(|h| h.join(".claude").join("state").join("sessions"))
-    else {
+    let Some(dir) = super::sessions::hooks_dir() else {
         return Vec::new();
     };
     std::fs::read_dir(dir)

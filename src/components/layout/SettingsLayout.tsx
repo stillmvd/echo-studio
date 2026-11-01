@@ -1,7 +1,6 @@
 import { checkNow, installNow, useShip } from '@stillmvd/tauri-ship';
-import { useQuery } from '@tanstack/react-query';
-import { homeDir, join } from '@tauri-apps/api/path';
 import {
+  Bot,
   ChevronDown,
   Database,
   Download,
@@ -14,6 +13,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { useAgents, useSetAgent } from '@/hooks/use-agent';
 import { useConversationProjects } from '@/hooks/use-conversations';
 import { useConfigBackups } from '@/hooks/use-tooling';
 import { cn } from '@/lib/cn';
@@ -21,7 +21,7 @@ import { plural } from '@/lib/dashboard';
 import { revealInExplorer } from '@/lib/ipc';
 import { formatBytes } from '@/lib/projects';
 import { dayLabel, formatTime } from '@/lib/sessions';
-import type { ConfigBackup } from '@/lib/types';
+import type { AgentKind, AgentProfile, ConfigBackup } from '@/lib/types';
 import { shortPath } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { version } from '../../../package.json';
@@ -29,6 +29,7 @@ import { panelCard } from './panels';
 import { EchoMark } from './Titlebar';
 
 const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
+  { id: 'agent', label: 'Агент', icon: Bot },
   { id: 'claude', label: 'Конфиг Claude', icon: FileCog },
   { id: 'backups', label: 'Копии конфига', icon: Database },
   { id: 'conversations', label: 'Сессии', icon: MessageSquare },
@@ -56,19 +57,8 @@ function reveal(path: string) {
 export function SettingsLayout() {
   const projects = useConversationProjects();
   const backups = useConfigBackups();
-  const paths = useQuery({
-    queryKey: ['settings', 'paths'],
-    queryFn: async () => {
-      const home = await homeDir();
-      return {
-        claudeDir: await join(home, '.claude'),
-        userSettings: await join(home, '.claude', 'settings.json'),
-        claudeJson: await join(home, '.claude.json'),
-        projectsRoot: await join(home, '.claude', 'projects'),
-      };
-    },
-    staleTime: Number.POSITIVE_INFINITY,
-  });
+  const agents = useAgents();
+  const claude = agents.data?.agents.find((a) => a.kind === 'claude');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(SECTIONS[0]?.id ?? '');
@@ -148,22 +138,41 @@ export function SettingsLayout() {
 
             <div className="flex min-w-0 flex-col gap-3.5">
               <Section
+                id="agent"
+                title="Агент"
+                subtitle="Чей CLI, конфиг и сессии показывает Echo. Память echo-memory и статусы сессий у агентов общие."
+              >
+                {agents.isLoading ? (
+                  <Skeleton />
+                ) : agents.isError ? (
+                  <Tag tone="warn" title={String(agents.error)}>
+                    не удалось прочитать профили агентов
+                  </Tag>
+                ) : (
+                  <AgentChoice
+                    current={agents.data?.current ?? 'claude'}
+                    agents={agents.data?.agents ?? []}
+                  />
+                )}
+              </Section>
+
+              <Section
                 id="claude"
                 title="Конфиг Claude"
                 subtitle="Конфигурация Claude Code, которую читает вкладка «Инструменты»."
               >
                 <Rows>
                   <Row label="Папка конфига">
-                    <PathValue path={paths.data?.claudeDir ?? '~/.claude'} />
-                    {paths.data && <RevealButton path={paths.data.claudeDir} />}
+                    <PathValue path={claude?.home ?? '~/.claude'} />
+                    {claude && <RevealButton path={claude.home} />}
                   </Row>
                   <Row label="Настройки">
-                    <PathValue path={paths.data?.userSettings ?? '~/.claude/settings.json'} />
-                    {paths.data && <RevealButton path={paths.data.userSettings} />}
+                    <PathValue path={claude?.settings ?? '~/.claude/settings.json'} />
+                    {claude && <RevealButton path={claude.settings} />}
                   </Row>
                   <Row label="MCP и проекты">
-                    <PathValue path={paths.data?.claudeJson ?? '~/.claude.json'} />
-                    {paths.data && <RevealButton path={paths.data.claudeJson} />}
+                    <PathValue path={claude?.mcp ?? '~/.claude.json'} />
+                    {claude && <RevealButton path={claude.mcp} />}
                   </Row>
                 </Rows>
               </Section>
@@ -191,8 +200,8 @@ export function SettingsLayout() {
               >
                 <Rows>
                   <Row label="Корень проектов">
-                    <PathValue path={paths.data?.projectsRoot ?? '~/.claude/projects'} />
-                    {paths.data && <RevealButton path={paths.data.projectsRoot} />}
+                    <PathValue path={claude?.sessions ?? '~/.claude/projects'} />
+                    {claude && <RevealButton path={claude.sessions} />}
                   </Row>
                   <Row label="Всего">
                     {projects.isLoading ? (
@@ -352,6 +361,61 @@ function Updates() {
           </span>
         </Row>
       )}
+    </Rows>
+  );
+}
+
+function AgentChoice({ current, agents }: { current: AgentKind; agents: AgentProfile[] }) {
+  const choose = useSetAgent();
+  return (
+    <Rows>
+      <Row label="Работать с">
+        <fieldset
+          aria-label="Агент"
+          className={cn('inline-flex h-9 shrink-0 items-center gap-1 rounded-full p-1', softFill)}
+        >
+          {agents.map((a) => {
+            const on = a.kind === current;
+            const missing = !a.cli && !on;
+            return (
+              <button
+                key={a.kind}
+                type="button"
+                aria-pressed={on}
+                aria-disabled={missing || choose.isPending}
+                title={missing ? `${a.exe} не найден ни в PATH, ни в ${a.bin}` : undefined}
+                onClick={() => {
+                  if (!on && !missing && !choose.isPending) choose.mutate(a.kind);
+                }}
+                className={cn(
+                  'inline-flex h-7 w-[112px] items-center justify-center rounded-full text-xs whitespace-nowrap select-none transition-colors duration-200 ease-[var(--ease-trail)] aria-disabled:cursor-not-allowed aria-disabled:opacity-50',
+                  focusRing,
+                  on
+                    ? 'bg-[var(--color-text-primary)] font-bold text-[var(--color-bg-primary)]'
+                    : 'font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]',
+                )}
+              >
+                {a.name}
+              </button>
+            );
+          })}
+        </fieldset>
+      </Row>
+      {agents.map((a) => (
+        <Row key={a.kind} label={a.name}>
+          {a.cli ? (
+            <>
+              <Tag tone="ok">установлен</Tag>
+              <PathValue path={a.cli} />
+            </>
+          ) : (
+            <Tag tone="warn" title={a.bin}>
+              {a.exe} не найден
+            </Tag>
+          )}
+          <RevealButton path={a.home} label="Данные" />
+        </Row>
+      ))}
     </Rows>
   );
 }

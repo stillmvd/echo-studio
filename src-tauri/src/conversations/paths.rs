@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 pub fn projects_root() -> Option<PathBuf> {
-    dirs::home_dir().map(|h| h.join(".claude").join("projects"))
+    crate::agent::claude().map(|p| p.sessions)
 }
 
 pub fn decode_cwd(encoded: &str) -> String {

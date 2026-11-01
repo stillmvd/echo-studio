@@ -4,9 +4,9 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::agent::Profile;
 use crate::commands::conversations::blocking;
 use crate::tooling::inventory::{self, Entry, Place, Usage};
-use crate::tooling::paths::claude_dir;
 use crate::tooling::write::{list_backups, set_enabled, ConfigBackup};
 use crate::tooling::{actions, runs, updates, ToggleTarget};
 use crate::workbench::{projects, projects_root};
@@ -74,7 +74,7 @@ pub async fn read_tool_runs(app: AppHandle) -> Result<ToolRuns, String> {
     blocking(move || {
         let places = places();
         let entries = inventory::list(&home, &places);
-        let runs = runs::collect(&claude_dir(&home).join("projects"), cache.as_deref());
+        let runs = runs::collect(&Profile::claude(&home).sessions, cache.as_deref());
         ToolRuns {
             start: runs.start,
             usage: inventory::usage(&entries, &runs, &places),

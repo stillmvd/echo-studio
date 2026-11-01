@@ -7,6 +7,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::effective::{scan_global, scan_project};
+use super::paths::user_settings;
 use super::runs::{iso_ms, key, Runs, Tally};
 use super::{Kind, Origin, State, ToggleFile, ToggleKey, ToggleTarget, ToolItem};
 use crate::workbench::usage::claude_slug;
@@ -78,7 +79,7 @@ fn npx_lock(home: &Path) -> HashMap<String, Option<i64>> {
 }
 
 fn skills_off(home: &Path) -> Vec<String> {
-    fs::read(home.join(".claude").join("settings.json"))
+    fs::read(user_settings(home))
         .ok()
         .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
         .and_then(|v| v.get("skillOverrides")?.as_object().cloned())

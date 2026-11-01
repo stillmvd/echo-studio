@@ -1,3 +1,4 @@
+mod agent;
 mod commands;
 mod conversations;
 mod memory;
@@ -72,6 +73,9 @@ pub fn run() {
             let _ = app.save_window_state(window_flags());
         }))
         .setup(|app| {
+            if let Ok(dir) = app.path().app_data_dir() {
+                agent::load(&dir);
+            }
             if let Some(window) = app.get_webview_window("main") {
                 if let Some(s) = app.state::<Option<splash::Splash>>().inner() {
                     s.attach(window.clone());
@@ -105,6 +109,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::agent::get_agents,
+            commands::agent::set_agent,
             commands::system::open_in_claude_code,
             commands::system::write_text_file,
             commands::system::reveal_in_explorer,

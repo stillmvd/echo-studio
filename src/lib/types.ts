@@ -126,6 +126,30 @@ export interface ToolItem {
   mcp: McpInfo | null;
 }
 
+export type AgentKind = 'claude' | 'kimi';
+
+export interface AgentProfile {
+  kind: AgentKind;
+  name: string;
+  home: string;
+  settings: string;
+  mcp: string;
+  plugins: string;
+  sessions: string;
+  instructions: string;
+  projectDir: string;
+  exe: string;
+  bin: string;
+  transcript: 'claudeJsonl' | 'kimiWire';
+  hasDaemon: boolean;
+  cli: string | null;
+}
+
+export interface Agents {
+  current: AgentKind;
+  agents: AgentProfile[];
+}
+
 export interface ConfigBackup {
   file: string;
   backupPath: string;

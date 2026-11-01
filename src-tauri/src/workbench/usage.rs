@@ -315,7 +315,7 @@ fn transcripts(base: &Path, cutoff: SystemTime) -> Vec<(PathBuf, Stamp, bool)> {
 }
 
 pub fn read_usage(tree: &ProjectTree, offset_minutes: i32, window_start: Option<i64>) -> Report {
-    let Some(base) = dirs::home_dir().map(|h| h.join(".claude").join("projects")) else {
+    let Some(base) = crate::agent::claude().map(|p| p.sessions) else {
         return Report::default();
     };
     let now = SystemTime::now();

@@ -1,6 +1,8 @@
 import { type Channel, invoke } from '@tauri-apps/api/core';
 import type { ToolEntry, ToolRuns, UpdateCheck } from './tools';
 import type {
+  AgentKind,
+  Agents,
   ClaudeSession,
   ConfigBackup,
   ConversationProject,
@@ -56,6 +58,14 @@ export async function listConfigBackups(): Promise<ConfigBackup[]> {
 
 export async function openInClaudeCode(cwd?: string, sessionId?: string): Promise<string> {
   return invoke<string>('open_in_claude_code', { cwd, sessionId });
+}
+
+export async function getAgents(): Promise<Agents> {
+  return invoke<Agents>('get_agents');
+}
+
+export async function setAgent(kind: AgentKind): Promise<Agents> {
+  return invoke<Agents>('set_agent', { kind });
 }
 
 export async function listConversationProjects(): Promise<ConversationProject[]> {

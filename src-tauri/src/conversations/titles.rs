@@ -3,10 +3,8 @@ use std::fs;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
-use dirs::home_dir;
-
 fn titles_path() -> Option<PathBuf> {
-    home_dir().map(|h| h.join(".claude").join("echo-studio-titles.json"))
+    crate::agent::claude().map(|p| p.home.join("echo-studio-titles.json"))
 }
 
 pub fn load_titles() -> HashMap<String, String> {

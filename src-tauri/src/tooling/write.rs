@@ -5,7 +5,7 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use super::paths::{claude_dir, claude_json, normalize_project, same_project};
+use super::paths::{claude_json, normalize_project, project_dir, same_project, user_settings};
 use super::settings::read_json;
 use super::{ToggleFile, ToggleKey, ToggleTarget};
 
@@ -47,10 +47,10 @@ pub fn target_file(home: &Path, t: &ToggleTarget, known: &[String]) -> Result<Pa
         return Err(format!("Ключ {:?} нельзя писать в {:?}", t.key, t.file));
     }
     Ok(match t.file {
-        ToggleFile::UserSettings => claude_dir(home).join("settings.json"),
-        ToggleFile::ProjectLocalSettings => PathBuf::from(project.unwrap_or_default())
-            .join(".claude")
-            .join("settings.local.json"),
+        ToggleFile::UserSettings => user_settings(home),
+        ToggleFile::ProjectLocalSettings => {
+            project_dir(Path::new(&project.unwrap_or_default())).join("settings.local.json")
+        }
         ToggleFile::ClaudeJson => claude_json(home),
     })
 }

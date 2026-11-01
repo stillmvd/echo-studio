@@ -7,7 +7,7 @@ use notify_debouncer_mini::{new_debouncer, DebounceEventResult};
 use serde_json::{Map, Value};
 use tauri::{AppHandle, Emitter};
 
-use super::paths::{claude_dir, claude_json, installed_plugins};
+use super::paths::{claude_dir, claude_json, installed_plugins, project_dir, user_settings};
 use super::settings::read_json;
 use super::ScopeRef;
 
@@ -47,14 +47,14 @@ pub fn targets(home: &Path, scopes: &[ScopeRef]) -> Vec<(PathBuf, RecursiveMode)
         .iter()
         .map(|d| (claude.join(d), RecursiveMode::Recursive))
         .collect();
-    out.push((claude.join("settings.json"), RecursiveMode::NonRecursive));
+    out.push((user_settings(home), RecursiveMode::NonRecursive));
     out.push((installed_plugins(home), RecursiveMode::NonRecursive));
     out.push((claude_json(home), RecursiveMode::NonRecursive));
     for scope in scopes.iter().filter(|s| s.available) {
         let Some(p) = scope.path.as_deref().map(PathBuf::from) else {
             continue;
         };
-        let project_claude = p.join(".claude");
+        let project_claude = project_dir(&p);
         if project_claude != claude {
             out.push((project_claude, RecursiveMode::Recursive));
         }

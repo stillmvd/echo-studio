@@ -1,17 +1,25 @@
 use std::path::{Path, PathBuf};
 
+use crate::agent::{AgentKind, Profile};
+
 pub fn claude_dir(home: &Path) -> PathBuf {
-    home.join(".claude")
+    Profile::claude(home).home
 }
 
 pub fn claude_json(home: &Path) -> PathBuf {
-    home.join(".claude.json")
+    Profile::claude(home).mcp
+}
+
+pub fn user_settings(home: &Path) -> PathBuf {
+    Profile::claude(home).settings
 }
 
 pub fn installed_plugins(home: &Path) -> PathBuf {
-    claude_dir(home)
-        .join("plugins")
-        .join("installed_plugins.json")
+    Profile::claude(home).plugins
+}
+
+pub fn project_dir(project: &Path) -> PathBuf {
+    project.join(AgentKind::Claude.project_dir())
 }
 
 pub fn normalize_project(path: &str) -> String {

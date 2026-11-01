@@ -15,7 +15,7 @@ pub const SESSIONS_DIR: &str = "sessions";
 pub const ARCHIVE_DIR: &str = ".archive";
 
 pub fn projects_root(home: &Path) -> PathBuf {
-    home.join(".claude").join("projects")
+    crate::agent::memory_root(home)
 }
 
 #[derive(Debug, Clone, Serialize)]

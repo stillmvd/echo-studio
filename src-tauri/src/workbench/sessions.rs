@@ -10,6 +10,7 @@ use serde_json::Value;
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 
 use super::{child_command, projects, projects_root};
+use crate::agent;
 
 const EXITED_WINDOW_MS: u64 = 3_600_000;
 const CLAUDE_TIMEOUT: Duration = Duration::from_secs(20);
@@ -91,23 +92,8 @@ pub struct Started {
 
 pub const UNTRUSTED: &str = "untrusted";
 
-pub fn claude_exe() -> PathBuf {
-    let in_path = std::env::var_os("PATH").and_then(|paths| {
-        std::env::split_paths(&paths)
-            .map(|dir| dir.join("claude.exe"))
-            .find(|p| p.is_file())
-    });
-    in_path
-        .or_else(|| {
-            dirs::home_dir()
-                .map(|h| h.join(".local").join("bin").join("claude.exe"))
-                .filter(|p| p.is_file())
-        })
-        .unwrap_or_else(|| PathBuf::from("claude"))
-}
-
 pub fn hooks_dir() -> Option<PathBuf> {
-    dirs::home_dir().map(|h| h.join(".claude").join("state").join("sessions"))
+    agent::home().map(|h| agent::status_dir(&h))
 }
 
 pub fn is_short_id(id: &str) -> bool {
@@ -183,7 +169,7 @@ fn claude(args: &[&str], cwd: Option<&Path>) -> Result<Output, String> {
         CLAUDE_TIMEOUT
     };
     let what = format!("claude {}", args.join(" "));
-    let mut cmd = child_command(&claude_exe().to_string_lossy());
+    let mut cmd = child_command(&agent::claude_cli().to_string_lossy());
     cmd.args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -434,7 +420,7 @@ pub fn spare_ids(log: &str) -> HashSet<String> {
 }
 
 fn daemon_spares() -> HashSet<String> {
-    let Some(path) = dirs::home_dir().map(|h| h.join(".claude").join("daemon.log")) else {
+    let Some(path) = agent::claude().map(|p| p.home.join("daemon.log")) else {
         return HashSet::new();
     };
     let Ok(mut file) = std::fs::File::open(path) else {
