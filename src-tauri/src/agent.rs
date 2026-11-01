@@ -137,7 +137,7 @@ pub fn claude() -> Option<Profile> {
     home().map(|h| Profile::claude(&h))
 }
 
-fn in_path(exe: &str) -> Option<PathBuf> {
+pub fn in_path(exe: &str) -> Option<PathBuf> {
     std::env::var_os("PATH").and_then(|paths| {
         std::env::split_paths(&paths)
             .map(|dir| dir.join(exe))

@@ -119,6 +119,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::agent::get_agents,
             commands::agent::set_agent,
+            commands::kimi::kimi_readiness,
+            commands::kimi::kimi_sync_all,
+            commands::kimi::kimi_open_terminal,
             commands::system::open_in_claude_code,
             commands::system::write_text_file,
             commands::system::reveal_in_explorer,

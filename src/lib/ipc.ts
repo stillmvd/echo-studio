@@ -13,6 +13,8 @@ import type {
   GitState,
   KillResult,
   KillTarget,
+  KimiReadiness,
+  KimiTerminal,
   Load,
   MemoryHit,
   MemoryListing,
@@ -66,6 +68,18 @@ export async function getAgents(): Promise<Agents> {
 
 export async function setAgent(kind: AgentKind): Promise<Agents> {
   return invoke<Agents>('set_agent', { kind });
+}
+
+export async function kimiReadiness(): Promise<KimiReadiness> {
+  return invoke<KimiReadiness>('kimi_readiness');
+}
+
+export async function kimiSyncAll(): Promise<string | null> {
+  return invoke<string | null>('kimi_sync_all');
+}
+
+export async function kimiOpenTerminal(action: KimiTerminal): Promise<void> {
+  return invoke<void>('kimi_open_terminal', { action });
 }
 
 export async function quitStoppingKimi(): Promise<void> {

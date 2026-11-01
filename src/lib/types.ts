@@ -154,6 +154,25 @@ export interface Agents {
   agents: AgentProfile[];
 }
 
+export interface KimiSyncStatus {
+  at?: string;
+  warnings?: string[];
+  hooks?: number;
+  commands?: number;
+  pluginError?: string | null;
+  plugin?: { version?: string; at?: string } | null;
+}
+
+export interface KimiReadiness {
+  cli: string | null;
+  login: string | null;
+  sync: KimiSyncStatus | null;
+  script: string | null;
+  node: string | null;
+}
+
+export type KimiTerminal = 'login' | 'import';
+
 export interface ConfigBackup {
   file: string;
   backupPath: string;

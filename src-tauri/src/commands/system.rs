@@ -46,19 +46,20 @@ pub async fn open_in_claude_code(
     };
     let home = crate::agent::home().unwrap_or_default();
     let profile = crate::agent::Profile::of(kind, &home);
-    let claude = match session_id {
+    let mut argv = vec![profile.command().to_string()];
+    match session_id {
         Some(id) if is_session_id(&id) || kimi::is_session_id(&id) => {
-            format!(
-                "{} {}",
-                profile.command(),
-                profile.resume_args(&id).join(" ")
-            )
+            argv.extend(profile.resume_args(&id));
         }
         Some(id) => return Err(format!("Неверный id сессии: {id}")),
-        None => profile.command().to_string(),
-    };
+        None => {}
+    }
+    spawn_wt(&app, &target_dir, &argv)?;
+    Ok(target_dir)
+}
 
-    let mut args = vec!["-d".to_string(), target_dir.clone()];
+pub(crate) fn spawn_wt(app: &AppHandle, dir: &str, argv: &[String]) -> Result<(), String> {
+    let mut args = vec!["-d".to_string(), dir.to_string()];
     match git_bash() {
         Some(bash) => {
             args.splice(
@@ -69,12 +70,18 @@ pub async fn open_in_claude_code(
                 bash.to_string_lossy().into_owned(),
                 "-l".into(),
                 "-c".into(),
-                format!("{claude} \\; exec bash -l"),
+                format!(
+                    "{} \\; exec bash -l",
+                    argv.iter()
+                        .map(|a| sh_quote(a))
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                ),
             ]);
         }
         None => {
             args.splice(0..0, ["--size", WINDOW_SIZE].map(String::from));
-            args.extend(claude.split(' ').map(String::from));
+            args.extend(argv.iter().cloned());
         }
     }
 
@@ -84,11 +91,22 @@ pub async fn open_in_claude_code(
         .args(args)
         .spawn()
         .map_err(|e| format!("Не удалось запустить `wt`: {e}"))?;
-
-    Ok(target_dir)
+    Ok(())
 }
 
 const WINDOW_SIZE: &str = "120,43";
+
+fn sh_quote(arg: &str) -> String {
+    let safe = !arg.is_empty()
+        && arg
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "-_./:=@".contains(c));
+    if safe {
+        arg.to_owned()
+    } else {
+        format!("'{}'", arg.replace('\'', r"'\''"))
+    }
+}
 
 fn is_session_id(id: &str) -> bool {
     !id.is_empty() && id.chars().all(|c| c.is_ascii_hexdigit() || c == '-')

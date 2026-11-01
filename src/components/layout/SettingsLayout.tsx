@@ -1,6 +1,7 @@
 import { checkNow, installNow, useShip } from '@stillmvd/tauri-ship';
 import {
   Bot,
+  Check,
   ChevronDown,
   Database,
   Download,
@@ -8,18 +9,20 @@ import {
   FileCog,
   Folder,
   LayoutGrid,
+  Loader2,
   type LucideIcon,
   MessageSquare,
   RefreshCw,
+  X,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { useAgents, useSetAgent } from '@/hooks/use-agent';
+import { useEffect, useRef, useState } from 'react';
+import { useAgents, useKimiReadiness, useSetAgent } from '@/hooks/use-agent';
 import { useConversationProjects } from '@/hooks/use-conversations';
 import { useConfigBackups } from '@/hooks/use-tooling';
 import { cn } from '@/lib/cn';
 import { plural } from '@/lib/dashboard';
-import { revealInExplorer } from '@/lib/ipc';
-import { formatBytes } from '@/lib/projects';
+import { kimiOpenTerminal, kimiSyncAll, revealInExplorer } from '@/lib/ipc';
+import { formatAgo, formatBytes } from '@/lib/projects';
 import { dayLabel, formatTime } from '@/lib/sessions';
 import type { AgentKind, AgentProfile, ConfigBackup } from '@/lib/types';
 import { shortPath } from '@/lib/workbench';
@@ -365,58 +368,348 @@ function Updates() {
   );
 }
 
+type SwitchStep = 'sync' | 'agent' | 'import';
+type StepMark = 'wait' | 'run' | 'ok' | 'fail';
+
+const STEP_LABEL: Record<SwitchStep, string> = {
+  sync: 'Перенести настройки Claude в Kimi для всех проектов ~/Projects и обновить плагин памяти (сбой плагина переход не останавливает)',
+  agent: 'Переключить Echo на Kimi: Рабочее место, Сессии и Инструменты покажут Kimi',
+  import: 'Открыть окно Kimi с импортом сессий Claude — там выбрать 15 или 30 дней',
+};
+
+function agoText(iso: string): string {
+  const a = formatAgo(iso);
+  return a === 'сейчас' ? 'только что' : `${a} назад`;
+}
+
+const softButton = cn(
+  'inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-medium whitespace-nowrap select-none text-[var(--color-text-primary)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] active:scale-[.96] disabled:pointer-events-none disabled:opacity-50',
+  softFill,
+  focusRing,
+);
+
 function AgentChoice({ current, agents }: { current: AgentKind; agents: AgentProfile[] }) {
-  const choose = useSetAgent();
+  const choose = useSetAgent(false);
+  const [watchLogin, setWatchLogin] = useState(false);
+  const ready = useKimiReadiness(watchLogin);
+  const [withImport, setWithImport] = useState(false);
+  const [marks, setMarks] = useState<Partial<Record<SwitchStep, StepMark>> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const loginBefore = useRef<string | null>(null);
+  const switchButton = useRef<HTMLButtonElement>(null);
+  const kimi = agents.find((a) => a.kind === 'kimi');
+  const r = ready.data;
+  const running = marks ? Object.values(marks).includes('run') : false;
+  const failed = marks ? Object.values(marks).includes('fail') : false;
+  const busy = running || choose.isPending;
+  const steps: SwitchStep[] = withImport ? ['sync', 'agent', 'import'] : ['sync', 'agent'];
+  const blocker = !kimi?.cli
+    ? 'Kimi Code не установлен'
+    : ready.isError
+      ? `Не удалось проверить готовность Kimi: ${String(ready.error)}`
+      : !r
+        ? 'Проверяем готовность Kimi…'
+        : !r.node
+          ? 'Не найден node.exe'
+          : !r.script
+            ? 'Не найден плагин echo-memory'
+            : !r.login
+              ? 'Сначала войдите в Kimi'
+              : null;
+
+  useEffect(() => {
+    if (!watchLogin) return;
+    if ((r?.login ?? null) !== loginBefore.current) {
+      setWatchLogin(false);
+      return;
+    }
+    const t = setTimeout(() => setWatchLogin(false), 180_000);
+    return () => clearTimeout(t);
+  }, [watchLogin, r?.login]);
+
+  function login() {
+    loginBefore.current = r?.login ?? null;
+    setError(null);
+    kimiOpenTerminal('login').then(
+      () => setWatchLogin(true),
+      (e) => setError(String(e)),
+    );
+  }
+
+  async function toKimi() {
+    if (blocker || busy) return;
+    const order = steps;
+    const next: Partial<Record<SwitchStep, StepMark>> = Object.fromEntries(
+      order.map((s) => [s, 'wait']),
+    );
+    const mark = (s: SwitchStep, m: StepMark) => {
+      next[s] = m;
+      setMarks({ ...next });
+    };
+    const actions: Record<SwitchStep, () => Promise<unknown>> = {
+      sync: async () => setNotice(await kimiSyncAll()),
+      agent: () => choose.mutateAsync('kimi'),
+      import: () => kimiOpenTerminal('import'),
+    };
+    setError(null);
+    setNotice(null);
+    setMarks({ ...next });
+    for (const s of order) {
+      mark(s, 'run');
+      try {
+        await actions[s]();
+        mark(s, 'ok');
+      } catch (e) {
+        mark(s, 'fail');
+        setError(String(e));
+        break;
+      }
+    }
+    void ready.refetch();
+  }
+
+  function toClaude() {
+    if (busy) return;
+    setMarks(null);
+    setError(null);
+    setNotice(null);
+    choose.mutate('claude', { onError: (e) => setError(String(e)) });
+  }
+
+  const title = running
+    ? 'Переход на Kimi'
+    : failed
+      ? 'Переход на Kimi прерван'
+      : current === 'kimi'
+        ? marks
+          ? 'Переход на Kimi выполнен'
+          : 'Обратный ход'
+        : 'Переход на Kimi';
+
+  const sync = r?.sync;
+  const warnings = sync?.warnings ?? [];
+  const shown = marks ? (Object.keys(marks) as SwitchStep[]) : steps;
+
   return (
-    <Rows>
-      <Row label="Работать с">
-        <fieldset
-          aria-label="Агент"
-          className={cn('inline-flex h-9 shrink-0 items-center gap-1 rounded-full p-1', softFill)}
-        >
-          {agents.map((a) => {
-            const on = a.kind === current;
-            const missing = !a.cli && !on;
-            return (
-              <button
-                key={a.kind}
-                type="button"
-                aria-pressed={on}
-                aria-disabled={missing || choose.isPending}
-                title={missing ? `${a.exe} не найден ни в PATH, ни в ${a.bin}` : undefined}
-                onClick={() => {
-                  if (!on && !missing && !choose.isPending) choose.mutate(a.kind);
+    <div className="flex min-w-0 flex-col gap-4">
+      <Rows>
+        <Row label="Работать с">
+          <fieldset
+            aria-label="Агент"
+            className={cn('inline-flex h-9 shrink-0 items-center gap-1 rounded-full p-1', softFill)}
+          >
+            {agents.map((a) => {
+              const on = a.kind === current;
+              const missing = !a.cli && !on;
+              return (
+                <button
+                  key={a.kind}
+                  type="button"
+                  aria-pressed={on}
+                  aria-disabled={missing || busy}
+                  title={
+                    missing
+                      ? `${a.exe} не найден ни в PATH, ни в ${a.bin}`
+                      : !on && a.kind === 'kimi'
+                        ? 'Переход — кнопкой «Перейти на Kimi» ниже'
+                        : undefined
+                  }
+                  onClick={() => {
+                    if (on || missing || busy) return;
+                    if (a.kind === 'kimi') {
+                      switchButton.current?.scrollIntoView({ block: 'nearest' });
+                      switchButton.current?.focus();
+                    } else toClaude();
+                  }}
+                  className={cn(
+                    'inline-flex h-7 w-[112px] items-center justify-center rounded-full text-xs whitespace-nowrap select-none transition-colors duration-200 ease-[var(--ease-trail)] aria-disabled:cursor-not-allowed aria-disabled:opacity-50',
+                    focusRing,
+                    on
+                      ? 'bg-[var(--color-text-primary)] font-bold text-[var(--color-bg-primary)]'
+                      : 'font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]',
+                  )}
+                >
+                  {a.name}
+                </button>
+              );
+            })}
+          </fieldset>
+        </Row>
+        {agents.map((a) => (
+          <Row key={a.kind} label={a.name}>
+            {a.cli ? (
+              <>
+                <Tag tone="ok">установлен</Tag>
+                <PathValue path={a.cli} />
+              </>
+            ) : (
+              <Tag tone="warn" title={a.bin}>
+                {a.exe} не найден
+              </Tag>
+            )}
+            <RevealButton path={a.home} label="Данные" />
+          </Row>
+        ))}
+        {kimi?.cli && (
+          <>
+            <Row label="Вход в Kimi">
+              {r?.login ? (
+                <Tag tone="ok">выполнен {agoText(r.login)}</Tag>
+              ) : (
+                <Tag tone="warn">не выполнен</Tag>
+              )}
+              {watchLogin && <Tag>ждём вход в окне терминала…</Tag>}
+              <button type="button" onClick={login} className={cn('ml-auto w-[112px]', softButton)}>
+                {r?.login ? 'Войти заново' : 'Войти'}
+              </button>
+            </Row>
+            <Row label="Перенос настроек">
+              {sync?.at ? (
+                <>
+                  <Tag tone="ok">{agoText(sync.at)}</Tag>
+                  <SoftChip
+                    value={sync.hooks ?? 0}
+                    unit={plural(sync.hooks ?? 0, 'хук', 'хука', 'хуков')}
+                  />
+                  <SoftChip
+                    value={sync.commands ?? 0}
+                    unit={plural(sync.commands ?? 0, 'команда', 'команды', 'команд')}
+                  />
+                </>
+              ) : (
+                <Tag>ещё не было</Tag>
+              )}
+              {warnings.length > 0 && (
+                <Tag tone="warn" title={warnings.join('\n')}>
+                  {warnings.length}{' '}
+                  {plural(warnings.length, 'предупреждение', 'предупреждения', 'предупреждений')}
+                </Tag>
+              )}
+            </Row>
+            <Row label="Плагин памяти">
+              {sync?.pluginError ? (
+                <Tag tone="warn" title={sync.pluginError}>
+                  ошибка установки
+                </Tag>
+              ) : sync?.plugin?.version ? (
+                <Tag tone="ok">v{sync.plugin.version} в Kimi</Tag>
+              ) : (
+                <Tag>не установлен в Kimi</Tag>
+              )}
+            </Row>
+          </>
+        )}
+      </Rows>
+
+      {kimi?.cli && (
+        <div className="flex min-w-0 flex-col gap-3 rounded-[16px] bg-[var(--color-bg-secondary)] px-4 pt-3.5 pb-4">
+          <h3 className="text-[13px] font-bold text-[var(--color-text-primary)]">{title}</h3>
+          {(current === 'claude' || marks) && (
+            <ol className="flex min-w-0 flex-col gap-2">
+              {shown.map((s, i) => (
+                <li
+                  key={s}
+                  className="flex min-w-0 items-start gap-2.5 text-[13px] font-medium text-[var(--color-text-primary)]"
+                >
+                  <StepBadge n={i + 1} mark={marks?.[s]} />
+                  <span className="min-w-0 pt-px">{STEP_LABEL[s]}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          {current === 'claude' && (
+            <label className="flex w-fit items-center gap-2 text-[13px] font-medium text-[var(--color-text-primary)] select-none">
+              <input
+                type="checkbox"
+                checked={withImport}
+                disabled={busy}
+                onChange={(e) => {
+                  setWithImport(e.target.checked);
+                  setMarks(null);
+                  setError(null);
                 }}
+                className="h-4 w-4 accent-[var(--color-accent)]"
+              />
+              Импортировать сессии Claude в Kimi
+            </label>
+          )}
+          {notice && (
+            <p className="text-xs font-medium text-[var(--color-warning)] [overflow-wrap:anywhere]">
+              {notice}
+            </p>
+          )}
+          <p className="text-xs font-medium text-[var(--color-text-muted)]">
+            {current === 'kimi' && !running
+              ? 'Echo вернётся к Claude: Рабочее место, Сессии и Инструменты снова покажут Claude. Настройки, плагин и сессии Kimi остаются на месте — переход можно повторить.'
+              : 'Claude и его конфиг не меняются. Вернуться можно здесь же, кнопкой «Вернуться к Claude».'}
+          </p>
+          {error && (
+            <p className="text-xs font-medium text-[var(--color-warning)] [overflow-wrap:anywhere]">
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {current === 'kimi' ? (
+              <button
+                type="button"
+                onClick={toClaude}
+                disabled={busy}
+                className={cn('w-[168px]', softButton)}
+              >
+                Вернуться к Claude
+              </button>
+            ) : (
+              <button
+                ref={switchButton}
+                type="button"
+                onClick={() => void toKimi()}
+                disabled={!!blocker || busy}
+                aria-busy={running}
                 className={cn(
-                  'inline-flex h-7 w-[112px] items-center justify-center rounded-full text-xs whitespace-nowrap select-none transition-colors duration-200 ease-[var(--ease-trail)] aria-disabled:cursor-not-allowed aria-disabled:opacity-50',
+                  'inline-flex h-8 w-[168px] shrink-0 items-center justify-center rounded-full text-xs font-bold whitespace-nowrap select-none bg-[var(--color-accent)] text-[var(--color-accent-fg)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-accent-hover)] active:scale-[.96] disabled:pointer-events-none disabled:opacity-50',
                   focusRing,
-                  on
-                    ? 'bg-[var(--color-text-primary)] font-bold text-[var(--color-bg-primary)]'
-                    : 'font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]',
                 )}
               >
-                {a.name}
+                {running ? 'Переход…' : 'Перейти на Kimi'}
               </button>
-            );
-          })}
-        </fieldset>
-      </Row>
-      {agents.map((a) => (
-        <Row key={a.kind} label={a.name}>
-          {a.cli ? (
-            <>
-              <Tag tone="ok">установлен</Tag>
-              <PathValue path={a.cli} />
-            </>
-          ) : (
-            <Tag tone="warn" title={a.bin}>
-              {a.exe} не найден
-            </Tag>
-          )}
-          <RevealButton path={a.home} label="Данные" />
-        </Row>
-      ))}
-    </Rows>
+            )}
+            {current === 'claude' && blocker && (
+              <span className="text-xs font-medium text-[var(--color-text-muted)]">{blocker}</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StepBadge({ n, mark }: { n: number; mark: StepMark | undefined }) {
+  return (
+    <span
+      className={cn(
+        'grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold tabular-nums',
+        mark === 'ok'
+          ? 'bg-[var(--color-success)] text-[var(--color-bg-primary)]'
+          : mark === 'fail'
+            ? 'bg-[var(--color-warning)] text-[var(--color-bg-primary)]'
+            : cn('text-[var(--color-text-muted)]', softFill),
+      )}
+    >
+      {mark === 'ok' ? (
+        <Check className="h-3 w-3" strokeWidth={2.5} aria-label="готово" />
+      ) : mark === 'fail' ? (
+        <X className="h-3 w-3" strokeWidth={2.5} aria-label="ошибка" />
+      ) : mark === 'run' ? (
+        <Loader2
+          className="h-3 w-3 animate-spin motion-reduce:animate-none"
+          strokeWidth={2.5}
+          aria-label="идёт"
+        />
+      ) : (
+        n
+      )}
+    </span>
   );
 }
 
