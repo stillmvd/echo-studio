@@ -1,5 +1,6 @@
 import { plural } from './memory';
 import type {
+  AgentKind,
   ClaudeSession,
   DevServer,
   DevState,
@@ -55,6 +56,12 @@ export const STATUS_HINT: Record<StatusView, string> = {
   new: 'Сессия запущена, первого запроса ещё не было',
   exited: 'Сессия завершена',
 };
+
+export const AGENT_NAME: Record<AgentKind, string> = { claude: 'Claude', kimi: 'Kimi' };
+
+export function agentName(session: { agent?: AgentKind } | null | undefined): string {
+  return AGENT_NAME[session?.agent ?? 'claude'];
+}
 
 export const EXTERNAL_LABEL = 'вне Echo';
 export const EXTERNAL_HINT = 'Открыта в терминале вне Echo';

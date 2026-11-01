@@ -4,6 +4,7 @@ import { ChevronRight, MessageSquare, Plus } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
+import { useAgentName } from '@/hooks/use-agent';
 import { useConversationProjects, useConversationSessions } from '@/hooks/use-conversations';
 import { useDeleteSession } from '@/hooks/use-session-actions';
 import { listClaudeSessions } from '@/lib/ipc';
@@ -50,6 +51,7 @@ interface Props {
 }
 
 export function EmptyProject({ project, server, visible, busy, onStart }: Props) {
+  const agent = useAgentName();
   const { data: convProjects } = useConversationProjects();
   const slug = project.path.replace(/[^A-Za-z0-9]/g, '-');
   const matches = convProjects?.filter((p) => samePath(p.cwd, project.path)) ?? [];
@@ -93,7 +95,7 @@ export function EmptyProject({ project, server, visible, busy, onStart }: Props)
           <div className="wb-eb">
             <button type="button" className="wb-btn p" disabled={busy} onClick={() => onStart()}>
               <Plus strokeWidth={2} />
-              Новая сессия Claude
+              Новая сессия {agent}
             </button>
             <DevCapsule project={project} server={server} />
           </div>

@@ -50,11 +50,13 @@ export function projectMenu({
   project,
   server,
   busy,
+  agent = 'Claude',
   actions,
 }: {
   project: WorkbenchProject;
   server: DevServer | undefined;
   busy?: boolean;
+  agent?: string;
   actions: {
     open: () => void;
     newSession: () => void;
@@ -76,7 +78,7 @@ export function projectMenu({
     : ['separator', action('Скрыть из дерева', EyeOff, actions.hide)];
   return [
     action(project.folder ? 'Открыть папку' : 'Открыть', ArrowRight, actions.open),
-    action('Новая сессия Claude', Plus, actions.newSession, { disabled: busy }),
+    action(`Новая сессия ${agent}`, Plus, actions.newSession, { disabled: busy }),
     ...dev,
     'separator',
     action('В Проводнике', FolderOpen, actions.reveal),

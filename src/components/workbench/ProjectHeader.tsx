@@ -1,6 +1,7 @@
 import { ArrowUp, GitBranch, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ChromeIcon } from '@/components/ui/ChromeIcon';
+import { useAgentName } from '@/hooks/use-agent';
 import { useGitStates } from '@/hooks/use-workbench-overview';
 import { isStatus } from '@/lib/overview';
 import type { DevServer, WorkbenchProject } from '@/lib/types';
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function ProjectHeader({ project, server, busy, onClaude, extra }: Props) {
+  const agent = useAgentName();
   const git = useGitStates([project.path]).data?.[project.path];
   return (
     <div className="wb-ph">
@@ -53,12 +55,12 @@ export function ProjectHeader({ project, server, busy, onClaude, extra }: Props)
         <button
           type="button"
           className="wb-btn p"
-          title="Новая сессия Claude"
+          title={`Новая сессия ${agent}`}
           disabled={busy}
           onClick={onClaude}
         >
           <Plus strokeWidth={2} />
-          <span className="wb-btn-l">Claude</span>
+          <span className="wb-btn-l">{agent}</span>
         </button>
       </span>
     </div>

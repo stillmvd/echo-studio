@@ -1,5 +1,6 @@
 pub mod dev;
 pub mod git;
+pub mod kimi;
 pub mod limits;
 pub mod links;
 pub mod processes;

@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 
-use super::{child_command, projects, projects_root};
-use crate::agent;
+use super::{child_command, kimi, projects, projects_root};
+use crate::agent::{self, AgentKind};
 
 const EXITED_WINDOW_MS: u64 = 3_600_000;
 const CLAUDE_TIMEOUT: Duration = Duration::from_secs(20);
@@ -81,6 +81,7 @@ pub struct ClaudeSession {
     pub transcript: Option<String>,
     pub exited_at: Option<u64>,
     pub shells: bool,
+    pub agent: AgentKind,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -330,6 +331,7 @@ pub fn merge(agents: &[AgentEntry], hooks: &HashMap<String, HookState>) -> Vec<C
                 transcript: hook.and_then(|h| h.transcript.clone()),
                 exited_at: None,
                 shells: a.status.as_deref() == Some("busy") && turn_over(a),
+                agent: AgentKind::Claude,
                 session_id,
             })
         })
@@ -376,6 +378,7 @@ pub fn exited_external(
                 transcript: h.transcript.clone(),
                 exited_at: h.updated_at,
                 shells: false,
+                agent: AgentKind::Claude,
             })
         })
         .collect();
@@ -450,8 +453,18 @@ pub fn drop_spares(list: &mut Vec<ClaudeSession>, spares: &HashSet<String>) {
 }
 
 pub fn list() -> Result<Vec<ClaudeSession>, String> {
-    let agents = run_agents_cached(AGENTS_FRESH)?;
     let hooks = hooks_dir().map(|d| read_hooks(&d)).unwrap_or_default();
+    if agent::current_kind() == AgentKind::Kimi {
+        return Ok(kimi::list(&hooks));
+    }
+    let hosted = kimi::hosted(&hooks);
+    let mut list = claude_list(hooks)?;
+    list.extend(hosted);
+    Ok(list)
+}
+
+fn claude_list(hooks: HashMap<String, HookState>) -> Result<Vec<ClaudeSession>, String> {
+    let agents = run_agents_cached(AGENTS_FRESH)?;
     let mut list = merge(&agents, &hooks);
     drop_spares(&mut list, &daemon_spares());
     let now = now_ms();
@@ -476,6 +489,9 @@ pub fn list() -> Result<Vec<ClaudeSession>, String> {
 }
 
 pub fn session_pid(session_id: &str) -> Result<u32, String> {
+    if kimi::is_session_id(session_id) {
+        return kimi::session_pid(session_id);
+    }
     if !is_session_id(session_id) {
         return Err(format!("Неверный id сессии: {session_id}"));
     }
@@ -673,6 +689,7 @@ mod tests {
             transcript: transcript.map(|p| p.to_string_lossy().into_owned()),
             exited_at: None,
             shells: false,
+            agent: AgentKind::Claude,
         };
         let mut list = vec![
             session("c99985cc", Some(&tmp.path().join("missing.jsonl"))),

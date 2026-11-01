@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Columns2, Grid2x2, Pin, Plus, Square } from 'lucide-react';
 import { type HTMLAttributes, type ReactNode, useEffect, useState } from 'react';
+import { useAgentName } from '@/hooks/use-agent';
 import { cn } from '@/lib/cn';
 import { listClaudeSessions, listWorkbenchProjects } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
@@ -202,6 +203,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
     wallPick(sessions, seen, activeOf),
   );
   const focused = cells.find((c) => c.id === focusCell)?.projectPath ?? null;
+  const agent = useAgentName();
   const startIn = (id: string, path: string, resume?: string) =>
     void onStart(path, resume).then((key) => {
       if (key) activateCell(id, key);
@@ -223,12 +225,12 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
         <button
           type="button"
           className="wb-btn p"
-          title="Новая сессия Claude в выбранной ячейке"
+          title={`Новая сессия ${agent} в выбранной ячейке`}
           disabled={busy || !focused}
           onClick={() => focused && focusCell && startIn(focusCell, focused)}
         >
           <Plus strokeWidth={2} />
-          <span className="wb-btn-l">Claude</span>
+          <span className="wb-btn-l">{agent}</span>
         </button>
       </div>
       <div className={`wl-grid l-${layout}`}>

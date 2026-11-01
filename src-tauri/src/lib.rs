@@ -13,7 +13,9 @@ use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 #[cfg(not(debug_assertions))]
 const EVENT_ACTIVATED: &str = "echo://activated";
 
-fn window_flags() -> StateFlags {
+const EVENT_CONFIRM_CLOSE: &str = "echo://confirm-close";
+
+pub(crate) fn window_flags() -> StateFlags {
     StateFlags::all() & !StateFlags::DECORATIONS & !StateFlags::VISIBLE
 }
 
@@ -56,7 +58,13 @@ pub fn run() {
         .manage(workbench::terminal::Terminals::default())
         .manage(visibility::Shown::default())
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let live = workbench::kimi::HOSTS.live_count();
+                if live > 0 {
+                    api.prevent_close();
+                    let _ = tauri::Emitter::emit(window, EVENT_CONFIRM_CLOSE, live);
+                    return;
+                }
                 let _ = window.app_handle().save_window_state(window_flags());
                 window
                     .app_handle()
@@ -160,6 +168,7 @@ pub fn run() {
             commands::workbench::terminal_resize,
             commands::workbench::terminal_detach,
             commands::workbench::terminal_detach_all,
+            commands::workbench::quit_stopping_kimi,
             commands::workbench::list_dev_servers,
             commands::workbench::start_dev_server,
             commands::workbench::stop_dev_server,

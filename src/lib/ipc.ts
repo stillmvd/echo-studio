@@ -68,6 +68,10 @@ export async function setAgent(kind: AgentKind): Promise<Agents> {
   return invoke<Agents>('set_agent', { kind });
 }
 
+export async function quitStoppingKimi(): Promise<void> {
+  return invoke('quit_stopping_kimi');
+}
+
 export async function listConversationProjects(): Promise<ConversationProject[]> {
   return invoke<ConversationProject[]>('list_conversation_projects');
 }

@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { Highlight } from '@/components/memory/MemoryRows';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
+import { useAgentName } from '@/hooks/use-agent';
 import { cn } from '@/lib/cn';
 import { openInVscode, revealInExplorer } from '@/lib/ipc';
 import type { DevServer, ProjectTree as Tree, WorkbenchProject } from '@/lib/types';
@@ -26,6 +27,7 @@ export function useProjectMenu(devServers: DevServer[], busy: boolean, onStart: 
   const hideProject = useWorkbenchStore((s) => s.hideProject);
   const openMenu = useOpenMenu();
   const dev = useDevControl();
+  const agent = useAgentName();
   const menu: RowMenu = (e, p) =>
     openMenu(
       e,
@@ -33,6 +35,7 @@ export function useProjectMenu(devServers: DevServer[], busy: boolean, onStart: 
         project: p,
         server: devServers.find((d) => samePath(d.projectPath, p.path)),
         busy,
+        agent,
         actions: {
           open: () => select({ kind: 'project', path: p.path }),
           newSession: () => onStart(p.path),

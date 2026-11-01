@@ -3,6 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 import { useEffect } from 'react';
 import { getAgents, setAgent } from '@/lib/ipc';
 import type { AgentKind, Agents } from '@/lib/types';
+import { AGENT_NAME } from '@/lib/workbench';
 import { toast } from '@/state/toast-store';
 
 const AGENTS = ['agents'];
@@ -23,6 +24,11 @@ export function useAgents() {
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
+}
+
+export function useAgentName(): string {
+  const { data } = useAgents();
+  return AGENT_NAME[data?.current ?? 'claude'];
 }
 
 export function useSetAgent() {

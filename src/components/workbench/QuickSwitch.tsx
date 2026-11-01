@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import type { ClaudeSession, WorkbenchProject } from '@/lib/types';
 import {
+  agentName,
   assignTabs,
   CELL_COUNT,
   nextInRecency,
@@ -159,7 +160,7 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
             >
               <ProjectIcon svg={project?.icon ?? null} />
               <span className="wb-tn">
-                <b>{s.name || 'Claude'}</b>
+                <b>{s.name || agentName(s)}</b>
                 <span>{sessionPlace(s, projects)}</span>
               </span>
               <StatusIcon session={{ status, phase: s.phase }} />

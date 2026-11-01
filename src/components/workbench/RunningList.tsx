@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 import { devLook, LIVE_COLOR, type LiveLook, sessionLook } from '@/lib/live-status';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import {
+  agentName,
   devStatusLabel,
   EXTERNAL_LABEL,
   runningGroups,
@@ -145,7 +146,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
         <LiveIcon look={look} dim={external ? status === 'exited' : !s.projectPath} />
         {external && <SquareTerminal className="wb-rt-term" strokeWidth={2} aria-hidden="true" />}
         <span className="wb-rt-l">
-          <span>{s.name || (external ? folderName(s.cwd) : null) || 'Claude'}</span>
+          <span>{s.name || (external ? folderName(s.cwd) : null) || agentName(s)}</span>
           <small>{label}</small>
         </span>
       </button>

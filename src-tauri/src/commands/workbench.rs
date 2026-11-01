@@ -8,7 +8,9 @@ use serde::Serialize;
 use tauri::ipc::{Channel, Response};
 use tauri::{AppHandle, Emitter, State};
 
+use crate::agent::{self, AgentKind};
 use crate::commands::conversations::blocking;
+use crate::workbench::kimi::{self, HOSTS};
 use crate::workbench::sessions::{self, ClaudeSession, Started};
 use crate::workbench::terminal::Terminals;
 use crate::workbench::watch::SessionsHub;
@@ -206,13 +208,20 @@ pub fn set_workbench_active(hub: State<'_, SessionsHub>, active: bool) {
 
 #[tauri::command]
 pub async fn start_claude_session(
+    app: AppHandle,
     hub: State<'_, SessionsHub>,
     project_path: String,
     resume_session_id: Option<String>,
 ) -> Result<Started, String> {
     let started = blocking(move || {
         let project = projects::ensure_place(&project_path)?;
-        sessions::start(&PathBuf::from(project.path), resume_session_id.as_deref())
+        let path = PathBuf::from(project.path);
+        let resume = resume_session_id.as_deref();
+        if agent::current_kind() == AgentKind::Kimi || resume.is_some_and(kimi::is_session_id) {
+            HOSTS.start(app, &path, resume)
+        } else {
+            sessions::start(&path, resume)
+        }
     })
     .await?;
     hub.poke();
@@ -224,13 +233,21 @@ pub async fn stop_claude_session(
     hub: State<'_, SessionsHub>,
     short_id: String,
 ) -> Result<(), String> {
-    let result = blocking(move || sessions::stop(&short_id)).await?;
+    let result = blocking(move || {
+        if HOSTS.is_hosted(&short_id) {
+            HOSTS.stop(&short_id)
+        } else {
+            sessions::stop(&short_id)
+        }
+    })
+    .await?;
     hub.poke();
     result
 }
 
 #[tauri::command]
 pub async fn restart_claude_session(
+    app: AppHandle,
     hub: State<'_, SessionsHub>,
     project_path: String,
     session_id: String,
@@ -238,7 +255,12 @@ pub async fn restart_claude_session(
 ) -> Result<Started, String> {
     let started = blocking(move || {
         let project = projects::ensure_place(&project_path)?;
-        sessions::restart(&PathBuf::from(project.path), &session_id, &short_id)
+        let path = PathBuf::from(project.path);
+        if HOSTS.is_hosted(&short_id) || kimi::is_session_id(&session_id) {
+            HOSTS.restart(app, &path, &session_id, &short_id)
+        } else {
+            sessions::restart(&path, &session_id, &short_id)
+        }
     })
     .await?;
     hub.poke();
@@ -250,7 +272,14 @@ pub async fn forget_claude_session(
     hub: State<'_, SessionsHub>,
     short_id: String,
 ) -> Result<(), String> {
-    let result = blocking(move || sessions::forget(&short_id)).await?;
+    let result = blocking(move || {
+        if HOSTS.is_hosted(&short_id) {
+            HOSTS.forget(&short_id)
+        } else {
+            sessions::forget(&short_id)
+        }
+    })
+    .await?;
     hub.poke();
     result
 }
@@ -264,6 +293,10 @@ pub async fn terminal_attach(
     rows: u16,
     on_data: Channel<Response>,
 ) -> Result<String, String> {
+    if HOSTS.is_hosted(&short_id) {
+        kimi::ensure_hosted(&short_id)?;
+        return HOSTS.attach(&short_id, cols, rows, on_data);
+    }
     let id = short_id.clone();
     blocking(move || sessions::ensure_attachable(&id)).await??;
     terms.attach(app, &short_id, cols, rows, on_data)
@@ -275,6 +308,9 @@ pub fn terminal_write(
     terminal_id: String,
     data: String,
 ) -> Result<(), String> {
+    if kimi::is_terminal(&terminal_id) {
+        return HOSTS.write(&terminal_id, &data);
+    }
     terms.write(&terminal_id, &data)
 }
 
@@ -285,17 +321,36 @@ pub fn terminal_resize(
     cols: u16,
     rows: u16,
 ) -> Result<(), String> {
+    if kimi::is_terminal(&terminal_id) {
+        return HOSTS.resize(&terminal_id, cols, rows);
+    }
     terms.resize(&terminal_id, cols, rows)
 }
 
 #[tauri::command]
 pub fn terminal_detach(terms: State<'_, Terminals>, terminal_id: String) -> Result<(), String> {
+    if kimi::is_terminal(&terminal_id) {
+        HOSTS.detach(&terminal_id);
+        return Ok(());
+    }
     terms.detach(&terminal_id)
 }
 
 #[tauri::command]
 pub fn terminal_detach_all(terms: State<'_, Terminals>) {
     terms.detach_all();
+    HOSTS.detach_all();
+}
+
+#[tauri::command]
+pub async fn quit_stopping_kimi(app: AppHandle, terms: State<'_, Terminals>) -> Result<(), String> {
+    use tauri_plugin_window_state::AppHandleExt;
+    let _ = app.save_window_state(crate::window_flags());
+    terms.detach_all();
+    HOSTS.detach_all();
+    blocking(|| HOSTS.stop_all()).await?;
+    app.exit(0);
+    Ok(())
 }
 
 #[tauri::command]

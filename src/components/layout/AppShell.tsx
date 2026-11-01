@@ -7,6 +7,7 @@ import { TooltipLayer } from '@/components/ui/Tooltip';
 import { WorkbenchLayout } from '@/components/workbench/WorkbenchLayout';
 import { useToolingWatch } from '@/hooks/use-tooling';
 import { useUiStore } from '@/state/ui-store';
+import { CloseGuard } from './CloseGuard';
 import { ConversationsLayout } from './ConversationsLayout';
 import { MemoryLayout } from './MemoryLayout';
 import { NavRail } from './NavRail';
@@ -33,6 +34,7 @@ export function AppShell() {
         </main>
       </div>
       <LeaveGuard />
+      <CloseGuard />
       <CursorLayer />
       <TooltipLayer />
       <UpdateToast lang="ru" />

@@ -44,6 +44,15 @@ Rust: `agent` модуль — `AgentKind { Claude, Kimi }`, пути данны
 
 Запуск `kimi` / `kimi -S <id>` прямо в portable-pty (демона и attach у Kimi нет); список сессий — `session_index.jsonl` + `state.json` + `locks/sessions`; статус — те же `~/.claude/state/sessions` (session-status.js уже пишет для Kimi).
 
+Решение владельца: сессия Kimi живёт, пока открыт Echo. Закрыл вкладку — работает дальше и видна в «Запущено»; закрытие Echo — диалог «N сессий Kimi остановятся» и стоп; продолжить — `kimi -S <id>`.
+
+Сделано:
+- `src-tauri/src/workbench/kimi.rs`: реестр `HOSTS` — процесс `kimi` в pty под своим 8-hex short id, буфер вывода 2 МБ (переподключение вкладки = буфер + живой поток), id терминала с префиксом `k`. Id сессии — из `locks/sessions/<id>.lock` по `pid` (lock переживает процесс, поэтому живость проверяется по `kimi.exe`); до первого сообщения id = short id, вкладку переименовывает `movedTabs`. Название — `title` из `state.json`. Внешние сессии Kimi — lock с живым `kimi.exe`, cwd из `session_index.jsonl`. Стоп — `taskkill /T /F`.
+- Команды Рабочего места маршрутизируются на `HOSTS` по выбранному агенту, `is_hosted`, `kimi::is_session_id` и префиксу терминала; `list()` при Kimi — `kimi::list`, при Claude — прежний список + сессии Kimi из Echo. Поле `agent` у сессии.
+- `lib.rs`: `CloseRequested` при живых Kimi — `prevent_close` + `echo://confirm-close`; `quit_stopping_kimi`. Фронт: `CloseGuard`, подписи «Новая сессия {агент}», `agentName(session)`.
+- Живая проверка (dev `.check`, `KIMI_CODE_HOME` = тестовый дом с Ollama): старт из UI, доверие папке, ответ модели, связь с id через lock, скрыть вкладку и открыть из «Запущено» с восстановлением экрана, «Завершить», `kimi -S`, закрытие Echo с диалогом.
+- Не сделано: классификация `kimi.exe` в `workbench/processes.rs` (сессии из Echo — его дерево и так исключены; внешние `kimi.exe` пока без особой роли).
+
 ## Фаза 5 — Инструменты и Переписки (FR-K05, FR-K06)
 
 Инструменты: `~/.kimi-code/{skills,agents,mcp.json,plugins/installed.json}`, `extra_*_dirs`, `~/.agents/skills`, проектные `.kimi-code/`. Переписки: `wire.jsonl` только на чтение.

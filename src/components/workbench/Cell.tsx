@@ -3,10 +3,12 @@ import { Plus, RotateCcw, Square, X } from 'lucide-react';
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
+import { useAgentName } from '@/hooks/use-agent';
 import { cn } from '@/lib/cn';
 import { forgetClaudeSession, restartClaudeSession, stopClaudeSession } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import {
+  agentName,
   CELL_COUNT,
   devHealth,
   type ProjectCell,
@@ -52,7 +54,7 @@ export function useStopSession() {
     <ConfirmDialog
       open={stopping !== null}
       title="Завершить сессию?"
-      description="Claude завершит работу. Сессию можно продолжить из списка проекта."
+      description="Агент завершит работу. Сессию можно продолжить из списка проекта."
       confirmLabel="Завершить"
       cancelLabel="Отмена"
       danger
@@ -104,7 +106,7 @@ function useRestartSession() {
       <ConfirmDialog
         open={asking !== null}
         title="Перезапустить сессию?"
-        description="Claude сейчас работает или держит фоновые команды (например, dev-сервер) — они остановятся. Разговор продолжится в новом процессе Claude."
+        description="Агент сейчас работает или держит фоновые команды (например, dev-сервер) — они остановятся. Разговор продолжится в новом процессе."
         confirmLabel="Перезапустить"
         cancelLabel="Отмена"
         doneToast="Сессия перезапущена"
@@ -212,6 +214,7 @@ function ProjectCellView({
   ...props
 }: CellViewProps) {
   const { project, busy, server } = props;
+  const agent = useAgentName();
   const moveTab = useWorkbenchStore((s) => s.moveTab);
   const focusCell = useWorkbenchStore((s) => s.focusProjectCell);
   const drop = useTabDrop({
@@ -249,7 +252,7 @@ function ProjectCellView({
               onClick={() => void startHere()}
             >
               <Plus strokeWidth={2} />
-              Claude
+              {agent}
             </button>
             {project.dev && <DevCapsule project={project} server={server} />}
           </div>
@@ -282,7 +285,7 @@ interface TabInfo {
 function TabTitle({ info, projectName }: { info: TabInfo; projectName: string }) {
   const entry = useClaudeTerm(info.key);
   const own = entry.title && entry.title !== projectName ? entry.title : null;
-  const title = info.session?.name || own || 'Claude';
+  const title = info.session?.name || own || agentName(info.session);
   return <span title={title}>{title}</span>;
 }
 
@@ -505,7 +508,7 @@ export function Cell({
               <TabCapsule
                 drag={drag}
                 on={info.key === current?.key}
-                label={info.session?.name || 'Claude'}
+                label={info.session?.name || agentName(info.session)}
                 onContextMenu={(e) => tabMenu(e, info)}
               >
                 <button
@@ -554,7 +557,7 @@ export function Cell({
             <button
               type="button"
               className="wb-ib"
-              title="Перезапустить сессию — Claude подхватит новые MCP-серверы и настройки"
+              title={`Перезапустить сессию — ${agentName(current.session)} подхватит новые MCP-серверы и настройки`}
               disabled={restart.running === current.key}
               onClick={() =>
                 current.shortId &&
@@ -571,7 +574,7 @@ export function Cell({
             <button
               type="button"
               className="wb-btn sm wb-stop"
-              title="Завершить сессию Claude (с подтверждением)"
+              title={`Завершить сессию ${agentName(current.session)} (с подтверждением)`}
               disabled={restart.running === current.key}
               onClick={() => stop.ask(current.shortId)}
             >

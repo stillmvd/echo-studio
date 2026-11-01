@@ -276,6 +276,7 @@ export interface ClaudeSession {
   transcript: string | null;
   exitedAt: number | null;
   shells: boolean;
+  agent?: AgentKind;
 }
 
 export type FocusResult = 'focused' | 'vscode' | 'not-found';

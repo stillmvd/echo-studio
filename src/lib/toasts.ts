@@ -1,6 +1,6 @@
 import { devTabKey } from '@/state/workbench-store';
 import type { ClaudeSession, DevServer } from './types';
-import { crashLabel, devHealth } from './workbench';
+import { agentName, crashLabel, devHealth } from './workbench';
 
 export const TOAST_GAP_MS = 10_000;
 export const TOAST_TARGET_MS = 10 * 60_000;
@@ -45,7 +45,7 @@ export function pickToasts({ prev, sessions, devs, name, unseen, last, now }: To
   for (const s of sessions) {
     const was = prev.get(s.sessionId);
     if (s.kind !== 'shell' || !s.projectPath || was === undefined) continue;
-    const who = s.name?.trim() || 'Claude';
+    const who = s.name?.trim() || agentName(s);
     if (s.status === 'waiting' && was !== 'waiting')
       add(s.projectPath, s.sessionId, `${who} — ждёт ответа`);
     if (s.status === 'done' && was === 'working')
