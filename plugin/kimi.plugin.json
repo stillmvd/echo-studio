@@ -1,0 +1,19 @@
+{
+  "name": "echo-memory",
+  "version": "0.2.0",
+  "description": "Память сессий: итог сессии, индекс на старте, чистка секретов — общая с Claude Code",
+  "author": { "name": "stillmvd" },
+  "commands": "./commands/",
+  "hooks": [
+    { "event": "SessionStart", "command": "node ./hooks/session-start.mjs", "timeout": 10 },
+    { "event": "UserPromptSubmit", "command": "node ./hooks/prompt.mjs", "timeout": 10 },
+    {
+      "event": "PostToolUse",
+      "matcher": "^(Write|Edit)$",
+      "command": "node ./hooks/post-tool.mjs",
+      "timeout": 10
+    },
+    { "event": "Stop", "command": "node ./hooks/stop.mjs", "timeout": 10 },
+    { "event": "SessionEnd", "command": "node ./hooks/session-end.mjs", "timeout": 10 }
+  ]
+}

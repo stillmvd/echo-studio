@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isKimi } from '../lib/agent.mjs';
 import { buildFileMap } from '../lib/file-map.mjs';
 import {
   fitLines,
@@ -9,9 +10,10 @@ import {
   sessionLine,
   upsertBlock,
 } from '../lib/index-block.mjs';
-import { loadState, memoryDir, saveState } from '../lib/paths.mjs';
+import { syncForKimi } from '../lib/kimi-sync.mjs';
+import { loadState, memoryDir, projectRoot, saveState } from '../lib/paths.mjs';
 import { fitPinned, readPinned } from '../lib/pinned.mjs';
-import { run, workDir, writeAtomic } from '../lib/run.mjs';
+import { logError, run, workDir, writeAtomic } from '../lib/run.mjs';
 import { recordFiles, startStatus } from '../lib/status.mjs';
 
 const prompts = join(dirname(fileURLToPath(import.meta.url)), '..', 'prompts');
@@ -59,6 +61,11 @@ run('session-start', (input) => {
   try {
     cleanOldStates(Date.now());
   } catch {}
+  try {
+    syncForKimi(projectRoot(input.cwd), { install: !isKimi(input) });
+  } catch (error) {
+    logError('kimi-sync', error);
+  }
   const protocol = readFileSync(join(prompts, 'protocol.md'), 'utf8')
     .trim()
     .replaceAll('{{memory_dir}}', dir);

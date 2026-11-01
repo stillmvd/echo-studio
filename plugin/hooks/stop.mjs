@@ -3,11 +3,11 @@ import { deliverPrompt } from '../lib/handoff.mjs';
 import { loadState, memoryDir, saveState } from '../lib/paths.mjs';
 import { run } from '../lib/run.mjs';
 import { doneStatus } from '../lib/status.mjs';
-import { readSince, tally } from '../lib/transcript.mjs';
+import { readTranscript, tally } from '../lib/transcript.mjs';
 
 run('stop', (input) => {
   const state = loadState(input.session_id);
-  const { entries, offset } = readSince(input.transcript_path, state.offset);
+  const { entries, offset } = readTranscript(input, state.offset);
   const { state: next } = tally(entries, { ...state, offset });
   next.memory_dir ??= memoryDir(input.cwd);
   const messages = [];
@@ -17,7 +17,7 @@ run('stop', (input) => {
       messages.push(doneStatus(next.memory_dir, note, next.records_before));
       next.noted_at = next.user_count;
     }
-    next.asked = null;
+    if (!input.kimi_block || next.noted_at === next.user_count) next.asked = null;
   }
   const delivered = deliverPrompt(next, input.session_id);
   if (delivered) messages.push(delivered);

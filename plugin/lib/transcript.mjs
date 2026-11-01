@@ -1,4 +1,5 @@
 import { closeSync, openSync, readSync, statSync } from 'node:fs';
+import { fromKimi, isKimi } from './agent.mjs';
 
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 const REMEMBER = /<command-name>\/(?:echo-memory:)?remember<\/command-name>/;
@@ -26,6 +27,12 @@ export function readSince(path, offset) {
     } catch {}
   }
   return { entries, offset: start + end + 1 };
+}
+
+export function readTranscript(input, offset) {
+  if (!input.transcript_path) return { entries: [], offset };
+  const read = readSince(input.transcript_path, offset);
+  return isKimi(input) ? { ...read, entries: fromKimi(read.entries, input.cwd) } : read;
 }
 
 function userText(content) {

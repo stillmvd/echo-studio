@@ -4,11 +4,11 @@ import { buildDraft } from '../lib/draft.mjs';
 import { loadState, memoryDir, saveState } from '../lib/paths.mjs';
 import { run, writeAtomic } from '../lib/run.mjs';
 import { scrub } from '../lib/scrub.mjs';
-import { readSince, tally } from '../lib/transcript.mjs';
+import { readTranscript, tally } from '../lib/transcript.mjs';
 
 run('session-end', (input) => {
   const state = loadState(input.session_id);
-  const { entries, offset } = readSince(input.transcript_path, state.offset);
+  const { entries, offset } = readTranscript(input, state.offset);
   const { state: next } = tally(entries, { ...state, offset });
   next.memory_dir ??= memoryDir(input.cwd);
   saveState(input.session_id, next);

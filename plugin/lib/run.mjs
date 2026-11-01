@@ -1,6 +1,7 @@
 import { appendFileSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { isKimi, kimiAfter, kimiBefore, normalize } from './agent.mjs';
 
 export const workDir = join(tmpdir(), 'claude-memory');
 
@@ -45,12 +46,28 @@ function readStdin(timeoutMs) {
 
 export async function run(hook, handler) {
   let output = null;
+  let input = null;
   try {
-    const input = JSON.parse(await readStdin(2000));
+    input = normalize(JSON.parse(await readStdin(2000)));
+    if (isKimi(input)) input.kimi_block = kimiBefore(input);
     output = await handler(input);
   } catch (error) {
     logError(hook, error);
     output = null;
+  }
+  if (isKimi(input)) {
+    if (input.kimi_block) {
+      process.stderr.write(input.kimi_block);
+      process.exit(2);
+    }
+    let context = null;
+    try {
+      context = kimiAfter(input, output);
+    } catch (error) {
+      logError(hook, error);
+    }
+    if (context) process.stdout.write(context);
+    process.exit(0);
   }
   if (output) process.stdout.write(JSON.stringify(output));
   process.exit(0);
