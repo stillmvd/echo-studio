@@ -301,7 +301,13 @@ impl<'a> Classifier<'a> {
                 .is_some_and(|(p, _)| lower_name(p) == "claude.exe")
         };
         let mut live = HashMap::new();
-        for s in &snap.hook_sessions {
+        let mut hooks: Vec<&HookSession> = snap
+            .hook_sessions
+            .iter()
+            .filter(|s| !crate::workbench::kimi::is_session_id(&s.session_id))
+            .collect();
+        hooks.sort_by_key(|s| s.updated_at.unwrap_or(0));
+        for s in hooks {
             if let Some(pid) = s.claude_pid.filter(|pid| is_claude(*pid)) {
                 live.insert(
                     pid,
@@ -1363,6 +1369,32 @@ mod tests {
             classes[&72].orphan.as_ref().map(|o| o.reason),
             Some(OrphanReason::NoProject),
             "a group folder is not the root"
+        );
+    }
+
+    #[test]
+    fn claude_process_keeps_its_own_session_when_files_share_a_pid() {
+        let hook = |id: &str, at: u64| HookSession {
+            session_id: id.into(),
+            claude_pid: Some(71),
+            project_dir: Some("C:/P".into()),
+            updated_at: Some(at),
+        };
+        let snap = Snapshot {
+            processes: vec![proc(71, 2, "claude.exe", "claude.exe", r"C:\P")],
+            outside_parents: vec![proc(2, 1, "sh.exe", "sh", r"D:\")],
+            hook_sessions: vec![
+                hook("session_332c5e7b-9cd0-47b9-a542-a84b0896fcd3", 9),
+                hook("1a1a1a1a-0000-4000-8000-000000000000", 5),
+                hook("2b2b2b2b-0000-4000-8000-000000000000", 7),
+                hook("0c0c0c0c-0000-4000-8000-000000000000", 1),
+            ],
+            ..Snapshot::default()
+        };
+        let classes = classify(&snap, &[], r"C:\P");
+        assert_eq!(
+            classes[&71].session.as_deref(),
+            Some("2b2b2b2b-0000-4000-8000-000000000000")
         );
     }
 
