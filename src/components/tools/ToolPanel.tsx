@@ -5,6 +5,7 @@ import explorerIcon from '@/assets/apps/explorer.png';
 import zedIcon from '@/assets/apps/zed.png';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { tooltip } from '@/components/ui/Tooltip';
+import { useAgents } from '@/hooks/use-agent';
 import { useDeleteTool, useSetToolEnabled, useUpdateTool, useUpdating } from '@/hooks/use-tooling';
 import { plural } from '@/lib/dashboard';
 import { openTerminalPath, revealInExplorer } from '@/lib/ipc';
@@ -96,6 +97,7 @@ export function ToolPanel({
   onOpenParts: (kind: ToolKind, plugin: string) => void;
 }) {
   const e = m.entry;
+  const kimi = useAgents().data?.current === 'kimi';
   const [skipped, setSkipped] = useState<string[]>([]);
   const [confirm, setConfirm] = useState(false);
   const remove = useDeleteTool();
@@ -279,7 +281,7 @@ export function ToolPanel({
             Часть plugin {e.qualifiedName.split(':')[0]}
             <ChevronRight className="tl-ic" strokeWidth={1.75} />
           </button>
-        ) : (
+        ) : kimi ? null : (
           <button
             type="button"
             className="tl-btn danger"

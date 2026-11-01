@@ -5,7 +5,9 @@ use std::time::SystemTime;
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
+use crate::agent::{self, AgentKind};
 use crate::conversations::{
+    kimi,
     paths::projects_root,
     reader::{read_session, search_in_sessions},
     scanner::{list_projects, list_sessions},
@@ -58,19 +60,43 @@ pub(crate) async fn blocking<T: Send + 'static>(
 
 #[tauri::command]
 pub async fn list_conversation_projects() -> Result<Vec<ConversationProject>, String> {
-    blocking(list_projects).await
+    blocking(|| {
+        if kimi_active() {
+            kimi::list_projects()
+        } else {
+            list_projects()
+        }
+    })
+    .await
+}
+
+fn kimi_active() -> bool {
+    agent::current_kind() == AgentKind::Kimi
 }
 
 #[tauri::command]
 pub async fn list_conversation_sessions(project_id: String) -> Result<Vec<SessionMeta>, String> {
-    blocking(move || list_sessions(&project_id)).await
+    blocking(move || {
+        if kimi_active() {
+            kimi::list_sessions(&project_id)
+        } else {
+            list_sessions(&project_id)
+        }
+    })
+    .await
 }
 
 #[tauri::command]
 pub async fn read_session_events(file_path: String) -> Result<Vec<DisplayItem>, String> {
     let path = PathBuf::from(&file_path);
-    ensure_path_within_projects(&path)?;
-    blocking(move || read_session(&path)).await?
+    blocking(move || {
+        if kimi::is_wire(&path) {
+            return kimi::read_session(&path);
+        }
+        ensure_path_within_projects(&path)?;
+        read_session(&path)
+    })
+    .await?
 }
 
 #[tauri::command]
@@ -78,7 +104,14 @@ pub async fn search_session_text(
     project_id: String,
     query: String,
 ) -> Result<Vec<SessionSearchHit>, String> {
-    blocking(move || search_in_sessions(&project_id, &query)).await
+    blocking(move || {
+        if kimi_active() {
+            kimi::search(&project_id, &query)
+        } else {
+            search_in_sessions(&project_id, &query)
+        }
+    })
+    .await
 }
 
 #[tauri::command]

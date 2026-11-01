@@ -6,7 +6,7 @@ import { useCrossSessionSearch } from '@/hooks/use-session';
 import { cn } from '@/lib/cn';
 import { plural } from '@/lib/dashboard';
 import { formatShortDateTime } from '@/lib/projects';
-import { sessionDisplayTitle } from '@/lib/types';
+import { sessionDisplayTitle, shortSessionId } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 
 const VISIBLE_HITS = 50;
@@ -145,7 +145,7 @@ export function CrossSessionSearch({ projectId, children }: Props) {
                       {h.kind}
                     </span>
                     <span className="min-w-0 truncate">
-                      {titles.get(h.sessionId) ?? `${h.sessionId.slice(0, 8)}…`}
+                      {titles.get(h.sessionId) ?? `${shortSessionId(h.sessionId)}…`}
                     </span>
                     {h.timestamp && (
                       <span className="ml-auto shrink-0 tabular-nums">

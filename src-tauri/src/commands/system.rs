@@ -37,10 +37,17 @@ pub async fn open_in_claude_code(
     if !std::path::Path::new(&target_dir).is_dir() {
         return Err(format!("Не папка: {target_dir}"));
     }
+    use crate::agent::AgentKind;
+    use crate::workbench::kimi;
+    let kind = match session_id.as_deref() {
+        Some(id) if kimi::is_session_id(id) => AgentKind::Kimi,
+        Some(_) => AgentKind::Claude,
+        None => agent.unwrap_or_else(crate::agent::current_kind),
+    };
     let home = crate::agent::home().unwrap_or_default();
-    let profile = crate::agent::Profile::of(agent.unwrap_or_default(), &home);
+    let profile = crate::agent::Profile::of(kind, &home);
     let claude = match session_id {
-        Some(id) if is_session_id(&id) => {
+        Some(id) if is_session_id(&id) || kimi::is_session_id(&id) => {
             format!(
                 "{} {}",
                 profile.command(),

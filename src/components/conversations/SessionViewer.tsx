@@ -35,7 +35,8 @@ import {
   sessionSubject,
   splitTitle,
 } from '@/lib/sessions';
-import type { DisplayItem, SessionMeta } from '@/lib/types';
+import { type DisplayItem, type SessionMeta, shortSessionId } from '@/lib/types';
+import { isKimiSession } from '@/lib/workbench';
 import { useUiStore } from '@/state/ui-store';
 import { AskQuestionCard } from './AskQuestionCard';
 import { NoticeStep } from './NoticeStep';
@@ -100,6 +101,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const del = useDeleteSession();
+  const kimi = !!session && isKimiSession(session.sessionId);
   const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -180,7 +182,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
             </h2>
             <p className="truncate text-xs font-medium text-[var(--color-text-muted)] tabular-nums">
               {session && (
-                <span className="font-mono text-[11px]">{session.sessionId.slice(0, 8)}</span>
+                <span className="font-mono text-[11px]">{shortSessionId(session.sessionId)}</span>
               )}
               {meta.map((m) => (
                 <span key={m}> · {m}</span>
@@ -223,14 +225,14 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
                 onClick={() => {
                   openInClaudeCode(session.cwd ?? undefined, session.sessionId).catch(() => {});
                 }}
-                title="Открыть в Claude"
-                aria-label="Открыть в Claude"
+                title={kimi ? 'Открыть в Kimi' : 'Открыть в Claude'}
+                aria-label={kimi ? 'Открыть в Kimi' : 'Открыть в Claude'}
                 className={circle}
               >
                 <ClaudeIcon className="h-4 w-4" />
               </button>
             )}
-            {session && (
+            {session && !kimi && (
               <button
                 type="button"
                 onClick={() => setRenameOpen(true)}
@@ -251,19 +253,21 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
             >
               <Download className="h-4 w-4" strokeWidth={1.75} />
             </button>
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(true)}
-              disabled={del.isPending}
-              title="Удалить сессию"
-              aria-label="Удалить сессию"
-              className={cn(
-                circle,
-                'hover:bg-[var(--color-danger-soft)] hover:text-[var(--color-danger)]',
-              )}
-            >
-              <Trash2 className="h-4 w-4" strokeWidth={1.75} />
-            </button>
+            {!kimi && (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                disabled={del.isPending}
+                title="Удалить сессию"
+                aria-label="Удалить сессию"
+                className={cn(
+                  circle,
+                  'hover:bg-[var(--color-danger-soft)] hover:text-[var(--color-danger)]',
+                )}
+              >
+                <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            )}
           </div>
         </div>
         <div className="flex gap-1.5">
@@ -306,7 +310,12 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-[88px]">
           <div ref={feedRef} className="mx-auto flex max-w-[760px] flex-col gap-3.5">
             {feed.map((node) => (
-              <FeedRow key={node.key} node={node} showThinking={showThinking} />
+              <FeedRow
+                key={node.key}
+                node={node}
+                showThinking={showThinking}
+                assistant={kimi ? 'Kimi' : 'Claude'}
+              />
             ))}
           </div>
         </div>
@@ -389,10 +398,18 @@ function Toggle({
   );
 }
 
-function FeedRow({ node, showThinking }: { node: FeedNode; showThinking: boolean }) {
+function FeedRow({
+  node,
+  showThinking,
+  assistant,
+}: {
+  node: FeedNode;
+  showThinking: boolean;
+  assistant: string;
+}) {
   switch (node.type) {
     case 'message':
-      return <MessageCard node={node} showThinking={showThinking} />;
+      return <MessageCard node={node} showThinking={showThinking} assistant={assistant} />;
     case 'command':
       return <CommandPill name={node.name} output={node.output} />;
     case 'skill':
@@ -421,9 +438,11 @@ function FeedRow({ node, showThinking }: { node: FeedNode; showThinking: boolean
 function MessageCard({
   node,
   showThinking,
+  assistant,
 }: {
   node: Extract<FeedNode, { type: 'message' }>;
   showThinking: boolean;
+  assistant: string;
 }) {
   const user = node.item.kind === 'user_text';
   return (
@@ -442,7 +461,7 @@ function MessageCard({
             user ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-primary)]',
           )}
         >
-          {user ? 'Вы' : 'Claude'}
+          {user ? 'Вы' : assistant}
         </span>
         <span>{formatTime(node.item.timestamp)}</span>
         {showThinking && node.thought && (

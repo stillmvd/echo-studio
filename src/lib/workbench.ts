@@ -8,6 +8,7 @@ import type {
   SessionStatus,
   WorkbenchProject,
 } from './types';
+import { shortSessionId } from './types';
 
 export type StatusView = SessionStatus | 'new';
 
@@ -61,6 +62,10 @@ export const AGENT_NAME: Record<AgentKind, string> = { claude: 'Claude', kimi: '
 
 export function agentName(session: { agent?: AgentKind } | null | undefined): string {
   return AGENT_NAME[session?.agent ?? 'claude'];
+}
+
+export function isKimiSession(sessionId: string): boolean {
+  return sessionId.startsWith('session_');
 }
 
 export const EXTERNAL_LABEL = 'вне Echo';
@@ -303,7 +308,7 @@ export function statusView(
 
 export function hasTitle(session: Pick<ClaudeSession, 'sessionId' | 'name'>): boolean {
   const name = session.name?.trim().toLowerCase();
-  return !!name && name !== session.sessionId.slice(0, 8).toLowerCase();
+  return !!name && name !== shortSessionId(session.sessionId).toLowerCase();
 }
 
 function sinceKey(since: number | null): number {

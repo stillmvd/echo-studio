@@ -1,10 +1,10 @@
 import { formatBytes } from './projects';
-import { type SessionMeta, sessionDisplayTitle } from './types';
+import { type SessionMeta, sessionDisplayTitle, shortSessionId } from './types';
 
 export function sessionSubject(s: SessionMeta) {
   return {
     title: sessionDisplayTitle(s),
-    id: s.sessionId.slice(0, 8),
+    id: shortSessionId(s.sessionId),
     chips: [`${s.messageCount} сообщ.`, formatBytes(s.sizeBytes)],
   };
 }

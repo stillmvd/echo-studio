@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Chip } from '@/components/ui/Chip';
 import { ClaudeIcon } from '@/components/ui/ClaudeIcon';
 import { ContextMenu } from '@/components/ui/ContextMenu';
+import { useAgentName } from '@/hooks/use-agent';
 import { cn } from '@/lib/cn';
 import { menuPoint } from '@/lib/context-menu';
 import { plural } from '@/lib/dashboard';
@@ -61,6 +62,7 @@ function SortButton() {
 }
 
 export function ConversationsProjectSidebar({ projects, selectedId, onSelect }: Props) {
+  const agent = useAgentName();
   const sort = useUiStore((s) => s.projectsSort);
   const sorted = useMemo(() => sortProjects(projects, sort), [projects, sort]);
   const totalSize = projects.reduce((s, p) => s + p.totalSize, 0);
@@ -108,7 +110,7 @@ export function ConversationsProjectSidebar({ projects, selectedId, onSelect }: 
                   onClick={() => onSelect(p.id)}
                   onContextMenu={(e) => {
                     e.preventDefault();
-                    setMenu({ ...menuPoint(e), project: p });
+                    if (p.cwd) setMenu({ ...menuPoint(e), project: p });
                   }}
                   className={cn(
                     'grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-full pr-1.5 pl-4 text-left text-sm transition-[height,background-color,color] duration-200 ease-[var(--ease-trail)] motion-reduce:transition-none',
@@ -175,7 +177,7 @@ export function ConversationsProjectSidebar({ projects, selectedId, onSelect }: 
               },
             },
             {
-              label: 'Открыть в Claude',
+              label: `Открыть в ${agent}`,
               icon: <ClaudeIcon />,
               onSelect: () => {
                 openInClaudeCode(menu.project.cwd).catch(() => {});

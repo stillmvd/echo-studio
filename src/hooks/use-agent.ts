@@ -35,7 +35,10 @@ export function useSetAgent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (kind: AgentKind) => setAgent(kind),
-    onSuccess: (data: Agents) => qc.setQueryData(AGENTS, data),
+    onSuccess: (data: Agents) => {
+      qc.setQueryData(AGENTS, data);
+      void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== AGENTS[0] });
+    },
     onError: (e) => toast(`Не удалось сменить агента: ${String(e)}`, 'fail'),
   });
 }

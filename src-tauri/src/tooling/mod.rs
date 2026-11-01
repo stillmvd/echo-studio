@@ -2,6 +2,7 @@ pub mod actions;
 pub mod effective;
 pub mod frontmatter;
 pub mod inventory;
+pub mod kimi;
 pub mod mcp;
 pub mod paths;
 pub mod plugins;

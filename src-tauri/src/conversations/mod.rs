@@ -1,3 +1,4 @@
+pub mod kimi;
 pub mod models;
 pub mod paths;
 pub mod reader;

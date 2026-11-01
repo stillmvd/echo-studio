@@ -11,6 +11,7 @@ import {
 import { EASE, ToolAside, ToolPanel } from '@/components/tools/ToolPanel';
 import { type TileModel, ToolTile } from '@/components/tools/ToolTile';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useAgents } from '@/hooks/use-agent';
 import {
   dropDeleted,
   useCheckProgress,
@@ -67,6 +68,7 @@ export function ToolsLayout() {
   const select = useUiStore((s) => s.setSelectedToolId);
 
   const tools = useTools();
+  const kimi = useAgents().data?.current === 'kimi';
   const deleting = useDeleting();
   const runs = useToolRuns();
   const check = useToolUpdates();
@@ -279,12 +281,20 @@ export function ToolsLayout() {
                 onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
               />
             </label>
-            {checkErrors.length > 0 && !check.isFetching && (
+            {kimi && (
+              <span
+                className="tl-dim"
+                title="Переключатели, удаление и обновления — только для Claude"
+              >
+                Kimi · только просмотр
+              </span>
+            )}
+            {!kimi && checkErrors.length > 0 && !check.isFetching && (
               <span className="tl-dim tl-err" title={checkErrors.join('\n')}>
                 Не удалось проверить: {checkErrors.join('; ')}
               </span>
             )}
-            {check.data && !check.isFetching ? (
+            {kimi ? null : check.data && !check.isFetching ? (
               <button
                 type="button"
                 className="tl-dim tl-chk"

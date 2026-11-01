@@ -27,8 +27,14 @@ import {
   WEEK,
 } from '@/lib/dashboard';
 import { gitText, mb, nameOf, orphans, topUsage } from '@/lib/overview';
-import type { ClaudeSession, Load, UsageReport, WorkbenchProject } from '@/lib/types';
-import { places, statusView } from '@/lib/workbench';
+import {
+  type ClaudeSession,
+  type Load,
+  shortSessionId,
+  type UsageReport,
+  type WorkbenchProject,
+} from '@/lib/types';
+import { isKimiSession, places, statusView } from '@/lib/workbench';
 import { goToTab } from '@/state/ui-store';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { LimitBar, Spark } from './parts';
@@ -241,7 +247,9 @@ export function sessionTitle(
   return {
     session,
     place: project?.name ?? (s.projectPath ? nameOf(s.projectPath) : 'без папки'),
-    name: session?.name || `Claude ${s.sessionId.slice(0, 8)}`,
+    name:
+      session?.name ||
+      `${isKimiSession(s.sessionId) ? 'Kimi' : 'Claude'} ${shortSessionId(s.sessionId)}`,
   };
 }
 

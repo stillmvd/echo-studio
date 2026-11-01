@@ -29,6 +29,15 @@ pub fn scan_root(root: &Path, origin: Origin, ns: Option<&Namespace>) -> Found {
     found
 }
 
+pub fn scan_dir(dir: &Path, kind: Kind, origin: Origin) -> Vec<ToolItem> {
+    let mut found = Found::default();
+    match kind {
+        Kind::Skill => scan_skills(dir, origin, None, &mut found),
+        _ => scan_markdown_tree(dir, kind, origin, None, &mut found),
+    }
+    found.items
+}
+
 fn note_dir(dir: &Path, ns: Option<&Namespace>, found: &mut Found) -> bool {
     if dir.is_dir() {
         if ns.is_none() {

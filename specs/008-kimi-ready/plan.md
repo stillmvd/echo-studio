@@ -57,6 +57,13 @@ Rust: `agent` модуль — `AgentKind { Claude, Kimi }`, пути данны
 
 Инструменты: `~/.kimi-code/{skills,agents,mcp.json,plugins/installed.json}`, `extra_*_dirs`, `~/.agents/skills`, проектные `.kimi-code/`. Переписки: `wire.jsonl` только на чтение.
 
+Сделано (режим выбирается настройкой «Агент»; для Claude всё по-прежнему):
+- `src-tauri/src/conversations/kimi.rs`: проекты — папки `sessions/wd_*|wm_*` (cwd из `state.json` `workDir|cwd` или `session_index.jsonl`), сессии — `session_*` с `agents/main/wire.jsonl`; `to_claude` переводит записи wire в форму Claude (user без `<hook_result>`/`<system-reminder>`, `think` → thinking, text, `tool.call` → tool_use, `tool.result` → tool_result) и дальше работает общий `flatten_into`; заголовок — `state.json` `title`, длительность — сумма `turn.ended.durationMs`; поиск. Чтение — только `wire.jsonl` внутри `~/.kimi-code/sessions` (`is_wire`); переименование и удаление для Kimi отклоняет прежняя проверка пути.
+- `src-tauri/src/tooling/kimi.rs`: инвентарь только для просмотра — skills/агенты из `~/.kimi-code`, `~/.agents/skills`, `extra_*_dirs` (простой разбор массивов из `config.toml`), проектные `.kimi-code/`, `.agents/skills` и относительные `extra_*_dirs`; MCP из `mcp.json`; плагины из `plugins/installed.json`. Переключатели, удаление, обновления и статистика запусков в режиме Kimi отключены (`claude_only`).
+- `open_in_claude_code`: id `session_<uuid>` → `kimi -S`, без id — выбранный агент.
+- Фронт: `shortSessionId` (без `session_`), `isKimiSession` — нет переименования и удаления, «Открыть в Kimi», подпись ответа «Kimi»; в «Инструментах» вместо «Проверить обновления» — «Kimi · только просмотр»; смена агента сбрасывает кэш запросов.
+- Живая проверка: проекты и сессии Kimi, просмотр с Write/Bash/Edit и результатами, поиск, 83 инструмента без переключателей, отказы действий и чтения чужого файла; режим Claude без изменений.
+
 ## Фаза 6 — переключение (FR-K07)
 
 Экран «Переход на Kimi»: состояние синхронизации, вход в Kimi (`kimi login`), `kimi-sync --all`, переключение агента в Echo, `/import-sessions`, обратный ход.

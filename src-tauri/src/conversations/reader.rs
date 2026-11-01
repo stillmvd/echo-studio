@@ -134,7 +134,7 @@ pub fn search_in_sessions(project_id: &str, query: &str) -> Vec<SessionSearchHit
     hits
 }
 
-fn flatten_into(raw: Value, out: &mut Vec<DisplayItem>) {
+pub(crate) fn flatten_into(raw: Value, out: &mut Vec<DisplayItem>) {
     let event_type = raw
         .get("type")
         .and_then(|v| v.as_str())
@@ -430,7 +430,7 @@ fn system_detail(subtype: &str, raw: &Value) -> String {
 
 const SNIPPET_LEAD: usize = 40;
 
-fn snippet_around(s: &str, query_lower: &str, max: usize) -> String {
+pub(crate) fn snippet_around(s: &str, query_lower: &str, max: usize) -> String {
     let chars: Vec<char> = s
         .split_whitespace()
         .collect::<Vec<_>>()

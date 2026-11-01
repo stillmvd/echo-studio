@@ -45,15 +45,35 @@ pub async fn set_tool_enabled(
     target: ToggleTarget,
     enabled: bool,
 ) -> Result<(), String> {
+    claude_only()?;
     let home = home()?;
     let backups = backups_root(&app)?;
     blocking(move || set_enabled(&home, &backups, &known(places()), &target, enabled)).await?
 }
 
+fn kimi_active() -> bool {
+    crate::agent::current_kind() == crate::agent::AgentKind::Kimi
+}
+
+fn claude_only() -> Result<(), String> {
+    if kimi_active() {
+        Err(crate::tooling::kimi::READ_ONLY.to_owned())
+    } else {
+        Ok(())
+    }
+}
+
 #[tauri::command]
 pub async fn list_tools() -> Result<Vec<Entry>, String> {
     let home = home()?;
-    blocking(move || inventory::list(&home, &places())).await
+    blocking(move || {
+        if kimi_active() {
+            crate::tooling::kimi::list(&home, &places())
+        } else {
+            inventory::list(&home, &places())
+        }
+    })
+    .await
 }
 
 #[derive(Debug, Serialize)]
@@ -71,6 +91,12 @@ pub async fn read_tool_runs(app: AppHandle) -> Result<ToolRuns, String> {
         .app_local_data_dir()
         .map(|d| d.join("tools-usage-cache.json"))
         .ok();
+    if kimi_active() {
+        return Ok(ToolRuns {
+            start: None,
+            usage: HashMap::new(),
+        });
+    }
     blocking(move || {
         let places = places();
         let entries = inventory::list(&home, &places);
@@ -96,6 +122,7 @@ pub async fn delete_tool(
     id: String,
     projects: Vec<String>,
 ) -> Result<actions::Done, String> {
+    claude_only()?;
     let home = home()?;
     let backups = backups_root(&app)?;
     blocking(move || {
@@ -108,6 +135,7 @@ pub async fn delete_tool(
 
 #[tauri::command]
 pub async fn update_tool(app: AppHandle, id: String) -> Result<(), String> {
+    claude_only()?;
     let home = home()?;
     let backups = backups_root(&app)?;
     blocking(move || {
@@ -120,6 +148,7 @@ pub async fn update_tool(app: AppHandle, id: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn check_tool_updates(app: AppHandle) -> Result<updates::Check, String> {
+    claude_only()?;
     let home = home()?;
     blocking(move || {
         updates::check(&home, &inventory::list(&home, &places()), |done, total| {

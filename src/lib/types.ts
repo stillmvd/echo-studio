@@ -36,8 +36,12 @@ export function sessionDisplayTitle(s: {
     s.customTitle?.trim() ||
     s.aiTitle?.trim() ||
     s.firstPrompt?.trim() ||
-    `${s.sessionId.slice(0, 8)}…`
+    `${shortSessionId(s.sessionId)}…`
   );
+}
+
+export function shortSessionId(sessionId: string): string {
+  return sessionId.replace(/^session_/, '').slice(0, 8);
 }
 
 export interface DisplayItem {

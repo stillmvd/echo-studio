@@ -4,6 +4,7 @@ import { Chip } from '@/components/ui/Chip';
 import { ClaudeIcon } from '@/components/ui/ClaudeIcon';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ContextMenu } from '@/components/ui/ContextMenu';
+import { useAgents } from '@/hooks/use-agent';
 import { useDeleteSession } from '@/hooks/use-session-actions';
 import { type AgeFilter, applyAgeFilter } from '@/lib/age-filter';
 import { cn } from '@/lib/cn';
@@ -19,7 +20,8 @@ import {
   sessionSubject,
   splitTitle,
 } from '@/lib/sessions';
-import { type SessionMeta, sessionDisplayTitle } from '@/lib/types';
+import { type SessionMeta, sessionDisplayTitle, shortSessionId } from '@/lib/types';
+import { isKimiSession } from '@/lib/workbench';
 import { useUiStore } from '@/state/ui-store';
 import { RenameSessionDialog } from './RenameSessionDialog';
 import { SessionBulkBar } from './SessionBulkBar';
@@ -149,6 +151,7 @@ function AgeFilterSegment({
 }
 
 export function SessionTable({ sessions, isLoading, selectedProjectName }: Props) {
+  const kimi = useAgents().data?.current === 'kimi';
   const sortBy = useUiStore((s) => s.conversationsSortBy);
   const sortDir = useUiStore((s) => s.conversationsSortDir);
   const setSort = useUiStore((s) => s.setConversationsSort);
@@ -258,14 +261,16 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
         ) : (
           <>
             <div className="flex h-8 shrink-0 items-center gap-2.5 px-3 text-xs font-medium text-[var(--color-text-muted)] select-none">
-              <CheckCircle
-                state={allChecked ? 'on' : someChecked ? 'mixed' : 'off'}
-                label="Выбрать все видимые"
-                onToggle={() => {
-                  if (allChecked || someChecked) setBulkSelection([]);
-                  else setBulkSelection(visiblePaths);
-                }}
-              />
+              {!kimi && (
+                <CheckCircle
+                  state={allChecked ? 'on' : someChecked ? 'mixed' : 'off'}
+                  label="Выбрать все видимые"
+                  onToggle={() => {
+                    if (allChecked || someChecked) setBulkSelection([]);
+                    else setBulkSelection(visiblePaths);
+                  }}
+                />
+              )}
               <div className={cn('grid min-w-0 flex-1 items-center gap-x-3', grid)}>
                 {columns.map((c) => {
                   const active = c.sortable && sortBy === c.key;
@@ -344,11 +349,13 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                             : 'hover:bg-[var(--color-hover)]',
                       )}
                     >
-                      <CheckCircle
-                        state={checked ? 'on' : 'off'}
-                        label={`Выбрать сессию ${s.sessionId.slice(0, 8)}`}
-                        onToggle={() => toggleBulkPath(s.filePath)}
-                      />
+                      {!kimi && (
+                        <CheckCircle
+                          state={checked ? 'on' : 'off'}
+                          label={`Выбрать сессию ${shortSessionId(s.sessionId)}`}
+                          onToggle={() => toggleBulkPath(s.filePath)}
+                        />
+                      )}
                       <button
                         type="button"
                         onClick={() => setSelectedSessionPath(s.filePath)}
@@ -373,7 +380,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                           </span>
                           {(titled || s.firstPrompt) && (
                             <span className="shrink-0 font-mono text-[11px]">
-                              {s.sessionId.slice(0, 8)}
+                              {shortSessionId(s.sessionId)}
                             </span>
                           )}
                           {s.userTitle && (
@@ -415,7 +422,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
           </>
         )}
 
-        <SessionBulkBar sessions={sessions} visiblePaths={visiblePaths} />
+        {!kimi && <SessionBulkBar sessions={sessions} visiblePaths={visiblePaths} />}
       </div>
 
       {menu && (
@@ -427,7 +434,9 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
             ...(menu.session.cwd
               ? [
                   {
-                    label: 'Открыть в Claude',
+                    label: isKimiSession(menu.session.sessionId)
+                      ? 'Открыть в Kimi'
+                      : 'Открыть в Claude',
                     icon: <ClaudeIcon />,
                     onSelect: () => {
                       openInClaudeCode(menu.session.cwd ?? undefined, menu.session.sessionId).catch(
@@ -437,11 +446,15 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                   },
                 ]
               : []),
-            {
-              label: 'Переименовать',
-              icon: <Pencil className="h-3.5 w-3.5" />,
-              onSelect: () => setRenameTarget(menu.session),
-            },
+            ...(isKimiSession(menu.session.sessionId)
+              ? []
+              : [
+                  {
+                    label: 'Переименовать',
+                    icon: <Pencil className="h-3.5 w-3.5" />,
+                    onSelect: () => setRenameTarget(menu.session),
+                  },
+                ]),
             {
               label: 'В Проводнике',
               icon: <FolderOpen className="h-3.5 w-3.5" />,
@@ -449,13 +462,17 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                 revealInExplorer(menu.session.filePath).catch(() => {});
               },
             },
-            'separator',
-            {
-              label: 'Удалить',
-              icon: <Trash2 className="h-3.5 w-3.5" />,
-              danger: true,
-              onSelect: () => setDeleteTarget(menu.session),
-            },
+            ...(isKimiSession(menu.session.sessionId)
+              ? []
+              : [
+                  'separator' as const,
+                  {
+                    label: 'Удалить',
+                    icon: <Trash2 className="h-3.5 w-3.5" />,
+                    danger: true,
+                    onSelect: () => setDeleteTarget(menu.session),
+                  },
+                ]),
           ]}
         />
       )}
