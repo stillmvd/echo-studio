@@ -6,6 +6,7 @@ import {
   commandSkill,
   hookRules,
   hooksBlock,
+  mergeMcp,
   replaceBlock,
   syncGlobal,
   syncProject,
@@ -150,6 +151,63 @@ describe('syncGlobal', () => {
   it('skips when Kimi is not installed', () => {
     const { home } = fixture();
     expect(syncGlobal({ home, kimi: join(home, 'nope') })).toBeNull();
+  });
+
+  it('keeps a hand-written AGENTS.md, own MCP servers and the first config backup', () => {
+    const { home, kimi } = fixture();
+    syncGlobal({ home, kimi });
+    const mcpPath = join(kimi, 'mcp.json');
+    const mcp = JSON.parse(readFileSync(mcpPath, 'utf8'));
+    mcp.mcpServers.mine = { command: 'my-server' };
+    writeFileSync(mcpPath, JSON.stringify(mcp));
+    writeFileSync(join(kimi, 'AGENTS.md'), 'мои правила');
+    const backup = readFileSync(join(kimi, 'config.toml.echo-bak'), 'utf8');
+    writeFileSync(join(home, '.claude', 'CLAUDE.md'), '# Новые правила\n');
+    writeFileSync(
+      join(home, '.claude.json'),
+      JSON.stringify({ mcpServers: { other: { command: 'o' } } }),
+    );
+    const second = syncGlobal({ home, kimi });
+    expect(readFileSync(join(kimi, 'AGENTS.md'), 'utf8')).toBe('мои правила');
+    expect(Object.keys(JSON.parse(readFileSync(mcpPath, 'utf8')).mcpServers).sort()).toEqual([
+      'mine',
+      'other',
+    ]);
+    expect(second.warnings.join('\n')).toMatch(/AGENTS\.md изменён вручную/);
+    expect(second.warnings.join('\n')).toMatch(/mine/);
+    writeFileSync(join(kimi, 'config.toml'), 'default_model = "k4"\n');
+    syncGlobal({ home, kimi });
+    expect(readFileSync(join(kimi, 'config.toml.echo-bak'), 'utf8')).toBe(backup);
+  });
+});
+
+describe('mergeMcp', () => {
+  it('treats every server as generated until ownership is known', () => {
+    const current = JSON.stringify({ mcpServers: { a: {}, b: {} }, extra: 1 });
+    expect(mergeMcp(current, undefined, { a: { command: 'x' } })).toEqual({
+      rest: { extra: 1 },
+      kept: [],
+      servers: { a: { command: 'x' } },
+    });
+    expect(mergeMcp(current, ['a'], {}).kept).toEqual(['b']);
+    expect(mergeMcp(null, undefined, { c: {} }).servers).toEqual({ c: {} });
+  });
+});
+
+describe('syncGlobal mcp ownership', () => {
+  it('keeps servers of a Kimi that was never synced and backs the file up once', () => {
+    const { home, kimi } = fixture();
+    writeFileSync(
+      join(home, '.claude.json'),
+      JSON.stringify({ mcpServers: { a: { command: 'npx' } } }),
+    );
+    const mcpPath = join(kimi, 'mcp.json');
+    const before = JSON.stringify({ mcpServers: { own: { command: 'own' } } });
+    writeFileSync(mcpPath, before);
+    syncGlobal({ home, kimi });
+    const after = JSON.parse(readFileSync(mcpPath, 'utf8'));
+    expect(Object.keys(after.mcpServers).sort()).toEqual(['a', 'own']);
+    expect(readFileSync(`${mcpPath}.echo-bak`, 'utf8')).toBe(before);
   });
 });
 

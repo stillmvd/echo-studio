@@ -46,7 +46,14 @@ pub async fn open_in_claude_code(
     };
     let home = crate::agent::home().unwrap_or_default();
     let profile = crate::agent::Profile::of(kind, &home);
-    let mut argv = vec![profile.command().to_string()];
+    let program = match kind {
+        AgentKind::Kimi => profile
+            .find_cli()
+            .map(|p| p.to_string_lossy().replace('\\', "/"))
+            .unwrap_or_else(|| profile.command().to_string()),
+        AgentKind::Claude => profile.command().to_string(),
+    };
+    let mut argv = vec![program];
     match session_id {
         Some(id) if is_session_id(&id) || kimi::is_session_id(&id) => {
             argv.extend(profile.resume_args(&id));

@@ -11,7 +11,7 @@ import { listClaudeSessions } from '@/lib/ipc';
 import { sessionSubject } from '@/lib/sessions';
 import type { DevServer, SessionMeta, WorkbenchProject } from '@/lib/types';
 import { sessionDisplayTitle } from '@/lib/types';
-import { samePath, shortPath } from '@/lib/workbench';
+import { isKimiSession, samePath, shortPath } from '@/lib/workbench';
 import { DevCapsule } from './DevCapsule';
 import { conversationMenu } from './menus';
 import { ProjectIcon } from './ProjectIcon';
@@ -136,6 +136,7 @@ export function EmptyProject({ project, server, visible, busy, onStart }: Props)
                           conversationMenu({
                             live: isLive(s.sessionId),
                             busy,
+                            readOnly: isKimiSession(s.sessionId),
                             actions: {
                               resume: () => onStart(s.sessionId),
                               remove: () => setRemoving(s),

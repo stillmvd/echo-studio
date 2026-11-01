@@ -232,6 +232,8 @@ struct Classifier<'a> {
     rows: HashMap<u32, Class>,
 }
 
+const KIMI_EXE: &str = "kimi.exe";
+
 fn lower_name(p: &Proc) -> String {
     p.name.to_lowercase()
 }
@@ -284,6 +286,14 @@ fn normalized(path: &str) -> String {
         .to_lowercase()
 }
 
+fn is_kimi_web(p: &Proc) -> bool {
+    p.cmd.as_deref().is_some_and(|c| {
+        c.split_whitespace()
+            .skip(1)
+            .any(|a| a.eq_ignore_ascii_case("web"))
+    })
+}
+
 impl<'a> Classifier<'a> {
     fn new(snap: &'a Snapshot, projects: &'a [ProjectRef], root: &str) -> Self {
         let mut procs: HashMap<u32, (&Proc, bool)> =
@@ -295,20 +305,18 @@ impl<'a> Classifier<'a> {
         for (pid, (p, _)) in &procs {
             children.entry(p.ppid).or_default().push(*pid);
         }
-        let is_claude = |pid: u32| {
-            procs
-                .get(&pid)
-                .is_some_and(|(p, _)| lower_name(p) == "claude.exe")
-        };
+        let named =
+            |pid: u32, exe: &str| procs.get(&pid).is_some_and(|(p, _)| lower_name(p) == exe);
         let mut live = HashMap::new();
-        let mut hooks: Vec<&HookSession> = snap
-            .hook_sessions
-            .iter()
-            .filter(|s| !crate::workbench::kimi::is_session_id(&s.session_id))
-            .collect();
+        let mut hooks: Vec<&HookSession> = snap.hook_sessions.iter().collect();
         hooks.sort_by_key(|s| s.updated_at.unwrap_or(0));
         for s in hooks {
-            if let Some(pid) = s.claude_pid.filter(|pid| is_claude(*pid)) {
+            let exe = if crate::workbench::kimi::is_session_id(&s.session_id) {
+                KIMI_EXE
+            } else {
+                "claude.exe"
+            };
+            if let Some(pid) = s.claude_pid.filter(|pid| named(*pid, exe)) {
                 live.insert(
                     pid,
                     Live {
@@ -323,6 +331,14 @@ impl<'a> Classifier<'a> {
                 live.entry(pid).or_insert(Live {
                     session: a.session_id.clone().unwrap_or_default(),
                     dir: a.cwd.clone(),
+                });
+            }
+        }
+        for (pid, (p, _)) in &procs {
+            if lower_name(p) == KIMI_EXE && !is_kimi_web(p) {
+                live.entry(*pid).or_insert(Live {
+                    session: String::new(),
+                    dir: p.cwd.clone(),
                 });
             }
         }
@@ -441,6 +457,8 @@ impl<'a> Classifier<'a> {
             }
         } else if name == "claude.exe" && self.live.contains_key(&pid) {
             self.session_class(pid, "claude-itself")
+        } else if name == KIMI_EXE && self.live.contains_key(&pid) {
+            self.session_class(pid, "kimi-itself")
         } else if let Some(child) = (name == "claude.exe" && cmd.contains("--bg-pty-host"))
             .then(|| self.live_child(pid))
             .flatten()
@@ -1395,6 +1413,64 @@ mod tests {
         assert_eq!(
             classes[&71].session.as_deref(),
             Some("2b2b2b2b-0000-4000-8000-000000000000")
+        );
+    }
+
+    #[test]
+    fn kimi_and_its_tools_are_a_live_session() {
+        let snap = Snapshot {
+            processes: vec![
+                proc(90, 2, "kimi.exe", "kimi.exe", r"C:\P\AM"),
+                proc(91, 90, "node.exe", "node chrome-devtools-mcp", r"C:\P\AM"),
+            ],
+            outside_parents: vec![proc(2, 1, "sh.exe", "sh", r"D:\")],
+            hook_sessions: vec![HookSession {
+                session_id: "session_9e7f2be0-0a3b-46ca-b855-d01c1c5d8134".into(),
+                claude_pid: Some(90),
+                project_dir: Some(r"C:\P\AM".into()),
+                updated_at: Some(1),
+            }],
+            ..Snapshot::default()
+        };
+        let projects = [ProjectRef {
+            path: r"C:\P\AM".into(),
+            profile: None,
+        }];
+        let classes = classify(&snap, &projects, r"C:\P");
+        assert_eq!(classes[&90].rule, "kimi-itself");
+        assert_eq!(
+            classes[&90].session.as_deref(),
+            Some("session_9e7f2be0-0a3b-46ca-b855-d01c1c5d8134")
+        );
+        assert_eq!(classes[&91].guard, Some(Guard::LiveSession));
+        assert_eq!(classes[&91].orphan, None);
+    }
+
+    #[test]
+    fn kimi_web_server_is_not_a_session() {
+        let snap = Snapshot {
+            processes: vec![
+                proc(
+                    95,
+                    2,
+                    "kimi.exe",
+                    "kimi.exe web --no-open --port 5",
+                    r"C:\P\AM",
+                ),
+                proc(96, 95, "node.exe", "node chrome-devtools-mcp", r"C:\P\AM"),
+            ],
+            outside_parents: vec![proc(2, 1, "sh.exe", "sh", r"D:\")],
+            ..Snapshot::default()
+        };
+        let projects = [ProjectRef {
+            path: r"C:\P\AM".into(),
+            profile: None,
+        }];
+        let classes = classify(&snap, &projects, r"C:\P");
+        assert_ne!(classes.get(&95).map(|c| c.rule), Some("kimi-itself"));
+        assert_ne!(
+            classes.get(&96).and_then(|c| c.guard),
+            Some(Guard::LiveSession)
         );
     }
 

@@ -22,6 +22,9 @@ describe('conversationMenu', () => {
       'Удалить сессию',
     ]);
     expect(labels(conversationMenu({ live: true, actions }))).toContain('Удалить сессию (x)');
+    expect(labels(conversationMenu({ live: false, readOnly: true, actions }))).toEqual([
+      'Продолжить',
+    ]);
   });
 });
 const labels = (items: MenuItem[]) =>

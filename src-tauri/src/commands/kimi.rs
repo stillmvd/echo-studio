@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::time::{Duration, SystemTime};
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant, SystemTime};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -11,6 +11,8 @@ use crate::agent::{self, AgentKind, Profile};
 use crate::tooling::{paths, plugins};
 
 const SYNC_PLUGIN: &str = "echo-memory";
+const SYNC_TIMEOUT: Duration = Duration::from_secs(180);
+const EXIT_BUSY: i32 = 3;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,6 +22,7 @@ pub struct KimiReadiness {
     pub sync: Option<Value>,
     pub script: Option<String>,
     pub node: Option<String>,
+    pub memory_plugin: bool,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -49,12 +52,26 @@ pub fn login_at(kimi_home: &Path) -> Option<String> {
 }
 
 pub fn sync_script(home: &Path) -> Option<PathBuf> {
-    let (items, _) = plugins::read_installed(&paths::installed_plugins(home));
+    let (mut items, _) = plugins::read_installed(&paths::installed_plugins(home));
+    items.retain(|p| p.name == SYNC_PLUGIN);
+    items.sort_by_key(|p| (p.marketplace != "echo-studio", p.scope != "user"));
     items
         .into_iter()
-        .filter(|p| p.name == SYNC_PLUGIN)
         .map(|p| p.install_path.join("bin").join("kimi-sync.mjs"))
         .find(|p| p.is_file())
+}
+
+pub fn memory_plugin_in_kimi(installed: &Path) -> bool {
+    fs::read_to_string(installed)
+        .ok()
+        .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+        .and_then(|v| v.get("plugins")?.as_array().cloned())
+        .is_some_and(|list| {
+            list.iter().any(|p| {
+                p.get("id").and_then(Value::as_str) == Some(SYNC_PLUGIN)
+                    && p.get("enabled").and_then(Value::as_bool) != Some(false)
+            })
+        })
 }
 
 fn node() -> Option<PathBuf> {
@@ -77,6 +94,7 @@ fn readiness() -> Result<KimiReadiness, String> {
         sync,
         script: sync_script(&home).map(lossy),
         node: node().map(lossy),
+        memory_plugin: memory_plugin_in_kimi(&profile.plugins),
     })
 }
 
@@ -99,18 +117,62 @@ fn sync_all() -> Result<Option<String>, String> {
     let script = sync_script(&home).ok_or("Не найден плагин echo-memory с kimi-sync.mjs")?;
     let node = node().ok_or("Не найден node.exe")?;
     let started = SystemTime::now() - Duration::from_secs(1);
+    let nonce = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or_default();
+    let err_path =
+        std::env::temp_dir().join(format!("echo-kimi-sync-{}-{nonce}.err", std::process::id()));
+    let err_file =
+        fs::File::create(&err_path).map_err(|e| format!("Не удалось начать синхронизацию: {e}"))?;
     let mut cmd = Command::new(node);
-    cmd.arg(&script).arg("--all").current_dir(&home);
+    cmd.arg(&script)
+        .arg("--all")
+        .current_dir(&home)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(err_file);
+    if let Some(cli) = Profile::of(AgentKind::Kimi, &home).find_cli() {
+        cmd.env("KIMI_EXE", cli);
+    }
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         cmd.creation_flags(0x0800_0000);
     }
-    let out = cmd
-        .output()
+    let mut child = cmd
+        .spawn()
         .map_err(|e| format!("Не удалось запустить синхронизацию: {e}"))?;
-    if out.status.success() {
-        return Ok(None);
+    let deadline = Instant::now() + SYNC_TIMEOUT;
+    let code = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status.code(),
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(200)),
+            Ok(None) => {
+                kill_tree(&mut child);
+                let _ = fs::remove_file(&err_path);
+                return Err(format!(
+                    "Перенос настроек не закончился за {} с и остановлен — повтори; если снова, в Kimi мог зависнуть kimi web",
+                    SYNC_TIMEOUT.as_secs()
+                ));
+            }
+            Err(e) => {
+                kill_tree(&mut child);
+                let _ = fs::remove_file(&err_path);
+                return Err(format!("Синхронизация: {e}"));
+            }
+        }
+    };
+    let stderr = fs::read_to_string(&err_path).unwrap_or_default();
+    let _ = fs::remove_file(&err_path);
+    match code {
+        Some(0) => return Ok(None),
+        Some(EXIT_BUSY) => {
+            return Ok(Some(
+                "Настройки перенесены; плагин памяти сейчас ставит другая сессия — проверь строку «Плагин памяти» через минуту".into(),
+            ))
+        }
+        _ => {}
     }
     let status = fs::read_to_string(
         Profile::of(AgentKind::Kimi, &home)
@@ -122,12 +184,28 @@ fn sync_all() -> Result<Option<String>, String> {
     if let Some(warning) = status.and_then(|s| plugin_failure(&s, started)) {
         return Ok(Some(warning));
     }
-    let err = String::from_utf8_lossy(&out.stderr).trim().to_owned();
+    let err = stderr.trim().to_owned();
     Err(if err.is_empty() {
-        format!("Синхронизация завершилась с кодом {:?}", out.status.code())
+        format!("Синхронизация завершилась с кодом {code:?}")
     } else {
         err
     })
+}
+
+fn kill_tree(child: &mut std::process::Child) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let _ = Command::new("taskkill")
+            .args(["/PID", &child.id().to_string(), "/T", "/F"])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .creation_flags(0x0800_0000)
+            .status();
+    }
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 #[tauri::command]
@@ -174,6 +252,23 @@ mod tests {
         assert!(login_at(kimi).is_none());
         write(&file, r#"{"access_token":"","refresh_token":"r"}"#);
         assert!(login_at(kimi).is_some());
+    }
+
+    #[test]
+    fn memory_plugin_is_read_from_kimi_installed_list() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("installed.json");
+        assert!(!memory_plugin_in_kimi(&file));
+        write(
+            &file,
+            r#"{"plugins":[{"id":"echo-memory","enabled":false}]}"#,
+        );
+        assert!(!memory_plugin_in_kimi(&file));
+        write(
+            &file,
+            r#"{"plugins":[{"id":"other"},{"id":"echo-memory"}]}"#,
+        );
+        assert!(memory_plugin_in_kimi(&file));
     }
 
     #[test]

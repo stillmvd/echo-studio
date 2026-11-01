@@ -455,7 +455,14 @@ pub fn drop_spares(list: &mut Vec<ClaudeSession>, spares: &HashSet<String>) {
 pub fn list() -> Result<Vec<ClaudeSession>, String> {
     let hooks = hooks_dir().map(|d| read_hooks(&d)).unwrap_or_default();
     if agent::current_kind() == AgentKind::Kimi {
-        return Ok(kimi::list(&hooks));
+        let mut list = kimi::list(&hooks);
+        let claude: Vec<ClaudeSession> = claude_list(hooks)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|s| s.status != Status::Exited)
+            .collect();
+        list.extend(claude);
+        return Ok(list);
     }
     let hosted = kimi::hosted(&hooks);
     let mut list = claude_list(hooks)?;

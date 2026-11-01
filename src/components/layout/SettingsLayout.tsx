@@ -26,6 +26,13 @@ import { formatAgo, formatBytes } from '@/lib/projects';
 import { dayLabel, formatTime } from '@/lib/sessions';
 import type { AgentKind, AgentProfile, ConfigBackup } from '@/lib/types';
 import { shortPath } from '@/lib/workbench';
+import {
+  isRunning,
+  type StepMark,
+  type StepMarks,
+  type SwitchStep,
+  useKimiSwitch,
+} from '@/state/kimi-switch-store';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { version } from '../../../package.json';
 import { panelCard } from './panels';
@@ -368,9 +375,6 @@ function Updates() {
   );
 }
 
-type SwitchStep = 'sync' | 'agent' | 'import';
-type StepMark = 'wait' | 'run' | 'ok' | 'fail';
-
 const STEP_LABEL: Record<SwitchStep, string> = {
   sync: 'Перенести настройки Claude в Kimi для всех проектов ~/Projects и обновить плагин памяти (сбой плагина переход не останавливает)',
   agent: 'Переключить Echo на Kimi: Рабочее место, Сессии и Инструменты покажут Kimi',
@@ -392,15 +396,13 @@ function AgentChoice({ current, agents }: { current: AgentKind; agents: AgentPro
   const choose = useSetAgent(false);
   const [watchLogin, setWatchLogin] = useState(false);
   const ready = useKimiReadiness(watchLogin);
-  const [withImport, setWithImport] = useState(false);
-  const [marks, setMarks] = useState<Partial<Record<SwitchStep, StepMark>> | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const { marks, error, notice, withImport, patch } = useKimiSwitch();
+  const setError = (e: string | null) => patch({ error: e });
   const loginBefore = useRef<string | null>(null);
   const switchButton = useRef<HTMLButtonElement>(null);
   const kimi = agents.find((a) => a.kind === 'kimi');
   const r = ready.data;
-  const running = marks ? Object.values(marks).includes('run') : false;
+  const running = isRunning(marks);
   const failed = marks ? Object.values(marks).includes('fail') : false;
   const busy = running || choose.isPending;
   const steps: SwitchStep[] = withImport ? ['sync', 'agent', 'import'] : ['sync', 'agent'];
@@ -411,9 +413,9 @@ function AgentChoice({ current, agents }: { current: AgentKind; agents: AgentPro
       : !r
         ? 'Проверяем готовность Kimi…'
         : !r.node
-          ? 'Не найден node.exe'
+          ? 'Не найден node.exe — поставь Node.js'
           : !r.script
-            ? 'Не найден плагин echo-memory'
+            ? 'В плагине echo-memory нет переноса в Kimi — обнови плагин в Claude (/plugin)'
             : !r.login
               ? 'Сначала войдите в Kimi'
               : null;
@@ -438,23 +440,19 @@ function AgentChoice({ current, agents }: { current: AgentKind; agents: AgentPro
   }
 
   async function toKimi() {
-    if (blocker || busy) return;
+    if (blocker || isRunning(useKimiSwitch.getState().marks) || choose.isPending) return;
     const order = steps;
-    const next: Partial<Record<SwitchStep, StepMark>> = Object.fromEntries(
-      order.map((s) => [s, 'wait']),
-    );
+    const next: StepMarks = Object.fromEntries(order.map((s) => [s, 'wait']));
     const mark = (s: SwitchStep, m: StepMark) => {
       next[s] = m;
-      setMarks({ ...next });
+      patch({ marks: { ...next } });
     };
     const actions: Record<SwitchStep, () => Promise<unknown>> = {
-      sync: async () => setNotice(await kimiSyncAll()),
+      sync: async () => patch({ notice: await kimiSyncAll() }),
       agent: () => choose.mutateAsync('kimi'),
       import: () => kimiOpenTerminal('import'),
     };
-    setError(null);
-    setNotice(null);
-    setMarks({ ...next });
+    patch({ error: null, notice: null, marks: { ...next } });
     for (const s of order) {
       mark(s, 'run');
       try {
@@ -469,26 +467,32 @@ function AgentChoice({ current, agents }: { current: AgentKind; agents: AgentPro
     void ready.refetch();
   }
 
+  function reimport() {
+    setError(null);
+    kimiOpenTerminal('import').catch((e) => setError(String(e)));
+  }
+
   function toClaude() {
     if (busy) return;
-    setMarks(null);
-    setError(null);
-    setNotice(null);
+    patch({ marks: null, error: null, notice: null });
     choose.mutate('claude', { onError: (e) => setError(String(e)) });
   }
 
   const title = running
     ? 'Переход на Kimi'
-    : failed
-      ? 'Переход на Kimi прерван'
-      : current === 'kimi'
-        ? marks
-          ? 'Переход на Kimi выполнен'
-          : 'Обратный ход'
+    : current === 'kimi'
+      ? marks
+        ? failed
+          ? 'Kimi включён, окно импорта не открылось'
+          : 'Переход на Kimi выполнен'
+        : 'Обратный ход'
+      : failed
+        ? 'Переход на Kimi прерван'
         : 'Переход на Kimi';
 
   const sync = r?.sync;
   const warnings = sync?.warnings ?? [];
+  const skippedHooks = sync?.skippedHooks ?? [];
   const shown = marks ? (Object.keys(marks) as SwitchStep[]) : steps;
 
   return (
@@ -576,6 +580,11 @@ function AgentChoice({ current, agents }: { current: AgentKind; agents: AgentPro
                     value={sync.commands ?? 0}
                     unit={plural(sync.commands ?? 0, 'команда', 'команды', 'команд')}
                   />
+                  {skippedHooks.length > 0 && (
+                    <Tag title={`Нет аналога в Kimi:\n${skippedHooks.join('\n')}`}>
+                      не перенесено: {skippedHooks.length}
+                    </Tag>
+                  )}
                 </>
               ) : (
                 <Tag>ещё не было</Tag>
@@ -592,8 +601,10 @@ function AgentChoice({ current, agents }: { current: AgentKind; agents: AgentPro
                 <Tag tone="warn" title={sync.pluginError}>
                   ошибка установки
                 </Tag>
-              ) : sync?.plugin?.version ? (
-                <Tag tone="ok">v{sync.plugin.version} в Kimi</Tag>
+              ) : r?.memoryPlugin ? (
+                <Tag tone="ok">
+                  {sync?.plugin?.version ? `v${sync.plugin.version} в Kimi` : 'установлен в Kimi'}
+                </Tag>
               ) : (
                 <Tag>не установлен в Kimi</Tag>
               )}
@@ -601,6 +612,34 @@ function AgentChoice({ current, agents }: { current: AgentKind; agents: AgentPro
           </>
         )}
       </Rows>
+
+      {!kimi?.cli && (
+        <div className="flex min-w-0 flex-col gap-3 rounded-[16px] bg-[var(--color-bg-secondary)] px-4 pt-3.5 pb-4">
+          <h3 className="text-[13px] font-bold text-[var(--color-text-primary)]">
+            {current === 'kimi' ? 'Kimi не найден' : 'Kimi Code не установлен'}
+          </h3>
+          <p className="text-xs font-medium text-[var(--color-text-muted)]">
+            {current === 'kimi'
+              ? `Echo работает с Kimi, но ${kimi?.exe ?? 'kimi.exe'} нет ни в PATH, ни в ${kimi?.bin ?? '~/.kimi-code/bin'}. Переустанови Kimi Code или вернись к Claude.`
+              : 'Поставь Kimi Code (нужен Git for Windows) — Echo увидит его сам, когда вернёшься в окно.'}
+          </p>
+          {error && (
+            <p className="text-xs font-medium text-[var(--color-warning)] [overflow-wrap:anywhere]">
+              {error}
+            </p>
+          )}
+          {current === 'kimi' && (
+            <button
+              type="button"
+              onClick={toClaude}
+              disabled={busy}
+              className={cn('w-[168px]', softButton)}
+            >
+              Вернуться к Claude
+            </button>
+          )}
+        </div>
+      )}
 
       {kimi?.cli && (
         <div className="flex min-w-0 flex-col gap-3 rounded-[16px] bg-[var(--color-bg-secondary)] px-4 pt-3.5 pb-4">
@@ -624,11 +663,7 @@ function AgentChoice({ current, agents }: { current: AgentKind; agents: AgentPro
                 type="checkbox"
                 checked={withImport}
                 disabled={busy}
-                onChange={(e) => {
-                  setWithImport(e.target.checked);
-                  setMarks(null);
-                  setError(null);
-                }}
+                onChange={(e) => patch({ withImport: e.target.checked, marks: null, error: null })}
                 className="h-4 w-4 accent-[var(--color-accent)]"
               />
               Импортировать сессии Claude в Kimi
@@ -651,14 +686,24 @@ function AgentChoice({ current, agents }: { current: AgentKind; agents: AgentPro
           )}
           <div className="flex flex-wrap items-center gap-3">
             {current === 'kimi' ? (
-              <button
-                type="button"
-                onClick={toClaude}
-                disabled={busy}
-                className={cn('w-[168px]', softButton)}
-              >
-                Вернуться к Claude
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={toClaude}
+                  disabled={busy}
+                  className={cn('w-[168px]', softButton)}
+                >
+                  Вернуться к Claude
+                </button>
+                <button
+                  type="button"
+                  onClick={reimport}
+                  disabled={busy}
+                  className={cn('w-[200px]', softButton)}
+                >
+                  Импортировать сессии Claude
+                </button>
+              </>
             ) : (
               <button
                 ref={switchButton}

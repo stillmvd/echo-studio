@@ -159,6 +159,7 @@ export interface KimiSyncStatus {
   warnings?: string[];
   hooks?: number;
   commands?: number;
+  skippedHooks?: string[];
   pluginError?: string | null;
   plugin?: { version?: string; at?: string } | null;
 }
@@ -169,6 +170,7 @@ export interface KimiReadiness {
   sync: KimiSyncStatus | null;
   script: string | null;
   node: string | null;
+  memoryPlugin: boolean;
 }
 
 export type KimiTerminal = 'login' | 'import';

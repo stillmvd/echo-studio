@@ -41,8 +41,9 @@ fn wire_of(session_dir: &Path) -> PathBuf {
     session_dir.join("agents").join("main").join(WIRE)
 }
 
-fn iso_ms(ms: u64) -> String {
-    humantime::format_rfc3339_millis(UNIX_EPOCH + Duration::from_millis(ms)).to_string()
+fn iso_ms(ms: u64) -> Option<String> {
+    let at = UNIX_EPOCH.checked_add(Duration::from_millis(ms))?;
+    (ms < 32_503_680_000_000).then(|| humantime::format_rfc3339_millis(at).to_string())
 }
 
 fn time_of(v: Option<&Value>) -> Option<String> {
@@ -55,7 +56,7 @@ fn time_of(v: Option<&Value>) -> Option<String> {
                     .filter(|f| *f > 0.0)
                     .map(|f| (if f < 1e11 { f * 1000.0 } else { f }) as u64)
             })
-            .map(iso_ms),
+            .and_then(iso_ms),
         Value::String(s) if !s.is_empty() => Some(s.clone()),
         _ => None,
     }

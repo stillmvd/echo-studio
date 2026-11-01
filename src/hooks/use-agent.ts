@@ -5,13 +5,25 @@ import { getAgents, kimiReadiness, setAgent } from '@/lib/ipc';
 import type { AgentKind, Agents } from '@/lib/types';
 import { AGENT_NAME } from '@/lib/workbench';
 import { toast } from '@/state/toast-store';
+import { useUiStore } from '@/state/ui-store';
 
 const AGENTS = ['agents'];
+
+function resetAgentSelection() {
+  useUiStore.setState({
+    conversationsProjectId: null,
+    selectedSessionPath: null,
+    selectedToolId: null,
+    conversationsBulkSelection: [],
+    sessionSearchQuery: '',
+  });
+}
 
 export function useAgents() {
   const qc = useQueryClient();
   useEffect(() => {
     const off = listen('echo://agent-changed', () => {
+      resetAgentSelection();
       qc.invalidateQueries({ queryKey: AGENTS });
     });
     return () => {
@@ -46,6 +58,7 @@ export function useSetAgent(toastErrors = true) {
   return useMutation({
     mutationFn: (kind: AgentKind) => setAgent(kind),
     onSuccess: (data: Agents) => {
+      resetAgentSelection();
       qc.setQueryData(AGENTS, data);
       void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== AGENTS[0] });
     },

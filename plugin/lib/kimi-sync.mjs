@@ -216,7 +216,15 @@ export function syncGlobal({ home = homedir(), kimi = kimiHome(process.env, home
   const warnings = [];
 
   const agents = instructions(claude);
-  if (agents) writeIfChanged(join(kimi, 'AGENTS.md'), agents, changed);
+  const agentsPath = join(kimi, 'AGENTS.md');
+  const agentsNow = read(agentsPath);
+  if (agents && agentsNow !== null && !agentsNow.startsWith(GENERATED)) {
+    warnings.push(
+      '~/.kimi-code/AGENTS.md изменён вручную — не перезаписан; удали его, чтобы вернуть синхронизацию с CLAUDE.md',
+    );
+  } else if (agents) {
+    writeIfChanged(agentsPath, agents, changed);
+  }
 
   let settings = {};
   try {
@@ -236,7 +244,8 @@ export function syncGlobal({ home = homedir(), kimi = kimiHome(process.env, home
     let next = replaceBlock(config, TOP_OPEN, TOP_CLOSE, body, true);
     next = replaceBlock(next, HOOKS_OPEN, HOOKS_CLOSE, hooksBlock(rules), false);
     if (next !== config) {
-      if (config) writeAtomic(`${configPath}.echo-bak`, config);
+      if (config && !existsSync(`${configPath}.echo-bak`))
+        writeAtomic(`${configPath}.echo-bak`, config);
       writeAtomic(configPath, next);
       changed.push(configPath);
     }
@@ -244,19 +253,48 @@ export function syncGlobal({ home = homedir(), kimi = kimiHome(process.env, home
     warnings.push(error.message);
   }
 
+  let mcpOwned;
   try {
     const global = JSON.parse(read(join(home, '.claude.json')) ?? '{}');
-    writeIfChanged(
-      join(kimi, 'mcp.json'),
-      json({ mcpServers: mcpServers(global.mcpServers) }),
-      changed,
+    const mcpPath = join(kimi, 'mcp.json');
+    const mine = mcpServers(global.mcpServers);
+    const status = readStatus(kimi);
+    const owned = status.mcpOwned ?? (status.at ? undefined : []);
+    const currentMcp = read(mcpPath);
+    const merged = mergeMcp(currentMcp, owned, mine);
+    const nextMcp = json({ ...merged.rest, mcpServers: merged.servers });
+    if (currentMcp && currentMcp !== nextMcp && !existsSync(`${mcpPath}.echo-bak`))
+      writeAtomic(`${mcpPath}.echo-bak`, currentMcp);
+    writeIfChanged(mcpPath, nextMcp, changed);
+    mcpOwned = Object.keys(mine);
+    if (merged.kept.length)
+      warnings.push(
+        `в ~/.kimi-code/mcp.json оставлены свои серверы Kimi: ${merged.kept.join(', ')}`,
+      );
+  } catch (error) {
+    warnings.push(
+      error instanceof SyntaxError
+        ? '.claude.json или ~/.kimi-code/mcp.json не читается — MCP не обновлены'
+        : `MCP не обновлены: ${error.message}`,
     );
-  } catch {
-    warnings.push('.claude.json не читается — MCP не обновлены');
   }
 
   const commands = syncCommands(claude, kimi, changed);
+  if (mcpOwned) writeStatus({ mcpOwned }, kimi);
   return { changed, warnings, hooks: rules.length, skippedHooks: skipped, commands };
+}
+
+export function mergeMcp(currentText, owned, mine) {
+  const current = currentText === null ? {} : JSON.parse(currentText);
+  const servers = current.mcpServers ?? {};
+  const ownedSet = new Set(owned ?? Object.keys(servers));
+  const kept = Object.keys(servers).filter((name) => !ownedSet.has(name) && !(name in mine));
+  const { mcpServers: _, ...rest } = current;
+  return {
+    rest,
+    kept,
+    servers: { ...Object.fromEntries(kept.map((name) => [name, servers[name]])), ...mine },
+  };
 }
 
 export function syncProject(root) {
@@ -356,7 +394,7 @@ export function syncForKimi(
   const stale = install && readStatus(kimi).plugin?.fingerprint !== pluginFingerprint(plugin);
   if (stale && takeLock(now)) {
     const log = openSync(join(workDir, 'kimi-sync.log'), 'a');
-    spawn(process.execPath, [join(plugin, 'bin', 'kimi-sync.mjs'), '--plugin'], {
+    spawn(process.execPath, [join(plugin, 'bin', 'kimi-sync.mjs'), '--plugin', '--locked'], {
       detached: true,
       stdio: ['ignore', log, log],
       windowsHide: true,

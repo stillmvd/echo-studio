@@ -179,14 +179,18 @@ export function processMenu({
 export function conversationMenu({
   live,
   busy,
+  readOnly,
   actions,
 }: {
   live: boolean;
   busy?: boolean;
+  readOnly?: boolean;
   actions: { resume: () => void; remove: () => void };
 }): MenuItem[] {
+  const resume = action('Продолжить', Play, actions.resume, { disabled: busy });
+  if (readOnly) return [resume];
   return [
-    action('Продолжить', Play, actions.resume, { disabled: busy }),
+    resume,
     'separator',
     action('Удалить сессию', Trash2, actions.remove, {
       danger: true,
