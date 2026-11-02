@@ -25,6 +25,17 @@ pub async fn list_workbench_projects() -> Result<projects::ProjectTree, String> 
 }
 
 #[tauri::command]
+pub async fn set_folder_kind(path: String, group: bool) -> Result<(), String> {
+    let root = projects_root().ok_or("Не найдена папка Projects")?;
+    blocking(move || {
+        projects::set_kind(&root, &path, group)?;
+        *TREE.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        Ok(())
+    })
+    .await?
+}
+
+#[tauri::command]
 pub async fn read_rate_limits() -> Result<Option<limits::RateLimits>, String> {
     blocking(limits::read).await
 }

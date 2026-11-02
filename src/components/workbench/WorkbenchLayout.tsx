@@ -71,7 +71,6 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
               Рабочее <b>место</b>
             </h2>
             <div className={cn('wb-side-c', treeOpen && 'dim')} inert={treeOpen}>
-              <div className="wb-sl">Запущено</div>
               <RunningList
                 sessions={sessions}
                 devServers={devServers}

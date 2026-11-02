@@ -191,6 +191,10 @@ export async function listWorkbenchProjects(): Promise<ProjectTree> {
   return invoke<ProjectTree>('list_workbench_projects');
 }
 
+export async function setFolderKind(path: string, group: boolean): Promise<void> {
+  return invoke('set_folder_kind', { path, group });
+}
+
 export async function readRateLimits(): Promise<RateLimits | null> {
   return invoke<RateLimits | null>('read_rate_limits');
 }

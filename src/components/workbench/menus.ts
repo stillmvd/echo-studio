@@ -3,7 +3,9 @@ import {
   Code,
   Copy,
   EyeOff,
+  FolderCode,
   FolderOpen,
+  Folders,
   Globe,
   Link,
   MoveRight,
@@ -66,6 +68,7 @@ export function projectMenu({
     vscode: () => void;
     copyPath: () => void;
     hide: () => void;
+    toggleKind?: () => void;
   };
 }): MenuItem[] {
   const dev: MenuItem[] = !project.dev
@@ -73,9 +76,18 @@ export function projectMenu({
     : devRuns(server)
       ? [action('Остановить dev', Square, actions.stopDev)]
       : [action('Запустить dev', Play, actions.startDev)];
+  const kind: MenuItem[] = actions.toggleKind
+    ? [
+        project.folder
+          ? action('Сделать проектом', FolderCode, actions.toggleKind)
+          : action('Сделать группой', Folders, actions.toggleKind),
+      ]
+    : [];
   const hide: MenuItem[] = project.folder
-    ? []
-    : ['separator', action('Скрыть из дерева', EyeOff, actions.hide)];
+    ? kind.length
+      ? ['separator', ...kind]
+      : []
+    : ['separator', ...kind, action('Скрыть из дерева', EyeOff, actions.hide)];
   return [
     action(project.folder ? 'Открыть папку' : 'Открыть', ArrowRight, actions.open),
     action(`Новая сессия ${agent}`, Plus, actions.newSession, { disabled: busy }),
@@ -221,11 +233,18 @@ export function runningDevMenu({
   actions,
 }: {
   server: DevServer;
-  actions: { go: () => void; restart: () => void; copyUrl: () => void; stop: () => void };
+  actions: {
+    go: () => void;
+    openBrowser: () => void;
+    restart: () => void;
+    copyUrl: () => void;
+    stop: () => void;
+  };
 }): MenuItem[] {
   const health = devHealth(server);
   return [
     action('Перейти', ArrowRight, actions.go),
+    action('Открыть в браузере', Globe, actions.openBrowser, { disabled: !devUrl(server) }),
     ...(health === 'crashed' || health === 'errors'
       ? [action('Перезапустить', RotateCcw, actions.restart)]
       : []),

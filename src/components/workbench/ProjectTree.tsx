@@ -1,9 +1,10 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react';
 import { Highlight } from '@/components/memory/MemoryRows';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { useAgentName } from '@/hooks/use-agent';
 import { cn } from '@/lib/cn';
-import { openInVscode, revealInExplorer } from '@/lib/ipc';
+import { openInVscode, revealInExplorer, setFolderKind } from '@/lib/ipc';
 import type { DevServer, ProjectTree as Tree, WorkbenchProject } from '@/lib/types';
 import { samePath } from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
@@ -20,15 +21,20 @@ interface Props {
   onPick: () => void;
 }
 
-type RowMenu = (e: React.MouseEvent, project: WorkbenchProject) => void;
+type RowMenu = (e: React.MouseEvent, project: WorkbenchProject, toggleKind?: () => void) => void;
 
-export function useProjectMenu(devServers: DevServer[], busy: boolean, onStart: Props['onStart']) {
+export function useProjectMenu(
+  devServers: DevServer[],
+  busy: boolean,
+  onStart: Props['onStart'],
+  onPick?: () => void,
+) {
   const select = useWorkbenchStore((s) => s.select);
   const hideProject = useWorkbenchStore((s) => s.hideProject);
   const openMenu = useOpenMenu();
   const dev = useDevControl();
   const agent = useAgentName();
-  const menu: RowMenu = (e, p) =>
+  const menu: RowMenu = (e, p, toggleKind) =>
     openMenu(
       e,
       projectMenu({
@@ -37,8 +43,15 @@ export function useProjectMenu(devServers: DevServer[], busy: boolean, onStart: 
         busy,
         agent,
         actions: {
-          open: () => select({ kind: 'project', path: p.path }),
-          newSession: () => onStart(p.path),
+          open: () => {
+            select({ kind: 'project', path: p.path });
+            onPick?.();
+          },
+          newSession: () => {
+            onStart(p.path);
+            onPick?.();
+          },
+          toggleKind,
           startDev: () => dev.start(p.path),
           stopDev: () => dev.askStop(p),
           reveal: () => void revealInExplorer(p.path).catch(dev.fail('Проводник не открылся')),
@@ -91,13 +104,20 @@ export function ProjectTree({ tree, devServers, busy, onStart, query, onPick }: 
   const openGroups = useWorkbenchStore((s) => s.openGroups);
   const toggleGroup = useWorkbenchStore((s) => s.toggleGroup);
   const hidden = useWorkbenchStore((s) => s.hiddenProjects);
-  const { menu, dev } = useProjectMenu(devServers, busy, onStart);
+  const { menu, dev } = useProjectMenu(devServers, busy, onStart, onPick);
+  const queryClient = useQueryClient();
+  const setKind = (path: string, group: boolean) => () =>
+    void setFolderKind(path, group)
+      .then(() => queryClient.invalidateQueries({ queryKey: ['workbench', 'projects'] }))
+      .catch(dev.fail('Не удалось изменить папку'));
   const shown = (list: WorkbenchProject[]) =>
     hidden.length ? list.filter((p) => !hidden.some((h) => samePath(h, p.path))) : list;
   const folderMenu = (e: React.MouseEvent, path: string) => {
     const folder = tree.folders.find((f) => samePath(f.path, path));
-    if (folder) menu(e, folder);
+    if (!folder) return;
+    menu(e, folder, samePath(path, tree.root) ? undefined : setKind(path, false));
   };
+  const rootMenu: RowMenu = (e, p) => menu(e, p, setKind(p.path, true));
   const q = query.trim().toLowerCase();
   const hit = (name: string) => name.toLowerCase().includes(q);
   const roots = shown(tree.roots).filter((p) => hit(p.name));
@@ -117,7 +137,7 @@ export function ProjectTree({ tree, devServers, busy, onStart, query, onPick }: 
         onContextMenu={(e) => folderMenu(e, tree.root)}
       >
         {roots.map((p) => (
-          <ProjectRow key={p.path} project={p} menu={menu} query={q} onPick={onPick} />
+          <ProjectRow key={p.path} project={p} menu={rootMenu} query={q} onPick={onPick} />
         ))}
         {groups.map(({ g, projects, auto }) => {
           const open = auto || openGroups.includes(g.name);

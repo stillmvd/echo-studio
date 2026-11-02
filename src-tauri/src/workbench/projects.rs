@@ -1,7 +1,8 @@
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 const MARKERS: [&str; 7] = [
@@ -97,13 +98,87 @@ fn is_project(dir: &Path) -> bool {
     MARKERS.iter().any(|m| dir.join(m).exists())
 }
 
+fn auto_group(dir: &Path) -> bool {
+    if dir.join(".git").exists() {
+        return false;
+    }
+    visible_dirs(dir).iter().any(|c| is_project(c)) || !is_project(dir)
+}
+
+pub type Kinds = BTreeMap<String, FolderKind>;
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum FolderKind {
+    Group,
+    Project,
+}
+
+fn kinds_file() -> Option<PathBuf> {
+    dirs::data_local_dir().map(|d| {
+        d.join(super::dev::app_id())
+            .join("workbench")
+            .join("folder-kinds.json")
+    })
+}
+
+pub fn load_kinds() -> Kinds {
+    kinds_file()
+        .and_then(|f| fs::read_to_string(f).ok())
+        .and_then(|t| serde_json::from_str(&t).ok())
+        .unwrap_or_default()
+}
+
+fn kind_of(kinds: &Kinds, dir: &Path) -> Option<FolderKind> {
+    let path = dir.to_string_lossy();
+    kinds
+        .iter()
+        .find(|(k, _)| same_path(k, &path))
+        .map(|(_, v)| *v)
+}
+
+fn is_group(kinds: &Kinds, dir: &Path) -> bool {
+    match kind_of(kinds, dir) {
+        Some(kind) => kind == FolderKind::Group,
+        None => auto_group(dir),
+    }
+}
+
+pub fn set_kind(root: &Path, path: &str, group: bool) -> Result<(), String> {
+    let dir = visible_dirs(root)
+        .into_iter()
+        .find(|d| same_path(&d.to_string_lossy(), path))
+        .ok_or_else(|| format!("Папка не лежит прямо в Projects: {path}"))?;
+    let mut kinds = load_kinds();
+    kinds.retain(|k, _| !same_path(k, path));
+    if auto_group(&dir) != group {
+        let kind = if group {
+            FolderKind::Group
+        } else {
+            FolderKind::Project
+        };
+        kinds.insert(dir.to_string_lossy().into_owned(), kind);
+    }
+    let file = kinds_file().ok_or("Нет папки данных приложения")?;
+    let dir = file.parent().ok_or("Нет папки данных приложения")?;
+    fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    let text = serde_json::to_string_pretty(&kinds).map_err(|e| e.to_string())?;
+    let tmp = file.with_extension("json.tmp");
+    fs::write(&tmp, text).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, &file).map_err(|e| e.to_string())
+}
+
 pub fn scan(root: &Path) -> ProjectTree {
+    scan_with(root, &load_kinds())
+}
+
+pub fn scan_with(root: &Path, kinds: &Kinds) -> ProjectTree {
     let icons = root.join("_maintenance").join("folder-icons");
     let mut groups = Vec::new();
     let mut roots = Vec::new();
     let mut folders = vec![folder(root, &icons)];
     for top in visible_dirs(root) {
-        if is_project(&top) {
+        if !is_group(kinds, &top) {
             roots.push(project(&top, None, &icons));
             continue;
         }
@@ -344,6 +419,35 @@ mod tests {
         assert_eq!(at("Windows Apps/Echo/src"), tree.groups[1].projects[1].path);
         assert_eq!(at("Windows Apps"), apps_dir);
         assert_eq!(at("_maintenance"), tree.root);
+    }
+
+    #[test]
+    fn group_with_claude_md_and_overrides() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        let ext = mk(root, "Browser Extensions");
+        fs::write(ext.join("CLAUDE.md"), "x").unwrap();
+        mk(root, "Browser Extensions/Horizon/.git");
+        mk(root, "Kockers DS/.git");
+        mk(root, "Kockers DS/docs/.git");
+
+        let tree = scan_with(root, &Kinds::new());
+        let roots: Vec<_> = tree.roots.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(roots, ["Kockers DS"]);
+        assert_eq!(tree.groups[0].name, "Browser Extensions");
+        assert_eq!(tree.groups[0].projects[0].name, "Horizon");
+
+        let mut kinds = Kinds::new();
+        kinds.insert(ext.to_string_lossy().into_owned(), FolderKind::Project);
+        kinds.insert(
+            root.join("Kockers DS").to_string_lossy().into_owned(),
+            FolderKind::Group,
+        );
+        let tree = scan_with(root, &kinds);
+        let roots: Vec<_> = tree.roots.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(roots, ["Browser Extensions"]);
+        assert_eq!(tree.groups[0].name, "Kockers DS");
+        assert_eq!(tree.groups[0].projects[0].name, "docs");
     }
 
     #[test]

@@ -92,6 +92,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
               server: d,
               actions: {
                 go,
+                openBrowser: () => dev.openBrowser(d.projectPath),
                 restart: () => restartDev(dev, project, d),
                 copyUrl: () => url && copyText(url),
                 stop: () => dev.askStop(project),

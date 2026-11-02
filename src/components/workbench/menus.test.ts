@@ -115,6 +115,20 @@ describe('projectMenu', () => {
     expect(labels(plain).some((l) => l.includes('dev'))).toBe(false);
   });
 
+  it('turns a top-level project into a group and a group folder into a project', () => {
+    const actions = { ...projectActions, toggleKind: () => {} };
+    expect(labels(projectMenu({ project, server: undefined, actions })).slice(-3)).toEqual([
+      '—',
+      'Сделать группой',
+      'Скрыть из дерева',
+    ]);
+    const folder = { ...project, dev: null, folder: true };
+    expect(labels(projectMenu({ project: folder, server: undefined, actions })).slice(-2)).toEqual([
+      '—',
+      'Сделать проектом',
+    ]);
+  });
+
   it('blocks a new session while one is starting', () => {
     const items = projectMenu({ project, server: undefined, busy: true, actions: projectActions });
     expect(find(items, 'Новая сессия Claude')?.disabled).toBe(true);
@@ -247,10 +261,10 @@ describe('runningMenu', () => {
       labels(
         runningDevMenu({
           server: server('running'),
-          actions: { go: noop, restart: noop, copyUrl: noop, stop: noop },
+          actions: { go: noop, openBrowser: noop, restart: noop, copyUrl: noop, stop: noop },
         }),
       ),
-    ).toEqual(['Перейти', 'Копировать адрес (x)', '—', 'Остановить']);
+    ).toEqual(['Перейти', 'Открыть в браузере (x)', 'Копировать адрес (x)', '—', 'Остановить']);
   });
 
   it('a crashed dev server can be restarted from the menu', () => {
@@ -258,9 +272,16 @@ describe('runningMenu', () => {
       labels(
         runningDevMenu({
           server: server('error'),
-          actions: { go: noop, restart: noop, copyUrl: noop, stop: noop },
+          actions: { go: noop, openBrowser: noop, restart: noop, copyUrl: noop, stop: noop },
         }),
       ),
-    ).toEqual(['Перейти', 'Перезапустить', 'Копировать адрес (x)', '—', 'Остановить']);
+    ).toEqual([
+      'Перейти',
+      'Открыть в браузере (x)',
+      'Перезапустить',
+      'Копировать адрес (x)',
+      '—',
+      'Остановить',
+    ]);
   });
 });

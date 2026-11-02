@@ -152,6 +152,7 @@ pub fn run() {
             commands::memory::patch_memory_record,
             commands::memory::merge_memory_records,
             commands::workbench::list_workbench_projects,
+            commands::workbench::set_folder_kind,
             commands::workbench::read_rate_limits,
             commands::workbench::read_usage,
             commands::workbench::read_git_states,

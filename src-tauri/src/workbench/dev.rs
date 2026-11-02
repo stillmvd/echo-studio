@@ -142,7 +142,7 @@ pub fn set_app_id(identifier: &str) {
     let _ = APP_ID.set(identifier.to_owned());
 }
 
-fn app_id() -> &'static str {
+pub fn app_id() -> &'static str {
     APP_ID.get().map_or(MAIN_ID, String::as_str)
 }
 
