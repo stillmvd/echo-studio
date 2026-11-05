@@ -55,6 +55,42 @@ export function TreeCard({ open, onOpen, current, total, query, onQuery, childre
     (open ? head : row).current?.focus({ preventScroll: true });
   }, [open, onQuery]);
 
+  const rows = () => [
+    ...(card.current?.querySelectorAll<HTMLButtonElement>('.wb-tree .wb-tr') ?? []),
+  ];
+  const mark = (el: HTMLButtonElement | undefined) => {
+    for (const r of rows()) r.removeAttribute('data-kb');
+    el?.setAttribute('data-kb', '');
+    el?.scrollIntoView({ block: 'nearest' });
+  };
+
+  useEffect(() => {
+    const list = [...(card.current?.querySelectorAll<HTMLButtonElement>('.wb-tree .wb-tr') ?? [])];
+    for (const r of list) r.removeAttribute('data-kb');
+    if (!open || !query.trim()) return;
+    const first = list.find((r) => !r.classList.contains('grp')) ?? list[0];
+    first?.setAttribute('data-kb', '');
+    first?.scrollIntoView({ block: 'nearest' });
+  }, [open, query]);
+
+  const onSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const list = rows();
+    const at = list.findIndex((r) => r.hasAttribute('data-kb'));
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!list.length) return;
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      const from = at >= 0 ? at : step > 0 ? -1 : list.length;
+      mark(list[Math.min(Math.max(from + step, 0), list.length - 1)]);
+      return;
+    }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const target = list[at] ?? list.find((r) => !r.classList.contains('grp'));
+    target?.click();
+    if (target?.classList.contains('grp')) requestAnimationFrame(() => mark(target));
+  };
+
   const count = `${total} ${plural(total, 'проект', 'проекта', 'проектов')}`;
   return (
     <>
@@ -97,12 +133,7 @@ export function TreeCard({ open, onOpen, current, total, query, onQuery, childre
                 aria-label="Найти проект"
                 spellCheck={false}
                 onChange={(e) => onQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter') return;
-                  card.current
-                    ?.querySelector<HTMLButtonElement>('.wb-tree .wb-tr:not(.grp)')
-                    ?.click();
-                }}
+                onKeyDown={onSearchKey}
               />
             </label>
             {query && (
