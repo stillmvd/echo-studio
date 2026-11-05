@@ -89,6 +89,8 @@ pub fn run() {
                     s.attach(window.clone());
                 }
                 visibility::start(window.clone());
+                #[cfg(windows)]
+                workbench::drop::listen(&window);
                 std::thread::spawn(move || {
                     std::thread::sleep(std::time::Duration::from_secs(10));
                     if !window.is_visible().unwrap_or(true) {
@@ -161,6 +163,8 @@ pub fn run() {
             commands::workbench::list_claude_sessions,
             visibility::window_visible,
             commands::workbench::focus_session_window,
+            commands::workbench::session_window_foreground,
+            commands::workbench::clipboard_file_paths,
             commands::workbench::open_in_vscode,
             commands::workbench::set_workbench_active,
             commands::workbench::start_claude_session,

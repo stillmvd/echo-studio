@@ -135,6 +135,25 @@ pub async fn focus_session_window(pid: u32, session_id: String) -> Result<window
     .await?
 }
 
+#[tauri::command]
+pub fn clipboard_file_paths() -> Vec<String> {
+    #[cfg(windows)]
+    return crate::workbench::drop::clipboard_paths();
+    #[cfg(not(windows))]
+    Vec::new()
+}
+
+#[tauri::command]
+pub async fn session_window_foreground(pid: u32, session_id: String) -> Result<bool, String> {
+    blocking(move || {
+        if sessions::session_pid(&session_id)? != pid {
+            return Err("Процесс не из сессии Claude".to_owned());
+        }
+        Ok(window::is_foreground(pid))
+    })
+    .await?
+}
+
 fn on_path(name: &str) -> Option<PathBuf> {
     std::env::var_os("PATH").and_then(|paths| {
         std::env::split_paths(&paths)

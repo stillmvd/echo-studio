@@ -48,9 +48,19 @@ interface Props {
   visible: boolean;
   busy: boolean;
   onStart: (resumeSessionId?: string) => void;
+  embedded?: boolean;
+  open?: string[];
 }
 
-export function EmptyProject({ project, server, visible, busy, onStart }: Props) {
+export function EmptyProject({
+  project,
+  server,
+  visible,
+  busy,
+  onStart,
+  embedded = false,
+  open,
+}: Props) {
   const agent = useAgentName();
   const { data: convProjects } = useConversationProjects();
   const slug = project.path.replace(/[^A-Za-z0-9]/g, '-');
@@ -60,8 +70,10 @@ export function EmptyProject({ project, server, visible, busy, onStart }: Props)
   const pending = !convProjects || (convId !== null && isPending);
   const sessions = useMemo(
     () =>
-      [...(data ?? [])].sort((a, b) => (b.lastEventAt ?? '').localeCompare(a.lastEventAt ?? '')),
-    [data],
+      (data ?? [])
+        .filter((s) => !open?.includes(s.sessionId))
+        .sort((a, b) => (b.lastEventAt ?? '').localeCompare(a.lastEventAt ?? '')),
+    [data, open],
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -82,7 +94,7 @@ export function EmptyProject({ project, server, visible, busy, onStart }: Props)
   const isLive = (id: string) => !!live?.some((s) => s.sessionId === id && s.status !== 'exited');
 
   return (
-    <div className="wb-area">
+    <div className={embedded ? 'contents' : 'wb-area'}>
       <div className="wb-empty">
         <div className="wb-eh">
           <ProjectIcon svg={project.icon} size="hero" />

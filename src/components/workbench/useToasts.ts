@@ -1,7 +1,7 @@
 import { sendNotification } from '@tauri-apps/plugin-notification';
 import { useEffect, useRef } from 'react';
 import { useTauriEvent } from '@/hooks/use-workbench';
-import { toastsMuted } from '@/lib/ipc';
+import { focusSessionWindow, sessionWindowForeground, toastsMuted } from '@/lib/ipc';
 import { type Marks, marksOf, pickToasts, rememberToast, takeActivation } from '@/lib/toasts';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
@@ -33,9 +33,14 @@ export function useToasts(
       now: Date.now(),
     });
     if (toasts.length === 0) return;
-    void muted.then((off) => {
+    void muted.then(async (off) => {
       if (off) return;
       for (const t of toasts) {
+        if (t.window) {
+          const { pid, sessionId } = t.window;
+          const looking = await sessionWindowForeground(pid, sessionId).catch(() => false);
+          if (looking) continue;
+        }
         rememberToast(t);
         sendNotification({ title: t.title, body: t.body });
       }
@@ -45,6 +50,10 @@ export function useToasts(
   useTauriEvent('echo://activated', () => {
     const target = takeActivation(Date.now());
     if (!target) return;
+    if (target.window) {
+      void focusSessionWindow(target.window.pid, target.window.sessionId).catch(() => {});
+      return;
+    }
     useUiStore.getState().setActiveTab('workbench');
     const wb = useWorkbenchStore.getState();
     wb.openTab(target.path, target.tab);

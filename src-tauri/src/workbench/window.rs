@@ -8,8 +8,8 @@ use windows_sys::Win32::System::Console::{
     AttachConsole, FreeConsole, GetConsoleWindow, ATTACH_PARENT_PROCESS,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    GetAncestor, GetClassNameW, IsIconic, IsWindowVisible, SetForegroundWindow, ShowWindow,
-    GA_ROOTOWNER, SW_RESTORE,
+    GetAncestor, GetClassNameW, GetForegroundWindow, GetWindowThreadProcessId, IsIconic,
+    IsWindowVisible, SetForegroundWindow, ShowWindow, GA_ROOTOWNER, SW_RESTORE,
 };
 
 const MAX_DEPTH: usize = 30;
@@ -83,6 +83,30 @@ fn target_window(console: HWND) -> Option<HWND> {
     }
     let owner = unsafe { GetAncestor(console, GA_ROOTOWNER) };
     (!owner.is_null() && owner != console).then_some(owner)
+}
+
+fn ancestor_pids(sys: &System, pid: u32) -> HashSet<u32> {
+    let mut seen = HashSet::new();
+    let mut cur = sys.process(Pid::from_u32(pid)).and_then(|p| p.parent());
+    while let Some(p) = cur.filter(|p| seen.len() < MAX_DEPTH && seen.insert(p.as_u32())) {
+        cur = sys.process(p).and_then(|x| x.parent());
+    }
+    seen
+}
+
+pub fn is_foreground(pid: u32) -> bool {
+    let fg = unsafe { GetForegroundWindow() };
+    if fg.is_null() {
+        return false;
+    }
+    let mut owner = 0u32;
+    unsafe { GetWindowThreadProcessId(fg, &mut owner) };
+    let mut sys = System::new();
+    sys.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing());
+    if owner != 0 && ancestor_pids(&sys, pid).contains(&owner) {
+        return true;
+    }
+    console_window(pid).and_then(target_window) == Some(fg)
 }
 
 pub fn focus(pid: u32) -> Focus {

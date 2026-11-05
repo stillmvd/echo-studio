@@ -1,6 +1,7 @@
 import { type DragEvent, useEffect, useState } from 'react';
+import { TAB_DRAG_TYPE } from '@/lib/workbench';
 
-const TYPE = 'text/x-echo-tab';
+const TYPE = TAB_DRAG_TYPE;
 
 export interface DraggedTab {
   path: string;

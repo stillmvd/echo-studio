@@ -2,7 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { forgetClaudeSession, listClaudeSessions, listDevServers } from '@/lib/ipc';
 import type { ClaudeSession, DevServer } from '@/lib/types';
-import { endedTabs, misplacedTabs, movedTabs, stoppedDevTabs } from '@/lib/workbench';
+import {
+  endedTabs,
+  misplacedTabs,
+  movedTabs,
+  nextBusyProject,
+  samePath,
+  stoppedDevTabs,
+} from '@/lib/workbench';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { dispose, isFresh, rekey, rememberShort, shortOf } from './terminals';
 
@@ -15,6 +22,8 @@ export function useEndedTabs(sessions: ClaudeSession[]) {
     enabled: false,
   }).isSuccess;
   const running = sessions.filter((s) => s.status !== 'exited');
+  const liveRef = useRef(running);
+  liveRef.current = running;
   for (const s of running) if (s.shortId) rememberShort(s.sessionId, s.shortId);
   const live = new Set(running.map((s) => s.sessionId));
   const ended = ready ? endedTabs(tabs, live, isFresh) : [];
@@ -40,7 +49,7 @@ export function useEndedTabs(sessions: ClaudeSession[]) {
         const { cells, focusCell } = st;
         st.openTab(to, key);
         if (prev) st.activate(to, prev);
-        if (st.mode === 'wall') useWorkbenchStore.setState({ cells, focusCell });
+        useWorkbenchStore.setState({ cells, focusCell });
       }
       st.closeTab(from, key);
     }
@@ -48,6 +57,7 @@ export function useEndedTabs(sessions: ClaudeSession[]) {
 
   useEffect(() => {
     if (!close) return;
+    const emptied = new Set<string>();
     for (const pair of close.split('\n\n')) {
       const [path, key] = pair.split('\n');
       if (!path || !key) continue;
@@ -55,7 +65,16 @@ export function useEndedTabs(sessions: ClaudeSession[]) {
       if (short) void forgetClaudeSession(short).catch(() => {});
       dispose(key);
       closeTab(path, key);
+      if ((useWorkbenchStore.getState().tabs[path]?.length ?? 0) === 0) emptied.add(path);
     }
+    const st = useWorkbenchStore.getState();
+    const { view } = st;
+    if (view.kind !== 'project') return;
+    if (![...emptied].some((p) => samePath(p, view.path))) return;
+    const next = nextBusyProject(liveRef.current, st.seen, view.path);
+    if (!next) return;
+    st.openTab(next.path, next.key);
+    st.select({ kind: 'project', path: next.path });
   }, [close, closeTab]);
 
   useEffect(() => {

@@ -172,6 +172,11 @@
 .wb-btn svg { flex: none; width: 16px; height: 16px; }
 .wb-btn.p { background: var(--gb); color: var(--gb-ink); font-weight: 700; }
 .wb-btn.p:hover { background: var(--color-accent-hover); }
+.wl-auto { background: transparent; color: var(--dim); box-shadow: inset 0 0 0 1px var(--line); }
+.wl-auto:hover { color: var(--fg); }
+.wl-auto svg { color: var(--fg); }
+.wl-auto.on { background: var(--raised); color: var(--fg); box-shadow: inset 0 0 0 1.5px var(--gb); }
+.wl-auto.on svg { color: var(--gb); }
 .wb-btn.sm { height: 32px; padding: 0 12px; gap: 6px; font-size: 13px; }
 .wb-btn.sm svg { width: 14px; height: 14px; }
 .wb-stop svg { color: var(--danger); }
@@ -245,6 +250,10 @@
 .wb-term { position: relative; flex: 1; min-height: 0; min-width: 0; padding: 12px 4px 8px 16px; }
 :root[data-idle] .wb-term { display: none; }
 .wb-term .xterm { height: 100%; }
+.wb-term[data-drop-label]::after { content: attr(data-drop-label); position: absolute; z-index: 3; inset: 8px; display: grid; place-items: center; border: 2px dashed var(--gb); border-radius: 16px; background: color-mix(in oklab, var(--gb) 12%, var(--ground) 70%); color: var(--gb); font-size: 15px; font-weight: 700; pointer-events: none; opacity: 0; scale: 0.97; transition: opacity 180ms var(--ease-trail), scale 240ms var(--ease-trail); }
+.wb-term[data-drop]::after { opacity: 1; scale: 1; }
+@starting-style { .wb-term[data-drop]::after { opacity: 0; scale: 0.97; } }
+@media (prefers-reduced-motion: reduce) { .wb-term[data-drop-label]::after { transition: none; } }
 .wb-caret { position: absolute; top: 0; left: 0; z-index: 5; width: 2px; background: var(--fg); opacity: .4; pointer-events: none; }
 .wb-caret[hidden] { display: none; }
 .xterm.focus .wb-caret { opacity: 1; }
@@ -269,6 +278,8 @@
 .wl-ch { flex: none; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 6px 0 14px; border-bottom: 1px solid var(--line); min-width: 0; font-size: 13px; white-space: nowrap; }
 .wl-cp { flex: 0 1 auto; display: inline-flex; align-items: center; gap: 10px; min-width: 0; max-width: 240px; }
 .wl-cp b { min-width: 0; font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.wl-cp.lead { flex: none; max-width: 180px; margin-right: 4px; padding: 0 12px 0 6px; border-right: 1px solid var(--line); }
+@container (max-width: 560px) { .wl-cp.lead b { display: none; } .wl-cp.lead { padding-right: 8px; } }
 .wl-wait { flex: none; display: inline-flex; align-items: center; gap: 6px; color: var(--gb); font-size: 12px; font-weight: 700; }
 .wl-pin { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; color: var(--dim); transition: background-color 200ms var(--ease-trail), color 200ms var(--ease-trail); }
 .wl-pin:hover { background: var(--hover-strong); color: var(--fg); }

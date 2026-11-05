@@ -942,6 +942,8 @@ dependencies = [
  "tauri-plugin-window-state",
  "tempfile",
  "thiserror 2.0.21",
+ "webview2-com",
+ "windows-core",
  "windows-sys 0.59.0",
 ]
 

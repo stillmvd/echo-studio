@@ -1,4 +1,6 @@
 pub mod dev;
+#[cfg(windows)]
+pub mod drop;
 pub mod git;
 pub mod kimi;
 pub mod limits;

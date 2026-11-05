@@ -13,7 +13,7 @@ import {
   wallPick,
 } from '@/lib/workbench';
 import { useRecentStore } from '@/state/recent-store';
-import { layoutOf, useWorkbenchStore } from '@/state/workbench-store';
+import { useWorkbenchStore } from '@/state/workbench-store';
 import { ProjectIcon } from './ProjectIcon';
 import { openSession, sessionPlace } from './SessionStrip';
 import { StatusIcon } from './StatusIcon';
@@ -51,13 +51,6 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
       return;
     }
     const s = useWorkbenchStore.getState();
-    if (s.mode === 'project') {
-      if (s.view.kind !== 'project') return;
-      const layout = layoutOf(s, s.view.path);
-      const key = layout.cells[layout.focus]?.active;
-      if (key) focusTerminal(key);
-      return;
-    }
     const shown = s.cells.slice(0, CELL_COUNT[s.layout]);
     const activeOf = (path: string) => s.activeTab[path];
     const keys = assignTabs(

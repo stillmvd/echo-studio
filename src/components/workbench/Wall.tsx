@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Columns2, Grid2x2, Pin, Plus, Square } from 'lucide-react';
+import { Columns2, Grid2x2, Maximize2, Minimize2, Pin, Plus, Square } from 'lucide-react';
 import { type HTMLAttributes, type ReactNode, useEffect, useState } from 'react';
 import { useAgentName } from '@/hooks/use-agent';
 import { cn } from '@/lib/cn';
@@ -22,6 +22,7 @@ import { useWorkbenchStore } from '@/state/workbench-store';
 import { Cell } from './Cell';
 import { EmptyProject } from './EmptyProject';
 import { ModeSwitch } from './ModeSwitch';
+import { ProjectHeader } from './ProjectHeader';
 import { ProjectIcon } from './ProjectIcon';
 import { StatusIcon } from './StatusIcon';
 import { isFresh } from './terminals';
@@ -55,19 +56,11 @@ const LAYOUTS: { key: WallLayout; label: string; Icon: typeof Square }[] = [
   { key: '2x2', label: '2×2', Icon: Grid2x2 },
 ];
 
-export function LayoutPicker({
-  value,
-  onChange,
-}: {
-  value?: WallLayout;
-  onChange?: (layout: WallLayout) => void;
-}) {
-  const wallLayout = useWorkbenchStore((s) => s.layout);
-  const setWallLayout = useWorkbenchStore((s) => s.setLayout);
-  const layout = value ?? wallLayout;
-  const setLayout = onChange ?? setWallLayout;
+export function LayoutPicker() {
+  const layout = useWorkbenchStore((s) => s.layout);
+  const setLayout = useWorkbenchStore((s) => s.setLayout);
   return (
-    <fieldset className="wl-seg" aria-label="Раскладка проекта">
+    <fieldset className="wl-seg" aria-label="Раскладка экрана">
       {LAYOUTS.map(({ key, label, Icon }) => (
         <button
           key={key}
@@ -156,7 +149,9 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
   const moveTabToWallCell = useWorkbenchStore((s) => s.moveTabToWallCell);
   const tabs = useWorkbenchStore((s) => s.tabs);
   const activeTab = useWorkbenchStore((s) => s.activeTab);
+  const auto = useWorkbenchStore((s) => s.auto);
   const [tick, setTick] = useState(0);
+  const [zoom, setZoom] = useState<string | null>(null);
   const ready =
     useQuery({
       queryKey: ['workbench', 'sessions'],
@@ -168,6 +163,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
 
   useEffect(() => {
     void tick;
+    if (!auto) return;
     const now = Date.now();
     const r = arrangeWall(cells, count, sessions, now, focusCell, seen, {
       tabsOf: (path) => tabs[path] ?? [],
@@ -192,7 +188,20 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
     if (!delay) return;
     const t = setTimeout(() => setTick((n) => n + 1), delay);
     return () => clearTimeout(t);
-  }, [cells, count, sessions, seen, focusCell, setCells, tick, hidden, tabs, activeTab, ready]);
+  }, [
+    cells,
+    count,
+    sessions,
+    seen,
+    focusCell,
+    setCells,
+    tick,
+    hidden,
+    tabs,
+    activeTab,
+    ready,
+    auto,
+  ]);
 
   const shown = cells.slice(0, count);
   const activeOf = (path: string) => activeTab[path];
@@ -202,7 +211,13 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
     activeOf,
     wallPick(sessions, seen, activeOf),
   );
-  const focused = cells.find((c) => c.id === focusCell)?.projectPath ?? null;
+  const focusShown = shown.some((c) => c.id === focusCell);
+  const fallbackFocus = (shown.find((c) => c.projectPath) ?? shown[0])?.id ?? null;
+  useEffect(() => {
+    if (!focusShown && fallbackFocus) useWorkbenchStore.setState({ focusCell: fallbackFocus });
+  }, [focusShown, fallbackFocus]);
+  const focused = shown.find((c) => c.id === focusCell)?.projectPath ?? null;
+  const focusedProject = focused ? projects.get(focused) : undefined;
   const agent = useAgentName();
   const startIn = (id: string, path: string, resume?: string) =>
     void onStart(path, resume).then((key) => {
@@ -210,30 +225,45 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
     });
   const holdsPath = (c: WallCell, path: string | null) =>
     !!path && !!c.projectPath && samePath(c.projectPath, path);
+  useEffect(() => {
+    if (zoom && (zoom !== focusCell || count === 1)) setZoom(null);
+  }, [zoom, focusCell, count]);
+  const zoomed = zoom && count > 1 && zoom === focusCell ? zoom : null;
+  const toggleZoom = (id: string) => setZoom((z) => (z === id ? null : id));
 
   return (
     <>
-      <div className="wl-tb">
-        <b>Пульт</b>
-        <span className="wb-dim">
-          Ячейки занимают ждущие и работающие, <Pin className="wl-in" strokeWidth={2} /> держит
-          ячейку
-        </span>
-        <span className="wb-gap" />
-        <ModeSwitch />
-        <LayoutPicker />
-        <button
-          type="button"
-          className="wb-btn p"
-          title={`Новая сессия ${agent} в выбранной ячейке`}
-          disabled={busy || !focused}
-          onClick={() => focused && focusCell && startIn(focusCell, focused)}
-        >
-          <Plus strokeWidth={2} />
-          <span className="wb-btn-l">{agent}</span>
-        </button>
-      </div>
-      <div className={`wl-grid l-${layout}`}>
+      {focusedProject && focusCell ? (
+        <ProjectHeader
+          project={focusedProject}
+          server={devServers.find((d) => samePath(d.projectPath, focusedProject.path))}
+          busy={busy}
+          onClaude={() => startIn(focusCell, focusedProject.path)}
+          extra={
+            <>
+              <ModeSwitch />
+              <LayoutPicker />
+            </>
+          }
+        />
+      ) : (
+        <div className="wl-tb">
+          <span className="wb-dim">Выберите проект слева или ячейку в сетке</span>
+          <span className="wb-gap" />
+          <ModeSwitch />
+          <LayoutPicker />
+          <button
+            type="button"
+            className="wb-btn p"
+            title={`Новая сессия ${agent} в выбранной ячейке`}
+            disabled
+          >
+            <Plus strokeWidth={2} />
+            <span className="wb-btn-l">{agent}</span>
+          </button>
+        </div>
+      )}
+      <div className={`wl-grid l-${zoomed ? '1x1' : layout}`}>
         {shown.map((c, i) => {
           const project = c.projectPath ? projects.get(c.projectPath) : undefined;
           const listed = (tabs[c.projectPath ?? ''] ?? []).length > 0;
@@ -241,7 +271,8 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
             !keys[i] &&
             listed &&
             shown.some((o, j) => j !== i && !!keys[j] && holdsPath(o, c.projectPath));
-          const quiet = !keys[i] && listed && !twin;
+          const quiet = !!project && !keys[i] && !twin;
+          const solo = count === 1;
           const own = project
             ? sessions.filter((s) => s.projectPath && samePath(s.projectPath, project.path))
             : [];
@@ -250,6 +281,45 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
             if (!c.projectPath || project) touchCell(c.id, keys[i] ?? undefined);
           };
           const lock = c.pinned ? 'pinned' : c.manual ? 'manual' : 'auto';
+          const strip = !!project && !twin && !quiet;
+          const isZoomed = zoomed === c.id;
+          const chip = solo ? null : project ? (
+            <span className={cn('wl-cp', strip && 'lead')} title={project.path}>
+              <ProjectIcon svg={project.icon} />
+              <b>{project.name}</b>
+            </span>
+          ) : (
+            <span className="wb-dim">Свободная ячейка</span>
+          );
+          const controls = solo ? null : (
+            <>
+              {count > 1 && (
+                <button
+                  type="button"
+                  className="wl-pin"
+                  title={isZoomed ? 'Вернуть сетку' : 'Развернуть ячейку'}
+                  onClick={() => toggleZoom(c.id)}
+                >
+                  {isZoomed ? <Minimize2 strokeWidth={2} /> : <Maximize2 strokeWidth={2} />}
+                </button>
+              )}
+              <button
+                type="button"
+                className={cn('wl-pin', lock === 'pinned' && 'on', lock === 'manual' && 'half')}
+                aria-pressed={lock !== 'auto'}
+                title={
+                  lock === 'pinned'
+                    ? 'Открепить ячейку'
+                    : lock === 'manual'
+                      ? 'Открыта вручную — вернуть авто-порядок'
+                      : 'Закрепить ячейку'
+                }
+                onClick={() => pinCell(c.id)}
+              >
+                <Pin strokeWidth={2} />
+              </button>
+            </>
+          );
           return (
             <WallCellZone
               key={c.id}
@@ -257,51 +327,41 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
               keys={tabs[c.projectPath ?? ''] ?? []}
               onDropTab={(tab, at) => moveTabToWallCell(c.id, tab.path, tab.key, at)}
               className={cn('wl-cell', status === 'waiting' && 'wait')}
+              style={zoomed && !isZoomed ? { display: 'none' } : undefined}
               onPointerDownCapture={touch}
               onKeyDownCapture={touch}
               onWheelCapture={touch}
             >
               {(insertAt) => (
                 <>
-                  <div className="wl-ch">
-                    {project ? (
-                      <span className="wl-cp" title={project.path}>
-                        <ProjectIcon svg={project.icon} />
-                        <b>{project.name}</b>
-                      </span>
-                    ) : (
-                      <span className="wb-dim">Свободная ячейка</span>
-                    )}
-                    {status === 'waiting' && (
-                      <span className="wl-wait">
-                        <StatusIcon small session={{ status, phase: null }} />
-                        {STATUS_LABEL.waiting}
-                      </span>
-                    )}
-                    <span className="wb-gap" />
-                    <button
-                      type="button"
-                      className={cn(
-                        'wl-pin',
-                        lock === 'pinned' && 'on',
-                        lock === 'manual' && 'half',
+                  {!strip && !solo && (
+                    <div className="wl-ch">
+                      {chip}
+                      {status === 'waiting' && (
+                        <span className="wl-wait">
+                          <StatusIcon small session={{ status, phase: null }} />
+                          {STATUS_LABEL.waiting}
+                        </span>
                       )}
-                      aria-pressed={lock !== 'auto'}
-                      title={
-                        lock === 'pinned'
-                          ? 'Открепить ячейку'
-                          : lock === 'manual'
-                            ? 'Открыта вручную — вернуть авто-порядок'
-                            : 'Закрепить ячейку'
-                      }
-                      onClick={() => pinCell(c.id)}
-                    >
-                      <Pin strokeWidth={2} />
-                    </button>
-                  </div>
+                      <span className="wb-gap" />
+                      {controls}
+                    </div>
+                  )}
                   <div className="wl-cb">
-                    {project && !twin && !quiet && (
+                    {!project && (
+                      <div className="wl-free">
+                        <span className="wb-dim">
+                          {auto
+                            ? 'Сюда встанет сессия, которая ждёт ответа или работает'
+                            : 'Выберите проект слева или перетащите сюда вкладку'}
+                        </span>
+                      </div>
+                    )}
+                    {strip && (
                       <Cell
+                        lead={chip}
+                        tail={controls}
+                        onStripDoubleClick={count > 1 ? () => toggleZoom(c.id) : undefined}
                         key={project.path}
                         project={project}
                         sessions={sessions}

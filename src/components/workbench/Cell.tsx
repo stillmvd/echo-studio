@@ -3,30 +3,14 @@ import { Plus, RotateCcw, Square, X } from 'lucide-react';
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
-import { useAgentName } from '@/hooks/use-agent';
 import { cn } from '@/lib/cn';
 import { forgetClaudeSession, restartClaudeSession, stopClaudeSession } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
-import {
-  agentName,
-  CELL_COUNT,
-  devHealth,
-  type ProjectCell,
-  type StatusView,
-  samePath,
-  statusView,
-} from '@/lib/workbench';
+import { agentName, CELL_COUNT, devHealth, type StatusView, statusView } from '@/lib/workbench';
 import { withoutVisit } from '@/state/recent-store';
-import { devTabKey, isDevTab, useProjectLayout, useWorkbenchStore } from '@/state/workbench-store';
+import { devTabKey, isDevTab, useWorkbenchStore } from '@/state/workbench-store';
 import { ClaudeTerminal } from './ClaudeTerminal';
-import {
-  closeDevLog,
-  DevCapsule,
-  DevDot,
-  devActions,
-  restartDev,
-  useDevControl,
-} from './DevCapsule';
+import { closeDevLog, DevDot, devActions, restartDev, useDevControl } from './DevCapsule';
 import { EmptyProject } from './EmptyProject';
 import { LogTerminal } from './LogTerminal';
 import { copyText, devTabMenu, type MoveTargets, sessionTabMenu } from './menus';
@@ -42,10 +26,9 @@ import {
   shortOf,
   useClaudeTerm,
 } from './terminals';
-import { type DraggedTab, tabDragProps, useTabDrop } from './useTabDrag';
+import { type DraggedTab, tabDragProps } from './useTabDrag';
 
 const NO_TABS: string[] = [];
-const CELL_IDS = ['p1', 'p2', 'p3', 'p4'];
 
 export function useStopSession() {
   const qc = useQueryClient();
@@ -136,21 +119,11 @@ function useRestartSession() {
 }
 
 function useMoveTargets(path: string, cellId: string | undefined) {
-  const projectLayout = useProjectLayout(path).layout;
   const wallLayout = useWorkbenchStore((s) => s.layout);
   const wallCells = useWorkbenchStore((s) => s.cells);
-  const moveTab = useWorkbenchStore((s) => s.moveTab);
   const moveTabToWallCell = useWorkbenchStore((s) => s.moveTabToWallCell);
   return (key: string): MoveTargets | null => {
     if (!cellId) return null;
-    const own = CELL_IDS.indexOf(cellId);
-    if (own >= 0) {
-      return {
-        count: CELL_COUNT[projectLayout],
-        current: own,
-        move: (i) => moveTab(path, key, i),
-      };
-    }
     const shown = wallCells.slice(0, CELL_COUNT[wallLayout]);
     return {
       count: shown.length,
@@ -161,117 +134,6 @@ function useMoveTargets(path: string, cellId: string | undefined) {
       },
     };
   };
-}
-
-interface GridProps {
-  project: WorkbenchProject;
-  sessions: ClaudeSession[];
-  server: DevServer | undefined;
-  visible: boolean;
-  busy: boolean;
-  onStart: (resumeSessionId?: string) => Promise<string | null>;
-}
-
-export function ProjectGrid(props: GridProps) {
-  const layout = useProjectLayout(props.project.path);
-  const hasTabs = useWorkbenchStore((s) => (s.tabs[props.project.path]?.length ?? 0) > 0);
-  const one = layout.layout === '1x1';
-  return (
-    <div className={one ? 'flex min-h-0 flex-1 flex-col' : `wl-grid pg l-${layout.layout}`}>
-      {CELL_IDS.slice(0, CELL_COUNT[layout.layout]).map((id, i) => (
-        <ProjectCellView
-          key={id}
-          {...props}
-          id={id}
-          index={i}
-          one={one}
-          cell={layout.cells[i] ?? { tabs: [] }}
-          focused={layout.focus === i}
-          hasTabs={hasTabs}
-        />
-      ))}
-    </div>
-  );
-}
-
-interface CellViewProps extends GridProps {
-  id: string;
-  index: number;
-  one: boolean;
-  cell: ProjectCell;
-  focused: boolean;
-  hasTabs: boolean;
-}
-
-function ProjectCellView({
-  id,
-  index,
-  one,
-  cell,
-  focused,
-  hasTabs,
-  onStart,
-  ...props
-}: CellViewProps) {
-  const { project, busy, server } = props;
-  const agent = useAgentName();
-  const moveTab = useWorkbenchStore((s) => s.moveTab);
-  const focusCell = useWorkbenchStore((s) => s.focusProjectCell);
-  const drop = useTabDrop({
-    path: project.path,
-    cell: id,
-    keys: cell.tabs,
-    accept: (tab) => samePath(tab.path, project.path),
-    onDrop: (tab, at) => moveTab(project.path, tab.key, index, at),
-  });
-  const touch = () => {
-    if (!focused) focusCell(project.path, index);
-  };
-  const startHere = (resume?: string) => {
-    focusCell(project.path, index);
-    return onStart(resume);
-  };
-  const free = hasTabs ? cell.tabs.length === 0 : !focused;
-  return (
-    <div
-      className={
-        one ? 'flex min-h-0 flex-1 flex-col' : cn('wl-cell', focused && 'fx', drop.over && 'drop')
-      }
-      onPointerDownCapture={touch}
-      onKeyDownCapture={touch}
-      {...drop.props}
-    >
-      {free ? (
-        <div className="wl-free">
-          <span className="wb-dim">Свободная ячейка</span>
-          <div>
-            <button
-              type="button"
-              className="wb-btn p"
-              disabled={busy}
-              onClick={() => void startHere()}
-            >
-              <Plus strokeWidth={2} />
-              {agent}
-            </button>
-            {project.dev && <DevCapsule project={project} server={server} />}
-          </div>
-          <span className="wb-dim">Перетащите сюда вкладку</span>
-        </div>
-      ) : (
-        <Cell
-          {...props}
-          keys={cell.tabs}
-          activeKey={cell.active}
-          focused={focused}
-          accent
-          cellId={id}
-          insertAt={drop.insert}
-          onStart={startHere}
-        />
-      )}
-    </div>
-  );
 }
 
 interface TabInfo {
@@ -342,6 +204,9 @@ interface Props {
   cellId?: string;
   insertAt?: number | null;
   accent?: boolean;
+  lead?: ReactNode;
+  tail?: ReactNode;
+  onStripDoubleClick?: () => void;
 }
 
 export function Cell({
@@ -358,6 +223,9 @@ export function Cell({
   cellId,
   insertAt = null,
   accent = focused === undefined,
+  lead,
+  tail,
+  onStripDoubleClick,
 }: Props) {
   const controlled = onActivate !== undefined;
   const isFocused = visible && (focused ?? true);
@@ -373,6 +241,7 @@ export function Cell({
   const seen = useWorkbenchStore((s) => s.seen);
   const activateInProject = useWorkbenchStore((s) => s.activate);
   const activate = (key: string) => {
+    setPick(null);
     if (onActivate) onActivate(key);
     else activateInProject(project.path, key);
     focusSoon(key);
@@ -403,6 +272,9 @@ export function Cell({
   const order = tabs.filter((key) => (key === devKey ? hasDev : !isDevTab(key)));
   const devOn = hasDev && (active === devKey || infos.length === 0);
   const current = devOn ? undefined : (infos.find((i) => i.key === active) ?? infos[0]);
+  const [pick, setPick] = useState<string | null>(null);
+  const pickSig = `${order.length}|${active ?? ''}`;
+  const picking = pick === pickSig;
 
   useEffect(() => {
     if (isFocused && current?.session?.status === 'done') markSeen(current.key);
@@ -462,7 +334,16 @@ export function Cell({
 
   return (
     <div className="wb-area">
-      <div className="wb-tabs">
+      <div
+        className="wb-tabs"
+        role="toolbar"
+        aria-label={`Вкладки ${project.name}`}
+        onDoubleClick={(e) => {
+          if (!onStripDoubleClick || (e.target as Element).closest('button, .wb-tab')) return;
+          onStripDoubleClick();
+        }}
+      >
+        {lead}
         {order.map((key, i) => {
           const drag = cellId ? { path: project.path, key, cell: cellId } : null;
           const marker = insertAt === i && <span className="wb-tab-ins" aria-hidden="true" />;
@@ -472,7 +353,7 @@ export function Cell({
                 {marker}
                 <TabCapsule
                   drag={drag}
-                  on={devOn}
+                  on={!picking && devOn}
                   label={project.dev?.command ?? 'dev'}
                   onContextMenu={devMenu}
                 >
@@ -507,7 +388,7 @@ export function Cell({
               {marker}
               <TabCapsule
                 drag={drag}
-                on={info.key === current?.key}
+                on={!picking && info.key === current?.key}
                 label={info.session?.name || agentName(info.session)}
                 onContextMenu={(e) => tabMenu(e, info)}
               >
@@ -542,17 +423,28 @@ export function Cell({
           );
         })}
         {insertAt === order.length && <span className="wb-tab-ins" aria-hidden="true" />}
-        <button
-          type="button"
-          className="wb-tab add"
-          title="Ещё сессия"
-          disabled={busy}
-          onClick={() => void startHere()}
-        >
-          <Plus strokeWidth={2} />
-        </button>
+        {picking ? (
+          <div className="wb-tab on" role="toolbar" aria-label="Новая вкладка">
+            <span className="wb-tab-b">
+              <Plus strokeWidth={2} />
+              <span>Новая вкладка</span>
+            </span>
+            <button type="button" className="wb-tx" title="Отмена" onClick={() => setPick(null)}>
+              <X strokeWidth={2} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="wb-tab add"
+            title="Новая вкладка — сессия или dev"
+            onClick={() => setPick(pickSig)}
+          >
+            <Plus strokeWidth={2} />
+          </button>
+        )}
         <span className="wb-gap" />
-        {current?.live && current.shortId && (
+        {!picking && current?.live && current.shortId && (
           <>
             <button
               type="button"
@@ -583,12 +475,13 @@ export function Cell({
             </button>
           </>
         )}
+        {tail}
       </div>
       {hasDev && (!controlled || devOn) && (
         <LogTerminal
           tabKey={devKey}
           projectPath={project.path}
-          visible={visible && devOn}
+          visible={visible && !picking && devOn}
           server={server}
           onRestart={() => restartDev(dev, project, server)}
         />
@@ -601,13 +494,24 @@ export function Cell({
           shortId={info.shortId}
           live={info.live}
           status={info.status}
-          visible={visible && info.key === current?.key}
+          visible={visible && !picking && info.key === current?.key}
           focused={isFocused}
           accent={accent && info.status === 'waiting'}
           onResume={() => void startHere(info.key)}
           onStop={() => stop.ask(info.shortId)}
         />
       ))}
+      {picking && (
+        <EmptyProject
+          embedded
+          project={project}
+          server={server}
+          visible={visible}
+          busy={busy}
+          open={tabs}
+          onStart={(resume) => void startHere(resume)}
+        />
+      )}
       {stop.dialog}
       {restart.dialog}
       {dev.dialogs}

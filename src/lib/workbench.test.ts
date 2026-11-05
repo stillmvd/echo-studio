@@ -12,28 +12,28 @@ import {
   assignTabs,
   byUrgency,
   caretStep,
-  cellOfTab,
-  closeTabInLayout,
   controlOnly,
   detectAgentView,
+  dropLabel,
   echoedKeys,
   effectiveStatus,
   emptyCells,
-  emptyLayout,
   endedTabs,
   externalAction,
   findLinks,
   HANDS_ON_MS,
   isImagePaste,
+  isOuterDrop,
   isPathTitle,
   type KeyInput,
+  keepOnShrink,
   misplacedTabs,
   mouseReport,
   movedTabs,
-  moveTabInLayout,
+  nextBusyProject,
   nextInRecency,
   normalizeCells,
-  normalizeLayout,
+  pathsText,
   placeProject,
   plainTitle,
   projectOf,
@@ -47,11 +47,13 @@ import {
   statusTitle,
   statusView,
   stoppedDevTabs,
+  TAB_DRAG_TYPE,
   terminalKey,
   topStatus,
   URGENCY,
   urgency,
   urgentTab,
+  uriListText,
   type WallCell,
   type WallTabs,
   wallPick,
@@ -110,6 +112,36 @@ describe('isPathTitle', () => {
     expect(isPathTitle('/review src/x.ts')).toBe(false);
     expect(isPathTitle('/add-dir foo/bar')).toBe(false);
     expect(isPathTitle('/compact')).toBe(false);
+  });
+});
+
+describe('dropped and pasted files', () => {
+  it('quotes only the paths that need it and ends with a space', () => {
+    expect(pathsText(['C:\\a\\b.png', 'C:\\Program Files\\x.txt', ''])).toBe(
+      'C:\\a\\b.png "C:\\Program Files\\x.txt" ',
+    );
+    expect(pathsText([])).toBe('');
+  });
+
+  it('takes links from a uri list without comments', () => {
+    expect(uriListText('# from page\r\nhttps://a.dev/x.png\r\nhttps://b.dev\n')).toBe(
+      'https://a.dev/x.png https://b.dev',
+    );
+  });
+
+  it('names what the terminal will take', () => {
+    expect(dropLabel(['Files'], 1)).toBe('Вставить путь');
+    expect(dropLabel(['Files'], 3)).toBe('Вставить пути');
+    expect(dropLabel(['text/uri-list', 'text/plain'], 0)).toBe('Вставить ссылку');
+    expect(dropLabel(['text/plain'], 0)).toBe('Вставить текст');
+  });
+
+  it('accepts files, links and text but leaves tab drags to the cells', () => {
+    expect(isOuterDrop(['Files'])).toBe(true);
+    expect(isOuterDrop(['text/uri-list', 'text/html'])).toBe(true);
+    expect(isOuterDrop(['text/plain'])).toBe(true);
+    expect(isOuterDrop([TAB_DRAG_TYPE, 'text/plain'])).toBe(false);
+    expect(isOuterDrop(['text/html'])).toBe(false);
   });
 });
 
@@ -595,10 +627,42 @@ describe('arrangeCells', () => {
 describe('placeProject', () => {
   const cells = () => emptyCells();
 
-  it('puts a manually opened project into the focused cell and marks it manual', () => {
+  it('puts a project into the first free cell and marks it manual', () => {
     const r = placeProject(cells(), '2x2', 'c3', 'P');
+    expect(r.focus).toBe('c1');
+    expect(r.cells[0]).toMatchObject({ projectPath: 'P', manual: true });
+  });
+
+  it('without auto replaces the focused cell when no cell is free', () => {
+    const start = cells().map((c) => ({ ...c, projectPath: c.id }));
+    const r = placeProject(start, '2x2', 'c3', 'P');
     expect(r.focus).toBe('c3');
-    expect(r.cells[2]).toMatchObject({ projectPath: 'P', manual: true });
+    expect(r.cells.map((c) => c.projectPath)).toEqual(['c1', 'c2', 'P', 'c4']);
+    expect(r.cells[2]).toMatchObject({ manual: true });
+  });
+
+  it('with auto takes an automatic cell and spares the focus and manual cells', () => {
+    const start = cells().map((c) => ({
+      ...c,
+      projectPath: c.id,
+      manual: c.id === 'c1' || c.id === 'c2',
+    }));
+    const r = placeProject(start, '2x2', 'c3', 'P', true);
+    expect(r.focus).toBe('c4');
+    expect(r.cells.map((c) => c.projectPath)).toEqual(['c1', 'c2', 'c3', 'P']);
+  });
+
+  it('with auto still prefers a free cell, then falls back to the unpinned focus', () => {
+    const free = cells().map((c) => (c.id === 'c1' ? { ...c, projectPath: 'A' } : c));
+    expect(placeProject(free, '2x1', 'c1', 'P', true).focus).toBe('c2');
+    const busy = cells().map((c) => ({
+      ...c,
+      projectPath: c.id,
+      manual: c.id !== 'c1',
+    }));
+    const r = placeProject(busy, '2x2', 'c1', 'P', true);
+    expect(r.focus).toBe('c1');
+    expect(r.cells[0]?.projectPath).toBe('P');
   });
 
   it('focuses the cell that already shows the project', () => {
@@ -641,15 +705,43 @@ describe('wall cells', () => {
     expect(cells.slice(1).every((c) => c.projectPath === null)).toBe(true);
   });
 
-  it('restored cells forget their tab and manual mark unless pinned', () => {
+  it('restored cells keep the manual mark and tab of manual and pinned cells only', () => {
     const cells = normalizeCells([
       { projectPath: 'B', manual: true, activeTab: 'b-old' },
       { projectPath: 'S', activeTab: 'dev:S' },
-      { projectPath: 'P', pinned: true, activeTab: 'p1' },
+      { projectPath: 'P', pinned: true, manual: true, activeTab: 'p1' },
+      { projectPath: null, pinned: true, manual: true, activeTab: 'x' },
     ]);
-    expect(cells[0]).toMatchObject({ projectPath: 'B', manual: false, activeTab: undefined });
-    expect(cells[1]).toMatchObject({ projectPath: 'S', activeTab: undefined });
-    expect(cells[2]).toMatchObject({ pinned: true, activeTab: 'p1' });
+    expect(cells[0]).toMatchObject({ projectPath: 'B', manual: true, activeTab: 'b-old' });
+    expect(cells[1]).toMatchObject({ projectPath: 'S', manual: false, activeTab: undefined });
+    expect(cells[2]).toMatchObject({ pinned: true, manual: false, activeTab: 'p1' });
+    expect(cells[3]).toMatchObject({ pinned: false, manual: false, activeTab: undefined });
+  });
+
+  it('keeps the focused cell, pinned and manual ones visible when the layout shrinks', () => {
+    const start = at(['A', 'B', 'C', 'D']).map((c) => (c.id === 'c4' ? { ...c, manual: true } : c));
+    const r = keepOnShrink(start, 1, 'c3');
+    expect(r.cells.map((c) => c.projectPath)).toEqual(['C', 'A', 'B', 'D']);
+    expect(r.cells.map((c) => c.id)).toEqual(['c1', 'c2', 'c3', 'c4']);
+    expect(r.focus).toBe('c1');
+    const manual = keepOnShrink(start, 1, null);
+    expect(manual.cells[0]?.projectPath).toBe('D');
+    const pinned = at(['A', 'B', 'C', 'D']).map((c) =>
+      c.id === 'c2' ? { ...c, pinned: true } : c,
+    );
+    expect(keepOnShrink(pinned, 1, 'c1').cells).toBe(pinned);
+    const pinWins = keepOnShrink(pinned, 1, null);
+    expect(pinWins.cells[0]).toMatchObject({ projectPath: 'B', pinned: true });
+  });
+
+  it('leaves cells untouched when the shown ones already rank first', () => {
+    const start = at(['A', 'B', null, null]);
+    const r = keepOnShrink(start, 2, 'c1');
+    expect(r.cells).toBe(start);
+    expect(r.focus).toBe('c1');
+    const same = keepOnShrink(start, 4, 'c2');
+    expect(same.cells).toBe(start);
+    expect(keepOnShrink(start, 1, 'c1').cells).toBe(start);
   });
 
   it('frees cells of removed projects and keeps the array when nothing changes', () => {
@@ -950,70 +1042,6 @@ describe('Ctrl+Tab order', () => {
   });
 });
 
-describe('project layout', () => {
-  const cell = (tabs: string[], active?: string) => (active ? { tabs, active } : { tabs });
-
-  it('starts empty with one visible cell', () => {
-    expect(normalizeLayout(undefined, [])).toEqual(emptyLayout());
-    expect(normalizeLayout('junk', ['a']).cells[0]).toEqual(cell(['a'], 'a'));
-  });
-
-  it('keeps every open tab in exactly one cell and drops closed ones', () => {
-    const l = normalizeLayout(
-      {
-        layout: '2x1',
-        focus: 1,
-        cells: [cell(['a', 'gone', 'b'], 'gone'), cell(['b', 'c'], 'c'), cell([]), cell([])],
-      },
-      ['a', 'b', 'c', 'd'],
-    );
-    expect(l.cells.map((c) => c.tabs)).toEqual([['a', 'b'], ['c', 'd'], [], []]);
-    expect(l.cells[0]?.active).toBe('b');
-    expect(l.cells[1]?.active).toBe('c');
-    expect(l.cells[2]?.active).toBeUndefined();
-  });
-
-  it('moves tabs of hidden cells into the last visible one', () => {
-    const l = normalizeLayout(
-      {
-        layout: '2x1',
-        focus: 3,
-        cells: [cell(['a']), cell(['b'], 'b'), cell(['c']), cell(['d'])],
-      },
-      ['a', 'b', 'c', 'd'],
-    );
-    expect(l.focus).toBe(1);
-    expect(l.cells.map((c) => c.tabs)).toEqual([['a'], ['b', 'c', 'd'], [], []]);
-    expect(l.cells[1]?.active).toBe('b');
-  });
-
-  it('moves a tab between cells and inside a cell', () => {
-    const base = normalizeLayout(
-      { layout: '2x1', focus: 0, cells: [cell(['claude', 'dev'], 'claude')] },
-      ['claude', 'dev'],
-    );
-    const right = moveTabInLayout(base, 'dev', 1);
-    expect(right.cells.map((c) => c.tabs)).toEqual([['claude'], ['dev'], [], []]);
-    expect(right.cells[1]?.active).toBe('dev');
-    expect(right.focus).toBe(1);
-    expect(cellOfTab(right, 'dev')).toBe(1);
-
-    const back = moveTabInLayout(right, 'dev', 0, 0);
-    expect(back.cells[0]).toEqual(cell(['dev', 'claude'], 'dev'));
-    expect(back.cells[1]).toEqual(cell([]));
-
-    const after = moveTabInLayout(back, 'dev', 0, 2);
-    expect(after.cells[0]?.tabs).toEqual(['claude', 'dev']);
-    expect(moveTabInLayout(after, 'dev', 0, 1).cells[0]?.tabs).toEqual(['claude', 'dev']);
-  });
-
-  it('ignores unknown tabs and clamps the target cell to the layout', () => {
-    const l = normalizeLayout({ layout: '1x1' }, ['a']);
-    expect(moveTabInLayout(l, 'nope', 0)).toBe(l);
-    expect(cellOfTab(moveTabInLayout(l, 'a', 3), 'a')).toBe(0);
-  });
-});
-
 describe('caretStep', () => {
   it('moves the caret by typed characters and back on backspace and arrows', () => {
     expect(caretStep('a')).toBe(1);
@@ -1146,24 +1174,38 @@ describe('ended tabs', () => {
       { path: 'D', key: 'dev:D' },
     ]);
   });
+});
 
-  it('collapses only when closing leaves one filled cell', () => {
-    const l = normalizeLayout(
-      {
-        layout: '2x2',
-        focus: 0,
-        cells: [{ tabs: ['a'] }, { tabs: ['b'] }, { tabs: [] }, { tabs: [] }],
-      },
-      ['a', 'b'],
-    );
-    const one = closeTabInLayout(l, 'a', ['b']);
-    expect(one.layout).toBe('1x1');
-    expect(one.cells[0]).toEqual({ tabs: ['b'], active: 'b' });
-    const lone = normalizeLayout({ layout: '2x1', focus: 0, cells: [{ tabs: ['a', 'b'] }] }, [
-      'a',
-      'b',
-    ]);
-    expect(closeTabInLayout(lone, 'a', ['b']).layout).toBe('2x1');
+describe('nextBusyProject', () => {
+  it('takes the most urgent live shell session of another project, waiting before working', () => {
+    const sessions = [
+      session('w', 'working', 1, 'B'),
+      session('q', 'waiting', 5, 'C'),
+      session('i', 'idle', 0, 'D'),
+    ];
+    expect(nextBusyProject(sessions, {}, 'A')).toEqual({ path: 'C', key: 'q' });
+  });
+
+  it('skips the project being left, exited sessions and external ones', () => {
+    const own = session('own', 'waiting', 1, 'A');
+    const dead = session('dead', 'exited', 1, 'B');
+    const bg: ClaudeSession = { ...session('bg', 'waiting', 1, 'C'), kind: 'external' };
+    const ok = session('ok', 'working', 9, 'D');
+    expect(nextBusyProject([own, dead, bg, ok], {}, 'a')).toEqual({ path: 'D', key: 'ok' });
+  });
+
+  it('returns null when nothing else is alive', () => {
+    expect(nextBusyProject([], {}, 'A')).toBeNull();
+    expect(nextBusyProject([session('own', 'waiting', 1, 'A')], {}, 'A')).toBeNull();
+    expect(nextBusyProject([session('dead', 'exited', 1, 'B')], {}, 'A')).toBeNull();
+    expect(nextBusyProject([session('none', 'waiting', 1, null)], {}, 'A')).toBeNull();
+    expect(
+      nextBusyProject(
+        [session('i', 'idle', 1, 'B'), session('d', 'done', 1, 'C'), session('e', 'error', 1, 'D')],
+        {},
+        'A',
+      ),
+    ).toBeNull();
   });
 });
 

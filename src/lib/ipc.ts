@@ -227,6 +227,14 @@ export async function listClaudeSessions(): Promise<RawClaudeSession[]> {
   return invoke<RawClaudeSession[]>('list_claude_sessions');
 }
 
+export async function clipboardFilePaths(): Promise<string[]> {
+  return invoke<string[]>('clipboard_file_paths');
+}
+
+export async function sessionWindowForeground(pid: number, sessionId: string): Promise<boolean> {
+  return invoke<boolean>('session_window_foreground', { pid, sessionId });
+}
+
 export async function focusSessionWindow(pid: number, sessionId: string): Promise<FocusResult> {
   return invoke<FocusResult>('focus_session_window', { pid, sessionId });
 }

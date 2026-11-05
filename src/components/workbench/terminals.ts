@@ -7,6 +7,7 @@ import { type ILink, type ITerminalOptions, Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import { useEffect, useSyncExternalStore } from 'react';
 import {
+  clipboardFilePaths,
   openTerminalPath,
   resolveTerminalPaths,
   tailDevLog,
@@ -22,16 +23,20 @@ import {
   caretStep,
   controlOnly,
   detectAgentView,
+  dropLabel,
   echoedKeys,
   findLinks,
   IMAGE_PASTE,
   isImagePaste,
+  isOuterDrop,
   isPathTitle,
   mouseReport,
+  pathsText,
   plainTitle,
   type TermLink,
   type TypedKey,
   terminalKey,
+  uriListText,
 } from '@/lib/workbench';
 import { toast } from '@/state/toast-store';
 
@@ -547,11 +552,58 @@ async function clickPaste(entry: Entry) {
     return;
   }
   if (!entry.pasteImage) return;
+  const appPastes = term.modes.mouseTrackingMode !== 'none';
   term.focus();
-  const items = await navigator.clipboard.read();
+  const items = await navigator.clipboard.read().catch(() => [] as ClipboardItem[]);
   const text = items.find((i) => i.types.includes('text/plain'));
-  if (text) term.paste(await (await text.getType('text/plain')).text());
-  else if (items.some((i) => i.types.some((t) => t.startsWith('image/')))) entry.pasteImage();
+  if (text) {
+    if (!appPastes) term.paste(await (await text.getType('text/plain')).text());
+    return;
+  }
+  if (await pasteClipboardFiles(entry)) return;
+  if (items.some((i) => i.types.some((t) => t.startsWith('image/')))) entry.pasteImage();
+}
+
+async function pasteClipboardFiles(entry: Entry): Promise<boolean> {
+  const text = pathsText(await clipboardFilePaths().catch(() => []));
+  if (text) entry.term.paste(text);
+  return !!text;
+}
+
+interface WebviewBridge {
+  postMessageWithAdditionalObjects?: (message: string, objects: FileList) => void;
+}
+
+const webview = (window as { chrome?: { webview?: WebviewBridge } }).chrome?.webview;
+const drops = new Map<number, { entry: Entry; fallback: string }>();
+let dropSeq = 0;
+
+void listen<{ id: string; paths: string[] }>('echo://dropped', ({ payload }) => {
+  const id = Number(payload.id);
+  const drop = drops.get(id);
+  drops.delete(id);
+  if (!drop) return;
+  const text = pathsText(payload.paths) || drop.fallback;
+  if (!text) return;
+  drop.entry.term.focus();
+  drop.entry.term.paste(text);
+});
+
+function dropInto(entry: Entry, data: DataTransfer) {
+  const fallback = uriListText(data.getData('text/uri-list')) || data.getData('text/plain');
+  if (data.files.length > 0 && webview?.postMessageWithAdditionalObjects) {
+    const id = ++dropSeq;
+    drops.set(id, { entry, fallback });
+    try {
+      webview.postMessageWithAdditionalObjects(`echo-drop:${id}`, data.files);
+      return;
+    } catch {
+      drops.delete(id);
+    }
+  }
+  if (!fallback) return;
+  entry.term.focus();
+  entry.term.paste(fallback);
 }
 
 export function mount(entry: Entry, container: HTMLElement) {
@@ -565,13 +617,37 @@ export function mount(entry: Entry, container: HTMLElement) {
       if (!entry.pasteImage || !isImagePaste(e.clipboardData)) return;
       e.preventDefault();
       e.stopImmediatePropagation();
-      entry.pasteImage();
+      void pasteClipboardFiles(entry).then((done) => {
+        if (!done) entry.pasteImage?.();
+      });
     },
     true,
   );
   entry.host.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     clickPaste(entry).catch(() => {});
+  });
+  const zone = () => entry.host.parentElement;
+  const unmark = () => zone()?.removeAttribute('data-drop');
+  entry.host.addEventListener('dragover', (e) => {
+    if (!entry.pasteImage || !e.dataTransfer || !isOuterDrop(e.dataTransfer.types)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+    const files = [...e.dataTransfer.items].filter((i) => i.kind === 'file').length;
+    const el = zone();
+    el?.setAttribute('data-drop-label', dropLabel(e.dataTransfer.types, files));
+    el?.setAttribute('data-drop', '');
+  });
+  entry.host.addEventListener('dragleave', (e) => {
+    if (!(e.relatedTarget instanceof Node && entry.host.contains(e.relatedTarget))) unmark();
+  });
+  entry.host.addEventListener('drop', (e) => {
+    unmark();
+    if (!entry.pasteImage || !e.dataTransfer || !isOuterDrop(e.dataTransfer.types)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dropInto(entry, e.dataTransfer);
   });
   try {
     const gl = new WebglAddon();

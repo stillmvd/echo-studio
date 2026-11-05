@@ -120,6 +120,26 @@ describe('toasts', () => {
     ).toEqual([]);
   });
 
+  it('asks the window of a terminal session, not the Echo tab', () => {
+    const ext = (status: SessionStatus) => ({ ...session('a', status, 'external'), pid: 42 });
+    const toasts = run(
+      { sessions: [ext('working')], devs: [] },
+      { sessions: [ext('waiting')], devs: [] },
+      { unseen: () => false },
+    );
+    expect(toasts.map((t) => [t.body, t.window])).toEqual([
+      ['Фикс — ждёт ответа', { pid: 42, sessionId: 'a' }],
+    ]);
+  });
+
+  it('tells about a turn that broke with an error', () => {
+    const toasts = run(
+      { sessions: [session('b', 'working')], devs: [] },
+      { sessions: [session('b', 'error')], devs: [] },
+    );
+    expect(toasts.map((t) => t.body)).toEqual(['Claude — остановился с ошибкой']);
+  });
+
   it('tells about an automatic restart once', () => {
     const restarted = dev({ state: 'starting', ports: [], restarted: true, startedAt: 5 });
     const toasts = run({ sessions: [], devs: [dev()] }, { sessions: [], devs: [restarted] });

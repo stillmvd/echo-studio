@@ -263,6 +263,32 @@ export function echoedKeys(
   return best;
 }
 
+export function pathsText(paths: string[]): string {
+  const list = paths.filter(Boolean).map((p) => (/[\s"'&()^;,]/.test(p) ? `"${p}"` : p));
+  return list.length ? `${list.join(' ')} ` : '';
+}
+
+export function uriListText(raw: string): string {
+  return raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#'))
+    .join(' ');
+}
+
+export const TAB_DRAG_TYPE = 'text/x-echo-tab';
+
+export function isOuterDrop(types: readonly string[]): boolean {
+  if (types.includes(TAB_DRAG_TYPE)) return false;
+  return types.some((t) => t === 'Files' || t === 'text/uri-list' || t === 'text/plain');
+}
+
+export function dropLabel(types: readonly string[], files: number): string {
+  if (types.includes('Files')) return files > 1 ? 'Вставить пути' : 'Вставить путь';
+  if (types.includes('text/uri-list')) return 'Вставить ссылку';
+  return 'Вставить текст';
+}
+
 export function isImagePaste(data: Pick<DataTransfer, 'getData' | 'types'> | null): boolean {
   if (!data || data.getData('text/plain')) return false;
   return Array.from(data.types).some((t) => t === 'Files' || t.startsWith('image/'));
@@ -696,11 +722,12 @@ export function placeProject(
   layout: WallLayout,
   focus: string | null,
   path: string,
+  auto = false,
 ): { cells: WallCell[]; focus: string } {
   const count = CELL_COUNT[layout];
   const shown = cells.slice(0, count);
   const holds = (c: WallCell) => c.projectPath !== null && samePath(c.projectPath, path);
-  const already = shown.find(holds);
+  const already = shown.find((c) => holds(c) && c.id === focus) ?? shown.find(holds);
   if (already?.pinned || already?.manual) return { cells, focus: already.id };
   if (already) {
     return {
@@ -709,8 +736,9 @@ export function placeProject(
     };
   }
   const target =
-    shown.find((c) => c.id === focus && !c.pinned) ??
     shown.find((c) => c.projectPath === null) ??
+    (auto ? shown.find((c) => !c.pinned && !c.manual && c.id !== focus) : undefined) ??
+    shown.find((c) => c.id === focus && !c.pinned) ??
     shown.find((c) => !c.pinned && !c.manual) ??
     shown.find((c) => !c.pinned) ??
     shown[0];
@@ -737,16 +765,36 @@ export function normalizeCells(cells: unknown): WallCell[] {
   return emptyCells().map((empty, i) => {
     const c = list[i] as Partial<WallCell> | undefined;
     if (!c || typeof c !== 'object') return empty;
-    const pinned = c.pinned === true;
+    const projectPath = typeof c.projectPath === 'string' ? c.projectPath : null;
+    const pinned = projectPath !== null && c.pinned === true;
+    const manual = projectPath !== null && !pinned && c.manual === true;
     return {
       id: empty.id,
-      projectPath: typeof c.projectPath === 'string' ? c.projectPath : null,
+      projectPath,
       pinned,
-      manual: false,
+      manual,
       lastInputAt: 0,
-      activeTab: pinned && typeof c.activeTab === 'string' ? c.activeTab : undefined,
+      activeTab: (pinned || manual) && typeof c.activeTab === 'string' ? c.activeTab : undefined,
     };
   });
+}
+
+export function keepOnShrink(
+  cells: WallCell[],
+  count: number,
+  focus: string | null,
+): { cells: WallCell[]; focus: string | null } {
+  const rank = (c: WallCell) =>
+    c.id === focus && c.projectPath ? 0 : c.pinned ? 1 : c.manual ? 2 : c.projectPath ? 3 : 4;
+  const shown = cells.slice(0, count);
+  const hidden = cells.slice(count);
+  if (!hidden.some((h) => shown.some((s) => rank(h) < rank(s)))) return { cells, focus };
+  const byPos = (a: WallCell, b: WallCell) => cells.indexOf(a) - cells.indexOf(b);
+  const order = [...cells].sort((a, b) => rank(a) - rank(b) || byPos(a, b));
+  const moved = [...order.slice(0, count).sort(byPos), ...order.slice(count).sort(byPos)];
+  const next = moved.map((c, i) => ({ ...c, id: cells[i]?.id ?? c.id }));
+  const at = moved.findIndex((c) => c.id === focus);
+  return { cells: next, focus: at >= 0 ? (next[at]?.id ?? focus) : focus };
 }
 
 export function pruneCells(cells: WallCell[], exists: (path: string) => boolean): WallCell[] {
@@ -756,68 +804,8 @@ export function pruneCells(cells: WallCell[], exists: (path: string) => boolean)
   );
 }
 
-export interface ProjectCell {
-  tabs: string[];
-  active?: string;
-}
-
-export interface ProjectLayout {
-  layout: WallLayout;
-  cells: ProjectCell[];
-  focus: number;
-}
-
-const PROJECT_CELLS = 4;
-
-export function emptyLayout(): ProjectLayout {
-  return {
-    layout: '1x1',
-    cells: Array.from({ length: PROJECT_CELLS }, () => ({ tabs: [] })),
-    focus: 0,
-  };
-}
-
 export function isLayout(value: unknown): value is WallLayout {
   return typeof value === 'string' && Object.hasOwn(CELL_COUNT, value);
-}
-
-export function normalizeLayout(raw: unknown, tabs: string[]): ProjectLayout {
-  const src = (raw && typeof raw === 'object' ? raw : {}) as Partial<ProjectLayout>;
-  const layout = isLayout(src.layout) ? src.layout : '1x1';
-  const count = CELL_COUNT[layout];
-  const focus =
-    typeof src.focus === 'number' && Number.isInteger(src.focus)
-      ? Math.min(Math.max(src.focus, 0), count - 1)
-      : 0;
-  const rawCells = Array.isArray(src.cells) ? src.cells : [];
-  const open = new Set(tabs);
-  const used = new Set<string>();
-  const lists: string[][] = Array.from({ length: PROJECT_CELLS }, () => []);
-  for (let i = 0; i < PROJECT_CELLS; i++) {
-    const list = (rawCells[i] as Partial<ProjectCell> | undefined)?.tabs;
-    if (!Array.isArray(list)) continue;
-    const target = lists[Math.min(i, count - 1)] as string[];
-    for (const key of list) {
-      if (typeof key !== 'string' || !open.has(key) || used.has(key)) continue;
-      used.add(key);
-      target.push(key);
-    }
-  }
-  const fresh = tabs.filter((k) => !used.has(k));
-  (lists[focus] as string[]).push(...new Set(fresh));
-  return {
-    layout,
-    focus,
-    cells: lists.map((list, i) => {
-      const prev = (rawCells[i] as Partial<ProjectCell> | undefined)?.active;
-      const active = typeof prev === 'string' && list.includes(prev) ? prev : list[list.length - 1];
-      return active ? { tabs: list, active } : { tabs: list };
-    }),
-  };
-}
-
-export function cellOfTab(layout: ProjectLayout, key: string): number {
-  return layout.cells.findIndex((c) => c.tabs.includes(key));
 }
 
 export function insertTab(list: string[], key: string, index?: number): string[] {
@@ -827,17 +815,6 @@ export function insertTab(list: string[], key: string, index?: number): string[]
   if (at >= 0 && index !== undefined && at < index) pos -= 1;
   pos = Math.min(Math.max(pos, 0), rest.length);
   return [...rest.slice(0, pos), key, ...rest.slice(pos)];
-}
-
-export function showTabInLayout(layout: ProjectLayout, key: string): ProjectLayout {
-  const i = cellOfTab(layout, key);
-  if (i < 0) return layout;
-  if (layout.focus === i && layout.cells[i]?.active === key) return layout;
-  return {
-    ...layout,
-    focus: i,
-    cells: layout.cells.map((c, j) => (j === i ? { ...c, active: key } : c)),
-  };
 }
 
 export function endedTabs(
@@ -896,65 +873,6 @@ export function misplacedTabs(
   );
 }
 
-function filledCells(layout: ProjectLayout): ProjectCell[] {
-  return layout.cells.slice(0, CELL_COUNT[layout.layout]).filter((c) => c.tabs.length > 0);
-}
-
-export function closeTabInLayout(
-  layout: ProjectLayout,
-  key: string,
-  tabs: string[],
-): ProjectLayout {
-  const from = cellOfTab(layout, key);
-  const cell = layout.cells[from];
-  const at = cell?.tabs.indexOf(key) ?? -1;
-  const next =
-    !cell || cell.active !== key
-      ? normalizeLayout(layout, tabs)
-      : normalizeLayout(
-          {
-            ...layout,
-            cells: layout.cells.map((c, i) =>
-              i === from ? { ...c, active: cell.tabs[at + 1] ?? cell.tabs[at - 1] } : c,
-            ),
-          },
-          tabs,
-        );
-  const left = filledCells(next);
-  if (left.length !== 1 || filledCells(layout).length < 2) return next;
-  return normalizeLayout({ layout: '1x1', focus: 0, cells: left }, tabs);
-}
-
-export function renameTabInLayout(layout: ProjectLayout, from: string, to: string): ProjectLayout {
-  return {
-    ...layout,
-    cells: layout.cells.map((c) => ({
-      ...c,
-      tabs: c.tabs.map((k) => (k === from ? to : k)),
-      ...(c.active === from ? { active: to } : {}),
-    })),
-  };
-}
-
-export function moveTabInLayout(
-  layout: ProjectLayout,
-  key: string,
-  toCell: number,
-  index?: number,
-): ProjectLayout {
-  const from = cellOfTab(layout, key);
-  const to = Math.min(Math.max(toCell, 0), CELL_COUNT[layout.layout] - 1);
-  if (from < 0) return layout;
-  const cells = layout.cells.map((c, i) => {
-    if (i !== from || i === to) return c;
-    const tabs = c.tabs.filter((k) => k !== key);
-    const active = c.active === key ? tabs[tabs.length - 1] : c.active;
-    return active ? { tabs, active } : { tabs };
-  });
-  cells[to] = { tabs: insertTab(cells[to]?.tabs ?? [], key, index), active: key };
-  return { ...layout, cells, focus: to };
-}
-
 export function urgentTab(
   sessions: ClaudeSession[],
   path: string,
@@ -967,6 +885,26 @@ export function urgentTab(
   if (!top) return null;
   const status = effectiveStatus(top, seen);
   return status === 'waiting' || status === 'error' ? top.sessionId : null;
+}
+
+const BUSY: SessionStatus[] = ['waiting', 'working'];
+
+export function nextBusyProject(
+  sessions: ClaudeSession[],
+  seen: Record<string, number>,
+  leaving: string,
+): { path: string; key: string } | null {
+  const top = byUrgency(
+    sessions.filter(
+      (s) =>
+        s.kind === 'shell' &&
+        s.projectPath !== null &&
+        !samePath(s.projectPath, leaving) &&
+        BUSY.includes(effectiveStatus(s, seen)),
+    ),
+    seen,
+  )[0];
+  return top?.projectPath ? { path: top.projectPath, key: top.sessionId } : null;
 }
 
 export function cellShowing(
