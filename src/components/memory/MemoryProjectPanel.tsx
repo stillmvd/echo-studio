@@ -26,7 +26,6 @@ function ProjectRow({
     <li className="shrink-0">
       <button
         type="button"
-        data-tip={project.cwd ?? project.memoryDir}
         aria-current={selected ? 'true' : undefined}
         onClick={onClick}
         className={cn(

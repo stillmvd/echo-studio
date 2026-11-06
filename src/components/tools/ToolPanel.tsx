@@ -206,7 +206,6 @@ export function ToolPanel({
                   type="button"
                   className="tl-cb"
                   aria-pressed={on}
-                  data-tip={path}
                   onClick={() =>
                     setSkipped((s) => (on ? [...s, path] : s.filter((x) => x !== path)))
                   }
@@ -250,7 +249,6 @@ export function ToolPanel({
           <button
             type="button"
             className="tl-btn tl-app"
-            data-tip={'Открыть в Zed'}
             aria-label="Открыть в Zed"
             onClick={() => openTerminalPath(file, null, null).catch(failOpen)}
           >
@@ -261,7 +259,6 @@ export function ToolPanel({
           <button
             type="button"
             className="tl-btn tl-app"
-            data-tip={'Показать в Проводнике'}
             aria-label="Показать в Проводнике"
             onClick={() => revealInExplorer(file).catch(failOpen)}
           >

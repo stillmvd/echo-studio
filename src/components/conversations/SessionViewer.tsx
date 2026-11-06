@@ -166,13 +166,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
     <div className="@container flex h-full flex-col gap-3.5 overflow-hidden px-4 pt-5">
       <header className="flex shrink-0 flex-col gap-3 pr-1 pl-2">
         <div className="flex min-w-0 items-start gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            data-tip="К сессиям"
-            aria-label="К сессиям"
-            className={circle}
-          >
+          <button type="button" onClick={onBack} aria-label="К сессиям" className={circle}>
             <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
           </button>
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -211,7 +205,6 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
                 <button
                   type="button"
                   onClick={() => setQuery('')}
-                  data-tip="Очистить"
                   aria-label="Очистить"
                   className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--color-bg-tertiary)] outline-none hover:text-[var(--color-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
                 >
@@ -236,7 +229,6 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
               <button
                 type="button"
                 onClick={() => setRenameOpen(true)}
-                data-tip="Переименовать"
                 aria-label="Переименовать"
                 className={circle}
               >
@@ -258,7 +250,6 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
                 type="button"
                 onClick={() => setConfirmDelete(true)}
                 disabled={del.isPending}
-                data-tip="Удалить сессию"
                 aria-label="Удалить сессию"
                 className={cn(
                   circle,

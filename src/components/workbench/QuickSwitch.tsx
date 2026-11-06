@@ -8,7 +8,6 @@ import {
   nextInRecency,
   recentSessions,
   STATUS_LABEL,
-  statusTitle,
   statusView,
   wallPick,
 } from '@/lib/workbench';
@@ -153,7 +152,6 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
               tabIndex={-1}
               aria-selected={s.sessionId === open.pick}
               className={cn('wb-swr', s.sessionId === open.pick && 'on')}
-              data-tip={statusTitle(status)}
               onClick={() => jump(s)}
             >
               <ProjectIcon svg={project?.icon ?? null} />

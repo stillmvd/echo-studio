@@ -781,7 +781,6 @@ function HiddenProjects() {
                 <button
                   type="button"
                   onClick={() => unhide(path)}
-                  data-tip={`Вернуть ${path} в дерево`}
                   className={cn(
                     'ml-auto inline-flex h-8 shrink-0 items-center rounded-full px-3 text-xs font-medium whitespace-nowrap text-[var(--color-text-primary)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] active:scale-[.96]',
                     softFill,
@@ -849,12 +848,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function PathValue({ path }: { path: string }) {
   return (
-    <span
-      className="min-w-0 font-mono text-xs font-normal [overflow-wrap:anywhere]"
-      data-tip={path}
-    >
-      {path}
-    </span>
+    <span className="min-w-0 font-mono text-xs font-normal [overflow-wrap:anywhere]">{path}</span>
   );
 }
 
@@ -871,7 +865,6 @@ function RevealButton({
     <button
       type="button"
       onClick={() => reveal(path)}
-      data-tip={path}
       className={cn(
         !inline && 'ml-auto',
         'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full pr-3 pl-2.5 text-xs font-medium whitespace-nowrap text-[var(--color-text-primary)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] active:scale-[.96]',
@@ -1022,14 +1015,13 @@ function Backups({ items }: { items: ConfigBackup[] }) {
                 </span>
                 <span
                   className="min-w-0 truncate font-mono text-[11px] font-normal text-[var(--color-text-muted)]"
-                  data-tip={b.file}
+                  data-tip-trunc
                 >
                   {b.file || fileName(b.backupPath)}
                 </span>
                 <button
                   type="button"
                   onClick={() => reveal(b.backupPath)}
-                  data-tip="Показать в Проводнике"
                   aria-label={`Показать копию ${fileName(b.file)} в Проводнике`}
                   className={cn(
                     'grid h-8 w-8 place-items-center rounded-full text-[var(--color-text-muted)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]',

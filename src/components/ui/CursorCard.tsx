@@ -118,8 +118,10 @@ function onMove(e: globalThis.PointerEvent) {
   const target = e.target instanceof Element ? e.target : null;
   if (m.muted && !m.muted.contains(target)) m.muted = null;
   if (m.on && !m.auto) return;
-  const el = target?.closest<HTMLElement>('[data-tip]') ?? null;
-  const text = el?.dataset.tip?.trim() ?? '';
+  const el = target?.closest<HTMLElement>('[data-tip], [data-tip-trunc]') ?? null;
+  const text =
+    (el?.dataset.tip ?? (el && el.scrollWidth > el.clientWidth ? el.textContent : ''))?.trim() ??
+    '';
   if (!el || !text || el === m.muted) {
     if (m.on && m.auto) hide();
     return;

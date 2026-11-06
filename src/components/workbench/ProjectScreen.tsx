@@ -77,7 +77,6 @@ function PaneView({
       <button
         type="button"
         className="wl-pin"
-        data-tip={zoomed ? 'Вернуть сетку' : 'Развернуть ячейку'}
         aria-label={zoomed ? 'Вернуть сетку' : 'Развернуть ячейку'}
         onClick={onZoom}
       >

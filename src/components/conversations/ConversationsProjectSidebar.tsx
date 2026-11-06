@@ -34,7 +34,6 @@ function SortButton() {
     <>
       <button
         type="button"
-        data-tip="Сортировка"
         aria-label="Сортировка проектов"
         aria-haspopup="menu"
         onClick={(e) => {
@@ -105,7 +104,6 @@ export function ConversationsProjectSidebar({ projects, selectedId, onSelect }: 
               <li key={p.id} className="shrink-0">
                 <button
                   type="button"
-                  data-tip={p.cwd}
                   aria-current={selected ? 'true' : undefined}
                   onClick={() => onSelect(p.id)}
                   onContextMenu={(e) => {

@@ -82,7 +82,6 @@ function ProjectRow({
     <button
       type="button"
       className={cn('wb-tr', on && 'on')}
-      data-tip={project.path}
       onClick={() => {
         select({ kind: 'project', path: project.path });
         onPick();

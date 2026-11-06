@@ -527,7 +527,6 @@ export function MemoryDetail({
             <button
               type="button"
               aria-label="Закрыть"
-              data-tip="Закрыть (Esc)"
               onClick={requestClose}
               className={cn(
                 'grid h-10 w-10 place-items-center rounded-full hover:bg-[var(--color-hover)]',

@@ -51,7 +51,6 @@ export function ProcessLine({
       <button
         type="button"
         className="wb-ib wb-kill"
-        data-tip="Завершить"
         aria-label={`Завершить ${row.name} ${row.pid}`}
         onClick={() => on.kill(row)}
       >

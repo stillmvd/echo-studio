@@ -93,7 +93,6 @@ function PairRow({
       <button
         type="button"
         aria-label={`Не дубли: ${pair.a.name} и ${pair.b.name}`}
-        data-tip="Это разные записи — убрать пару из дублей"
         onClick={onIgnore}
         className={ghostButton}
       >
@@ -251,7 +250,6 @@ function Compare({
         <button
           type="button"
           disabled={merge.isPending}
-          data-tip="Это разные записи — убрать пару из дублей"
           onClick={onIgnore}
           className={cn(ghostButton, 'ml-auto')}
         >

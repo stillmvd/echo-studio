@@ -143,7 +143,7 @@ function TabTitle({ info, projectName }: { info: TabInfo; projectName: string })
   const entry = useClaudeTerm(info.key);
   const own = entry.title && entry.title !== projectName ? entry.title : null;
   const title = info.session?.name || own || agentName(info.session);
-  return <span data-tip={title}>{title}</span>;
+  return <span data-tip-trunc>{title}</span>;
 }
 
 function TabCapsule({
@@ -175,7 +175,6 @@ function TabCapsule({
       ref={ref}
       role="toolbar"
       aria-label={label}
-      data-tip={label}
       className={cn('wb-tab', on && 'on')}
       onContextMenu={onContextMenu}
       {...tabDragProps(drag)}
@@ -382,7 +381,7 @@ export function Cell({
                     onClick={() => activate(devKey)}
                   >
                     <DevDot server={server} />
-                    <span data-tip={project.dev?.command}>{project.dev?.command ?? 'dev'}</span>
+                    <span data-tip-trunc>{project.dev?.command ?? 'dev'}</span>
                   </button>
                   <button
                     type="button"
@@ -429,7 +428,7 @@ export function Cell({
                 <button
                   type="button"
                   className="wb-tx"
-                  data-tip={info.live ? 'Скрыть вкладку — сессия продолжит работать' : 'Закрыть'}
+                  data-tip={info.live ? 'Скрыть вкладку — сессия продолжит работать' : undefined}
                   aria-label={info.live ? 'Скрыть вкладку — сессия продолжит работать' : 'Закрыть'}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -447,7 +446,6 @@ export function Cell({
           <button
             type="button"
             className="wb-tab add"
-            data-tip="Новая вкладка — сессия или dev"
             aria-label="Новая вкладка — сессия или dev"
             aria-haspopup="menu"
             onClick={addMenu}
@@ -461,7 +459,6 @@ export function Cell({
             type="button"
             className="wb-ib"
             aria-haspopup="menu"
-            data-tip={devOn ? 'Меню dev-сервера' : `Меню сессии ${agentName(current?.session)}`}
             aria-label={devOn ? 'Меню dev-сервера' : `Меню сессии ${agentName(current?.session)}`}
             onClick={(e) => {
               if (devOn) devMenu(e);

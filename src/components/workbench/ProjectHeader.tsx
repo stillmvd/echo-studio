@@ -18,11 +18,11 @@ export function ProjectHeader({ project, server, extra }: Props) {
     <div className="wb-ph">
       <ProjectIcon svg={project.icon} size="lg" />
       <span className="wb-pt">
-        <b data-tip={project.path}>{project.name}</b>
+        <b>{project.name}</b>
       </span>
       <span className="wb-gap" />
       {isStatus(git) && (
-        <span className="wb-chip br" data-tip="Ветка, правки, неотправленное">
+        <span className="wb-chip br">
           <GitBranch />
           <b>{git.branch}</b>
           {git.dirty > 0 && <i>±{git.dirty}</i>}

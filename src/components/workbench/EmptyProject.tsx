@@ -115,10 +115,8 @@ export function EmptyProject({
         <div className="wb-eh">
           <ProjectIcon svg={project.icon} size="hero" />
           <div className="wb-et">
-            <b data-tip={project.name}>{project.name}</b>
-            <span className="wb-path" data-tip={project.path}>
-              {shortPath(project.path)}
-            </span>
+            <b>{project.name}</b>
+            <span className="wb-path">{shortPath(project.path)}</span>
           </div>
           <div className="wb-eb">
             <button type="button" className="wb-btn p" disabled={busy} onClick={() => onStart()}>
@@ -156,7 +154,6 @@ export function EmptyProject({
                       className="wb-rr absolute left-0 top-0"
                       style={{ transform: `translateY(${v.start}px)` }}
                       disabled={busy}
-                      data-tip={title(s)}
                       onClick={() => onStart(s.sessionId)}
                       onContextMenu={(e) =>
                         openMenu(

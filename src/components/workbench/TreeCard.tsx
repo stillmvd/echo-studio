@@ -140,7 +140,6 @@ export function TreeCard({ open, onOpen, current, total, query, onQuery, childre
                 type="button"
                 className="wb-tc-tg"
                 aria-label="Очистить поиск"
-                data-tip={'Очистить поиск'}
                 onClick={() => {
                   onQuery('');
                   head.current?.focus();
@@ -152,7 +151,6 @@ export function TreeCard({ open, onOpen, current, total, query, onQuery, childre
             <button
               type="button"
               className="wb-tc-tg"
-              data-tip={'Свернуть все группы'}
               aria-label="Свернуть все группы"
               disabled={!anyOpen}
               onClick={collapseGroups}

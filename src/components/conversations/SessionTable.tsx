@@ -80,10 +80,7 @@ function CheckCircle({
   onToggle: () => void;
 }) {
   return (
-    <label
-      data-tip={label}
-      className="relative grid h-5 w-5 shrink-0 place-items-center rounded-full has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-accent)]"
-    >
+    <label className="relative grid h-5 w-5 shrink-0 place-items-center rounded-full has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-accent)]">
       <input
         type="checkbox"
         aria-label={label}
@@ -359,7 +356,6 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                       <button
                         type="button"
                         onClick={() => setSelectedSessionPath(s.filePath)}
-                        data-tip={`${sessionDisplayTitle(s)}\n${s.sessionId}`}
                         className={cn(
                           'group grid min-w-0 flex-1 items-center gap-x-3 self-stretch text-left text-[13px] font-medium text-[var(--color-text-muted)] tabular-nums outline-none',
                           grid,

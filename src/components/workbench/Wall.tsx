@@ -70,7 +70,6 @@ export function LayoutPicker({
           type="button"
           aria-pressed={key === layout}
           aria-label={`Раскладка ${label}`}
-          data-tip={`Раскладка ${label}`}
           className={cn(key === layout && 'on')}
           onClick={() => setLayout(key)}
         >
@@ -254,7 +253,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
           const strip = !!project && !twin && !quiet;
           const isZoomed = zoomed === c.id;
           const chip = solo ? null : project ? (
-            <span className={cn('wl-cp', strip && 'lead')} data-tip={project.path}>
+            <span className={cn('wl-cp', strip && 'lead')}>
               <ProjectIcon svg={project.icon} />
               <b>{project.name}</b>
             </span>
@@ -267,7 +266,6 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
                 <button
                   type="button"
                   className="wl-pin"
-                  data-tip={isZoomed ? 'Вернуть сетку' : 'Развернуть ячейку'}
                   aria-label={isZoomed ? 'Вернуть сетку' : 'Развернуть ячейку'}
                   onClick={() => toggleZoom(c.id)}
                 >

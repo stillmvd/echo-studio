@@ -65,7 +65,6 @@ export function RestartDev({
     <button
       type="button"
       className={className}
-      data-tip="Перезапустить dev-сервер"
       aria-label="Перезапустить dev-сервер"
       onClick={(e) => {
         e.stopPropagation();
@@ -208,7 +207,6 @@ export function DevCapsule({
           <button
             type="button"
             className="wb-cap-url"
-            data-tip={`Открыть ${url}`}
             onClick={() => dev.openBrowser(project.path)}
           >
             {url}
@@ -221,7 +219,6 @@ export function DevCapsule({
           type="button"
           className="wb-cap-i"
           aria-haspopup="menu"
-          data-tip="Меню dev-сервера"
           aria-label="Меню dev-сервера"
           onClick={onContextMenu}
         >

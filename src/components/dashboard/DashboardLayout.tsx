@@ -207,16 +207,16 @@ function Projects({
           return (
             <span key={path} className="wb-trr">
               <ProjectIcon svg={p?.icon ?? null} />
-              <b data-tip={path}>{p?.name ?? nameOf(path)}</b>
+              <b>{p?.name ?? nameOf(path)}</b>
               <span className="wb-now">
                 {n > 0 && (
-                  <span className="wb-gc" data-tip="Сессии Claude">
+                  <span className="wb-gc">
                     <Bot />
                     {n}
                   </span>
                 )}
                 {dev && (
-                  <span className="wb-gc" data-tip="dev-сервер">
+                  <span className="wb-gc">
                     <Server />
                   </span>
                 )}
