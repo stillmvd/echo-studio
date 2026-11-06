@@ -24,11 +24,11 @@ pub fn run(identifier: &str) -> Option<i32> {
     imp::attach_console();
     let code = match start(identifier, &raw, timeout_arg(&args)) {
         Ok(url) => {
-            println!("{url}");
+            let _ = writeln!(std::io::stdout(), "{url}");
             0
         }
         Err(Fail(code, message)) => {
-            eprintln!("{message}");
+            let _ = writeln!(std::io::stderr(), "{message}");
             code
         }
     };
