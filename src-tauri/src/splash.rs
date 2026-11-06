@@ -37,7 +37,7 @@ pub fn show_main(window: &WebviewWindow) {
         return;
     }
     if BEHIND.load(Ordering::Relaxed) {
-        imp::show_inactive(window);
+        let _ = window.show();
         return;
     }
     let _ = window.show();

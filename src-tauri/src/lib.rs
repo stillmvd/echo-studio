@@ -58,6 +58,8 @@ pub fn run() {
             if window.is_visible().unwrap_or(false) {
                 let _ = window.unminimize();
                 let _ = window.set_focus();
+            } else {
+                splash::show_main(&window);
             }
         }
         let _ = tauri::Emitter::emit(app, EVENT_ACTIVATED, ());
