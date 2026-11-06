@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, Play, RotateCcw } from 'lucide-react';
+import { ChevronDown, Play, RotateCcw, Square } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
@@ -21,8 +21,14 @@ export function closeDevLog(path: string) {
 
 export function showDevLog(path: string) {
   const key = devTabKey(path);
-  useWorkbenchStore.getState().openTab(path, key);
+  useWorkbenchStore.getState().openAside(path, key, true);
   focusSoon(key);
+}
+
+export function placeDevLog(path: string) {
+  const key = devTabKey(path);
+  startTail(key, path, true);
+  useWorkbenchStore.getState().openAside(path, key, false);
 }
 
 export function devActions(
@@ -87,7 +93,6 @@ export function restartDev(
 
 export function useDevControl() {
   const qc = useQueryClient();
-  const openTab = useWorkbenchStore((s) => s.openTab);
   const [stopping, setStopping] = useState<{
     path: string;
     command: string;
@@ -99,12 +104,10 @@ export function useDevControl() {
 
   const start = async (path: string) => {
     setError(null);
-    const key = devTabKey(path);
     try {
       await startDevServer(path);
       await qc.invalidateQueries({ queryKey: ['workbench', 'dev'] });
-      startTail(key, path, true);
-      openTab(path, key);
+      placeDevLog(path);
     } catch (e) {
       fail('dev-сервер не запустился')(e);
     } finally {
@@ -215,6 +218,16 @@ export function DevCapsule({
           <span>{server ? devStatusLabel(server) : ''}</span>
         )}
         <RestartDev project={project} server={server} dev={dev} className="wb-cap-i" />
+        {devRuns(server) && (
+          <button
+            type="button"
+            className="wb-cap-i wb-stop"
+            aria-label="Остановить dev-сервер"
+            onClick={() => dev.askStop(project)}
+          >
+            <Square strokeWidth={2} />
+          </button>
+        )}
         <button
           type="button"
           className="wb-cap-i"

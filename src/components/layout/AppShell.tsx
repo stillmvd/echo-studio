@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { LeaveGuard } from '@/components/memory/LeaveGuard';
 import { CursorLayer } from '@/components/ui/CursorCard';
 import { Toaster } from '@/components/ui/Toaster';
+import { useDevRequests } from '@/components/workbench/useDevRequests';
 import { WorkbenchLayout } from '@/components/workbench/WorkbenchLayout';
 import { useToolingWatch } from '@/hooks/use-tooling';
 import { useUiStore } from '@/state/ui-store';
@@ -17,6 +18,7 @@ import { ToolsLayout } from './ToolsLayout';
 export function AppShell() {
   const activeTab = useUiStore((s) => s.activeTab);
   useToolingWatch();
+  useDevRequests();
 
   return (
     <div className="flex h-screen flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">

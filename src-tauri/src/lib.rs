@@ -1,4 +1,5 @@
 mod agent;
+mod cli;
 mod commands;
 mod conversations;
 mod memory;
@@ -36,10 +37,23 @@ fn toasts_muted() -> bool {
 pub fn run() {
     let context = tauri::generate_context!();
     workbench::dev::set_app_id(&context.config().identifier);
+    if let Some(code) = cli::run(&context.config().identifier) {
+        std::process::exit(code);
+    }
     let splash = splash::show(&context.config().identifier);
     let builder = tauri::Builder::default();
     #[cfg(not(debug_assertions))]
-    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _, _| {
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _| {
+        if let Some(path) = workbench::request::path_arg(&args) {
+            let shown = app
+                .get_webview_window("main")
+                .is_some_and(|w| w.is_visible().unwrap_or(false));
+            if !shown {
+                splash::stay_behind();
+            }
+            workbench::request::handle(app, path);
+            return;
+        }
         if let Some(window) = app.get_webview_window("main") {
             if window.is_visible().unwrap_or(false) {
                 let _ = window.unminimize();
@@ -183,6 +197,7 @@ pub fn run() {
             commands::workbench::tail_dev_log,
             commands::workbench::untail_dev_log,
             commands::workbench::open_dev_server,
+            commands::workbench::take_dev_requests,
             commands::workbench::open_terminal_path,
             commands::workbench::resolve_terminal_paths,
             app_ready,

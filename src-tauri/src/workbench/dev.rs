@@ -29,6 +29,7 @@ use windows_sys::Win32::System::Threading::{
 use super::processes::{self, Proc};
 
 pub const EVENT_DEV: &str = "workbench://dev";
+pub const ALREADY_RUNNING: &str = "dev-сервер уже запущен";
 const JOB_OBJECT_QUERY: u32 = 0x0004;
 const JOB_OBJECT_TERMINATE: u32 = 0x0008;
 const ERROR_ACCESS_DENIED: i32 = 5;
@@ -134,6 +135,7 @@ static TAILS: LazyLock<Mutex<HashMap<u32, Arc<AtomicBool>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 static NEXT_TAIL: AtomicU32 = AtomicU32::new(1);
 static FILES: Mutex<()> = Mutex::new(());
+static LAUNCH: Mutex<()> = Mutex::new(());
 
 const MAIN_ID: &str = "com.stillmvd.echo-studio";
 static APP_ID: OnceLock<String> = OnceLock::new();
@@ -379,6 +381,39 @@ fn update_file(dir: &Path, slug: &str, change: impl FnOnce(&mut DevFile)) -> Res
     write_file(dir, slug, &file)
 }
 
+pub fn status(project_path: &str) -> Option<DevServer> {
+    let dir = state_dir()?;
+    let slug = slug(project_path);
+    let file = read_file(&dir, &slug)?;
+    let pids = running_members(&slug, file.started_at);
+    Some(view(&dir, &slug, file, pids, &listeners(), now_ms()))
+}
+
+fn failure_path(project_path: &str) -> Option<PathBuf> {
+    state_dir().map(|d| d.join(format!("{}.fail", slug(project_path))))
+}
+
+#[cfg_attr(debug_assertions, allow(dead_code))]
+pub fn note_failure(project_path: &str, message: &str) {
+    if let Some(path) = failure_path(project_path) {
+        let _ = path.parent().map(fs::create_dir_all);
+        let _ = fs::write(path, message);
+    }
+}
+
+pub fn take_failure(project_path: &str) -> Option<String> {
+    let path = failure_path(project_path)?;
+    let text = fs::read_to_string(&path).ok()?;
+    let _ = fs::remove_file(path);
+    Some(text)
+}
+
+pub fn log_lines(path: &str, count: usize) -> String {
+    let text = strip_ansi(&log_tail(Path::new(path)).unwrap_or_default());
+    let lines: Vec<&str> = text.lines().filter(|l| !l.trim().is_empty()).collect();
+    lines[lines.len().saturating_sub(count)..].join("\n")
+}
+
 fn server(dir: &Path, slug: &str, file: DevFile, table: &[(u32, u16)], now: u64) -> DevServer {
     let pids = running_members(slug, file.started_at);
     let fresh: Vec<u32> = pids
@@ -396,6 +431,17 @@ fn server(dir: &Path, slug: &str, file: DevFile, table: &[(u32, u16)], now: u64)
             }
         });
     }
+    view(dir, slug, file, pids, table, now)
+}
+
+fn view(
+    dir: &Path,
+    slug: &str,
+    file: DevFile,
+    pids: Vec<u32>,
+    table: &[(u32, u16)],
+    now: u64,
+) -> DevServer {
     let ports = ports_for(&pids, table);
     let exit_code = file.exit_code;
     let state = match (pids.is_empty(), exit_code) {
@@ -712,6 +758,7 @@ fn launch(
     after_crash: Option<i32>,
     restart_after: u64,
 ) -> Result<DevServer, String> {
+    let _launching = LAUNCH.lock().unwrap_or_else(|e| e.into_inner());
     fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let slug = slug(project_path);
     let previous = read_file(dir, &slug);
@@ -722,7 +769,7 @@ fn launch(
             .and_then(|f| f.exit_code)
             .is_some_and(|code| code != 0);
         if !failed || !ports_for(&members, &listeners()).is_empty() {
-            return Err("dev-сервер уже запущен".into());
+            return Err(ALREADY_RUNNING.into());
         }
         stop_in(dir, project_path)?;
     }
@@ -1042,6 +1089,10 @@ pub fn first_port(project_path: &str) -> Option<u16> {
     let server = list()
         .into_iter()
         .find(|s| slug == self::slug(&s.project_path))?;
+    server_port(&server)
+}
+
+pub fn server_port(server: &DevServer) -> Option<u16> {
     log_tail(Path::new(&server.log))
         .and_then(|text| port_from_log(&text, &server.ports))
         .or_else(|| server.ports.first().copied())

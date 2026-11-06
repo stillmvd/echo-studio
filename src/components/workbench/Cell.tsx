@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Ellipsis, Plus, X } from 'lucide-react';
+import { Ellipsis, Plus, Square, X } from 'lucide-react';
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
@@ -28,6 +28,7 @@ import {
   type MoveTargets,
   newTabMenu,
   sessionTabMenu,
+  type ZoomToggle,
 } from './menus';
 import { StatusIcon } from './StatusIcon';
 import {
@@ -201,6 +202,7 @@ interface Props {
   moveTargets?: (key: string) => MoveTargets | null;
   lead?: ReactNode;
   tail?: ReactNode;
+  zoom?: ZoomToggle | null;
   onStripDoubleClick?: () => void;
 }
 
@@ -221,6 +223,7 @@ export function Cell({
   moveTargets = () => null,
   lead,
   tail,
+  zoom = null,
   onStripDoubleClick,
 }: Props) {
   const isFocused = visible && focused;
@@ -286,17 +289,21 @@ export function Cell({
       devTabMenu({
         server,
         cells: moveTargets(devKey),
+        zoom,
         actions: devActions(dev, project, server),
       }),
     );
+
+  const canStop = (info: TabInfo) => info.live && !!info.shortId && restart.running !== info.key;
 
   const tabMenu = (e: React.MouseEvent, info: TabInfo) =>
     openMenu(
       e,
       sessionTabMenu({
         live: info.live,
-        canStop: info.live && !!info.shortId && restart.running !== info.key,
+        canStop: canStop(info),
         cells: moveTargets(info.key),
+        zoom,
         actions: {
           restart: () =>
             info.shortId &&
@@ -310,7 +317,6 @@ export function Cell({
             restart.running !== info.key && info.shortId && reattach(info.key, info.shortId),
           copyId: () => copyText(info.key),
           hide: () => close(info),
-          stop: () => stop.ask(info.shortId),
         },
       }),
     );
@@ -454,6 +460,26 @@ export function Cell({
           </button>
         )}
         <span className="wb-gap" />
+        {devOn && devRuns(server) && (
+          <button
+            type="button"
+            className="wb-ib wb-stop"
+            aria-label="Остановить dev-сервер"
+            onClick={() => dev.askStop(project)}
+          >
+            <Square strokeWidth={2} />
+          </button>
+        )}
+        {!devOn && current && canStop(current) && (
+          <button
+            type="button"
+            className="wb-ib wb-stop"
+            aria-label="Завершить сессию"
+            onClick={() => stop.ask(current.shortId)}
+          >
+            <Square strokeWidth={2} />
+          </button>
+        )}
         {(devOn || current) && (
           <button
             type="button"

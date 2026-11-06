@@ -311,6 +311,15 @@ export async function startDevServer(projectPath: string): Promise<DevServer> {
   return invoke<DevServer>('start_dev_server', { projectPath });
 }
 
+export interface DevRequest {
+  projectPath: string;
+  error: string | null;
+}
+
+export async function takeDevRequests(): Promise<DevRequest[]> {
+  return invoke<DevRequest[]>('take_dev_requests');
+}
+
 export async function stopDevServer(projectPath: string): Promise<void> {
   return invoke('stop_dev_server', { projectPath });
 }

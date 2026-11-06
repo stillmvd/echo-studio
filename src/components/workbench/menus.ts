@@ -9,7 +9,9 @@ import {
   Globe,
   History,
   Link,
+  Maximize2,
   MessageSquare,
+  Minimize2,
   MoveRight,
   Play,
   Plus,
@@ -124,6 +126,20 @@ function moveTo(cells: MoveTargets | null): MenuItem[] {
   ];
 }
 
+export interface ZoomToggle {
+  zoomed: boolean;
+  toggle: () => void;
+}
+
+function zoomItem(zoom: ZoomToggle | null): MenuItem[] {
+  if (!zoom) return [];
+  return [
+    zoom.zoomed
+      ? action('Вернуть сетку', Minimize2, zoom.toggle)
+      : action('Развернуть ячейку', Maximize2, zoom.toggle),
+  ];
+}
+
 export function newTabMenu({
   agent,
   busy,
@@ -161,17 +177,18 @@ export function sessionTabMenu({
   live,
   canStop,
   cells,
+  zoom = null,
   actions,
 }: {
   live: boolean;
   canStop: boolean;
   cells: MoveTargets | null;
+  zoom?: ZoomToggle | null;
   actions: {
     restart?: () => void;
     reconnect: () => void;
     copyId: () => void;
     hide: () => void;
-    stop: () => void;
   };
 }): MenuItem[] {
   const restart =
@@ -181,30 +198,30 @@ export function sessionTabMenu({
     ...restart,
     ...(canStop ? [action('Переподключить', Link, actions.reconnect)] : []),
     ...moveTo(cells),
+    ...zoomItem(zoom),
     action('Копировать id', Copy, actions.copyId),
     action(live ? 'Скрыть вкладку' : 'Закрыть вкладку', X, actions.hide),
-    ...(canStop ? danger('Завершить сессию', Square, actions.stop) : []),
   ];
 }
 
 export function devTabMenu({
   server,
   cells = null,
+  zoom = null,
   actions,
 }: {
   server: DevServer | undefined;
   cells?: MoveTargets | null;
+  zoom?: ZoomToggle | null;
   actions: {
     openBrowser: () => void;
     restart: () => void;
     copyUrl: () => void;
     closeLog: () => void;
     showLog?: () => void;
-    stop: () => void;
   };
 }): MenuItem[] {
   const url = devUrl(server);
-  const runs = devRuns(server);
   const port = server?.ports[0];
   return [
     { heading: 'Сайт' },
@@ -215,13 +232,11 @@ export function devTabMenu({
     action('Копировать адрес', Link, actions.copyUrl, { disabled: !url }),
     { heading: 'Сервер' },
     ...moveTo(cells),
+    ...zoomItem(zoom),
     actions.showLog
       ? action('Лог', SquareTerminal, actions.showLog)
       : action('Закрыть лог', X, actions.closeLog),
-    runs
-      ? action('Перезапустить', RotateCcw, actions.restart)
-      : action('Запустить', Play, actions.restart),
-    ...(runs ? danger('Остановить', Square, actions.stop) : []),
+    ...(devRuns(server) ? [action('Перезапустить', RotateCcw, actions.restart)] : []),
   ];
 }
 

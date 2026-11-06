@@ -185,7 +185,7 @@
 .wb-btn.sm { height: 32px; padding: 0 12px; gap: 6px; font-size: 13px; }
 .wb-btn.sm svg { width: 14px; height: 14px; }
 .wb-stop svg { color: var(--danger); }
-.wb-stop:hover { background: var(--color-danger-soft); }
+.wb-stop:hover, .wb-ib.wb-stop:hover, .wb-cap-i.wb-stop:hover { background: var(--color-danger-soft); }
 
 .wb-cap { flex: none; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 4px 0 12px; border-radius: 999px; background: var(--raised); font-size: 13px; font-weight: 500; white-space: nowrap; }
 .wb-cap b { font-weight: 700; }

@@ -1,4 +1,3 @@
-import { Maximize2, Minimize2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { emptyGrid, type Pane, splitEdges } from '@/lib/project-grid';
@@ -72,17 +71,6 @@ function PaneView({
   const own = sessions.filter((s) => pane.tabs.includes(s.sessionId));
   const waiting = !focused && topStatus(own, seen) === 'waiting';
   const touch = () => focusPane(path, index, pane.active);
-  const tail =
-    count > 1 ? (
-      <button
-        type="button"
-        className="wl-pin"
-        aria-label={zoomed ? 'Вернуть сетку' : 'Развернуть ячейку'}
-        onClick={onZoom}
-      >
-        {zoomed ? <Minimize2 strokeWidth={2} /> : <Maximize2 strokeWidth={2} />}
-      </button>
-    ) : null;
   return (
     <div
       className={cn('wl-cell', waiting && 'wait', drop.hover.center && 'drop')}
@@ -108,7 +96,7 @@ function PaneView({
           moveTargets={(key) =>
             count > 1 ? { count, current: index, move: (j) => moveTab(path, key, j) } : null
           }
-          tail={tail}
+          zoom={count > 1 ? { zoomed, toggle: onZoom } : null}
           onStripDoubleClick={count > 1 ? onZoom : undefined}
         />
       </div>

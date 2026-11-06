@@ -142,14 +142,16 @@ describe('projectMenu', () => {
 });
 
 describe('sessionTabMenu', () => {
-  const actions = { reconnect: noop, copyId: noop, hide: noop, stop: noop };
+  const actions = { reconnect: noop, copyId: noop, hide: noop };
 
-  it('a live session ends with a dangerous stop', () => {
+  it('a live session menu has no stop, the stop is a button next to it', () => {
     const move = vi.fn();
+    const zoom = vi.fn();
     const items = sessionTabMenu({
       live: true,
       canStop: true,
       cells: { count: 4, current: 1, move },
+      zoom: { zoomed: false, toggle: zoom },
       actions: { ...actions, restart: noop },
     });
     expect(labels(items)).toEqual([
@@ -157,12 +159,23 @@ describe('sessionTabMenu', () => {
       'Перезапустить',
       'Переподключить',
       'В ячейку…',
+      'Развернуть ячейку',
       'Копировать id',
       'Скрыть вкладку',
-      '—',
-      'Завершить сессию',
     ]);
-    expect(items.at(-1)).toMatchObject({ label: 'Завершить сессию', danger: true });
+    find(items, 'Развернуть ячейку')?.onSelect();
+    expect(zoom).toHaveBeenCalled();
+    expect(
+      labels(
+        sessionTabMenu({
+          live: true,
+          canStop: true,
+          cells: null,
+          zoom: { zoomed: true, toggle: noop },
+          actions,
+        }),
+      ),
+    ).toContain('Вернуть сетку');
     const sub = items.find((i): i is ContextSubmenu => typeof i === 'object' && 'items' in i);
     if (!sub) throw new Error('нет подменю');
     expect(labels(sub.items)).toEqual(['Ячейка 1', 'Ячейка 2 (x)', 'Ячейка 3', 'Ячейка 4']);
@@ -190,7 +203,7 @@ describe('sessionTabMenu', () => {
 });
 
 describe('devTabMenu', () => {
-  const actions = { openBrowser: noop, restart: noop, copyUrl: noop, closeLog: noop, stop: noop };
+  const actions = { openBrowser: noop, restart: noop, copyUrl: noop, closeLog: noop };
 
   it('without a port the browser and the address are disabled', () => {
     expect(labels(devTabMenu({ server: server('starting'), actions }))).toEqual([
@@ -200,8 +213,6 @@ describe('devTabMenu', () => {
       '# Сервер',
       'Закрыть лог',
       'Перезапустить',
-      '—',
-      'Остановить',
     ]);
     expect(
       labels(devTabMenu({ server: server('starting'), actions: { ...actions, showLog: noop } })),
@@ -223,14 +234,13 @@ describe('devTabMenu', () => {
     expect(move).toHaveBeenCalledWith(1);
   });
 
-  it('a stopped server can be started, not stopped', () => {
+  it('start and stop are buttons, not menu items', () => {
     expect(labels(devTabMenu({ server: server('stopped'), actions }))).toEqual([
       '# Сайт',
       'Открыть в браузере (x)',
       'Копировать адрес (x)',
       '# Сервер',
       'Закрыть лог',
-      'Запустить',
     ]);
   });
 });

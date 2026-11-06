@@ -18,14 +18,25 @@ impl Splash {
     }
 }
 
+static BEHIND: AtomicBool = AtomicBool::new(false);
+
 pub fn background() -> bool {
     cfg!(debug_assertions) && std::env::var_os("ECHO_BACKGROUND_DEV").is_some()
+}
+
+#[cfg_attr(debug_assertions, allow(dead_code))]
+pub fn stay_behind() {
+    BEHIND.store(true, Ordering::Relaxed);
 }
 
 pub fn show_main(window: &WebviewWindow) {
     if background() {
         let _ = window.set_skip_taskbar(true);
         let _ = window.set_position(tauri::PhysicalPosition::new(-20000, 100));
+        imp::show_inactive(window);
+        return;
+    }
+    if BEHIND.load(Ordering::Relaxed) {
         imp::show_inactive(window);
         return;
     }

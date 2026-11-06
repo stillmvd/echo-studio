@@ -7,6 +7,7 @@ import {
   normalizeGrid,
   openInGrid,
   type ProjectGrid,
+  placeAside,
   resizeGrid,
   splitEdges,
   splitGrid,
@@ -16,6 +17,44 @@ const grid = (...panes: string[][]): ProjectGrid => ({
   layout: panes.length > 2 ? '2x2' : panes.length > 1 ? '2x1' : '1x1',
   panes: panes.map((tabs) => ({ tabs, active: tabs[tabs.length - 1] })),
   focus: 0,
+});
+
+describe('placeAside', () => {
+  it('splits a single busy pane and puts dev on the right, focus stays', () => {
+    const g = placeAside(grid(['s']), 'dev', false);
+    expect(g.layout).toBe('2x1');
+    expect(g.panes).toEqual([
+      { tabs: ['s'], active: 's' },
+      { tabs: ['dev'], active: 'dev' },
+    ]);
+    expect(g.focus).toBe(0);
+    expect(placeAside(grid(['s']), 'dev', true).focus).toBe(1);
+  });
+
+  it('uses an empty single pane as is', () => {
+    expect(placeAside(emptyGrid(), 'dev', false)).toEqual({
+      layout: '1x1',
+      panes: [{ tabs: ['dev'], active: 'dev' }],
+      focus: 0,
+    });
+  });
+
+  it('goes to the right pane even when the left one is focused', () => {
+    const g = placeAside(grid(['s'], ['t']), 'dev', false);
+    expect(g.panes[1]).toEqual({ tabs: ['t', 'dev'], active: 'dev' });
+    expect(g.focus).toBe(0);
+  });
+
+  it('prefers an empty right pane in 2x2', () => {
+    const g = placeAside(grid(['a'], ['b'], ['c'], []), 'dev', false);
+    expect(g.panes[3]).toEqual({ tabs: ['dev'], active: 'dev' });
+  });
+
+  it('leaves an open dev where it is', () => {
+    const g = placeAside({ ...grid(['s', 'dev'], ['t']), focus: 1 }, 'dev', true);
+    expect(g.panes.map((p) => p.tabs)).toEqual([['s', 'dev'], ['t']]);
+    expect(g.focus).toBe(0);
+  });
 });
 
 describe('project grid', () => {

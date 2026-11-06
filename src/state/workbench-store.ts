@@ -14,6 +14,7 @@ import {
   openInGrid,
   type ProjectGrid,
   paneOf,
+  placeAside,
   renameInGrid,
   resizeGrid,
   splitGrid,
@@ -59,6 +60,7 @@ interface WorkbenchState {
   toggleGroup: (name: string) => void;
   collapseGroups: () => void;
   openTab: (path: string, key: string) => void;
+  openAside: (path: string, key: string, focus: boolean) => void;
   adoptTabs: (entries: { path: string; key: string }[]) => void;
   closeTab: (path: string, key: string) => void;
   renameTab: (path: string, from: string, to: string) => void;
@@ -258,6 +260,12 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       openTab: (path, key) =>
         set((s) => ({
           ...put(s, path, openInGrid(gridOf(s, path), key)),
+          autoTabs: s.autoTabs.filter((k) => k !== key),
+          recency: bump(s.recency, key),
+        })),
+      openAside: (path, key, focus) =>
+        set((s) => ({
+          ...put(s, path, placeAside(gridOf(s, path), key, focus)),
           autoTabs: s.autoTabs.filter((k) => k !== key),
           recency: bump(s.recency, key),
         })),

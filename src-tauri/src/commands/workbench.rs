@@ -434,6 +434,11 @@ pub async fn untail_dev_log(subscription_id: u32) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn take_dev_requests() -> Vec<crate::workbench::request::DevRequest> {
+    crate::workbench::request::take()
+}
+
+#[tauri::command]
 pub async fn open_dev_server(project_path: String) -> Result<(), String> {
     let port = blocking(move || {
         let project = projects::ensure_project(&project_path)?;

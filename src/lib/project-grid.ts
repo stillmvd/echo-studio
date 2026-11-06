@@ -54,6 +54,35 @@ export function openInGrid(g: ProjectGrid, key: string): ProjectGrid {
   return { ...g, focus, panes: withPane(g, focus, { tabs: [...pane.tabs, key], active: key }) };
 }
 
+function asideIndex(g: ProjectGrid): number {
+  const right = g.panes.flatMap((_, i) => (i % 2 === 1 ? [i] : []));
+  return right.find((i) => g.panes[i]?.tabs.length === 0) ?? right[0] ?? 0;
+}
+
+export function placeAside(g: ProjectGrid, key: string, focus: boolean): ProjectGrid {
+  const at = paneOf(g, key);
+  if (at >= 0) {
+    const pane = g.panes[at] as Pane;
+    return { ...g, focus: focus ? at : g.focus, panes: withPane(g, at, { ...pane, active: key }) };
+  }
+  if (g.layout === '1x1') {
+    const own = g.panes[0] ?? { tabs: [] };
+    if (own.tabs.length === 0) return { ...g, focus: 0, panes: [{ tabs: [key], active: key }] };
+    return {
+      layout: '2x1',
+      panes: [own, { tabs: [key], active: key }],
+      focus: focus ? 1 : 0,
+    };
+  }
+  const to = asideIndex(g);
+  const pane = g.panes[to] ?? { tabs: [] };
+  return {
+    ...g,
+    focus: focus ? to : g.focus,
+    panes: withPane(g, to, { tabs: [...pane.tabs, key], active: key }),
+  };
+}
+
 export function adoptInGrid(g: ProjectGrid, key: string): ProjectGrid {
   if (paneOf(g, key) >= 0) return g;
   const focus = clampFocus(g, g.focus);

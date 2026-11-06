@@ -7,6 +7,8 @@ pub mod limits;
 pub mod links;
 pub mod processes;
 pub mod projects;
+#[cfg_attr(debug_assertions, allow(dead_code))]
+pub mod request;
 pub mod sessions;
 pub mod terminal;
 pub mod usage;
