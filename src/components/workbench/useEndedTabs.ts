@@ -44,14 +44,8 @@ export function useEndedTabs(sessions: ClaudeSession[]) {
       const [from, key, to] = triple.split('\n');
       if (!from || !key || !to) continue;
       const st = useWorkbenchStore.getState();
-      if (!st.tabs[to]?.includes(key)) {
-        const prev = st.activeTab[to];
-        const { cells, focusCell } = st;
-        st.openTab(to, key);
-        if (prev) st.activate(to, prev);
-        useWorkbenchStore.setState({ cells, focusCell });
-      }
       st.closeTab(from, key);
+      st.adoptTabs([{ path: to, key }]);
     }
   }, [rehome]);
 
@@ -69,7 +63,7 @@ export function useEndedTabs(sessions: ClaudeSession[]) {
     }
     const st = useWorkbenchStore.getState();
     const { view } = st;
-    if (view.kind !== 'project') return;
+    if (view.kind !== 'project' || st.auto) return;
     if (![...emptied].some((p) => samePath(p, view.path))) return;
     const next = nextBusyProject(liveRef.current, st.seen, view.path);
     if (!next) return;
@@ -88,10 +82,8 @@ export function useEndedTabs(sessions: ClaudeSession[]) {
         st.renameTab(path, key, to);
         continue;
       }
-      const prev = st.activeTab[path];
       dispose(key);
       st.closeTab(path, key);
-      if (prev && prev !== key) st.activate(path, prev);
     }
   }, [move]);
 }

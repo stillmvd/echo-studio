@@ -7,7 +7,9 @@ import {
   FolderOpen,
   Folders,
   Globe,
+  History,
   Link,
+  MessageSquare,
   MoveRight,
   Play,
   Plus,
@@ -89,10 +91,11 @@ export function projectMenu({
       : []
     : ['separator', ...kind, action('Скрыть из дерева', EyeOff, actions.hide)];
   return [
+    { heading: project.folder ? 'Папка' : 'Проект' },
     action(project.folder ? 'Открыть папку' : 'Открыть', ArrowRight, actions.open),
     action(`Новая сессия ${agent}`, Plus, actions.newSession, { disabled: busy }),
     ...dev,
-    'separator',
+    { heading: 'Файлы' },
     action('В Проводнике', FolderOpen, actions.reveal),
     action('Открыть в VS Code', Code, actions.vscode),
     action('Копировать путь', Copy, actions.copyPath),
@@ -121,6 +124,39 @@ function moveTo(cells: MoveTargets | null): MenuItem[] {
   ];
 }
 
+export function newTabMenu({
+  agent,
+  busy,
+  dev,
+  resume,
+  actions,
+}: {
+  agent: string;
+  busy: boolean;
+  dev: { runs: boolean; open: () => void; start: () => void } | null;
+  resume: { title: string; start: () => void }[];
+  actions: { newSession: () => void };
+}): MenuItem[] {
+  const devItem: MenuItem[] = !dev
+    ? []
+    : [dev.runs ? action('Лог', SquareTerminal, dev.open) : action('Запустить', Play, dev.start)];
+  const resumeItem: MenuItem[] = resume.length
+    ? [
+        {
+          label: 'Продолжить',
+          icon: icon(History),
+          items: resume.map((r) => action(r.title, MessageSquare, r.start, { disabled: busy })),
+        },
+      ]
+    : [];
+  return [
+    { heading: 'Сессия' },
+    action(`Новая сессия ${agent}`, Plus, actions.newSession, { disabled: busy }),
+    ...resumeItem,
+    ...(devItem.length ? [{ heading: 'Сервер' }, ...devItem] : []),
+  ];
+}
+
 export function sessionTabMenu({
   live,
   canStop,
@@ -130,11 +166,21 @@ export function sessionTabMenu({
   live: boolean;
   canStop: boolean;
   cells: MoveTargets | null;
-  actions: { reconnect: () => void; copyId: () => void; hide: () => void; stop: () => void };
+  actions: {
+    restart?: () => void;
+    reconnect: () => void;
+    copyId: () => void;
+    hide: () => void;
+    stop: () => void;
+  };
 }): MenuItem[] {
+  const restart =
+    canStop && actions.restart ? [action('Перезапустить', RotateCcw, actions.restart)] : [];
   return [
+    { heading: 'Сессия' },
+    ...restart,
+    ...(canStop ? [action('Переподключить', Link, actions.reconnect)] : []),
     ...moveTo(cells),
-    ...(canStop ? [action('Переподключить', RotateCcw, actions.reconnect)] : []),
     action('Копировать id', Copy, actions.copyId),
     action(live ? 'Скрыть вкладку' : 'Закрыть вкладку', X, actions.hide),
     ...(canStop ? danger('Завершить сессию', Square, actions.stop) : []),
@@ -153,19 +199,28 @@ export function devTabMenu({
     restart: () => void;
     copyUrl: () => void;
     closeLog: () => void;
+    showLog?: () => void;
     stop: () => void;
   };
 }): MenuItem[] {
   const url = devUrl(server);
   const runs = devRuns(server);
+  const port = server?.ports[0];
   return [
+    { heading: 'Сайт' },
+    action('Открыть в браузере', Globe, actions.openBrowser, {
+      disabled: !url,
+      hint: port ? `:${port}` : undefined,
+    }),
+    action('Копировать адрес', Link, actions.copyUrl, { disabled: !url }),
+    { heading: 'Сервер' },
     ...moveTo(cells),
-    action('Открыть в браузере', Globe, actions.openBrowser, { disabled: !url }),
+    actions.showLog
+      ? action('Лог', SquareTerminal, actions.showLog)
+      : action('Закрыть лог', X, actions.closeLog),
     runs
       ? action('Перезапустить', RotateCcw, actions.restart)
       : action('Запустить', Play, actions.restart),
-    action('Копировать адрес', Link, actions.copyUrl, { disabled: !url }),
-    action('Закрыть лог', X, actions.closeLog),
     ...(runs ? danger('Остановить', Square, actions.stop) : []),
   ];
 }

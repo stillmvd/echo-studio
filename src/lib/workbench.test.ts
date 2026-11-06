@@ -34,7 +34,6 @@ import {
   nextInRecency,
   normalizeCells,
   pathsText,
-  placeProject,
   plainTitle,
   projectOf,
   pruneCells,
@@ -624,79 +623,9 @@ describe('arrangeCells', () => {
   });
 });
 
-describe('placeProject', () => {
-  const cells = () => emptyCells();
-
-  it('puts a project into the first free cell and marks it manual', () => {
-    const r = placeProject(cells(), '2x2', 'c3', 'P');
-    expect(r.focus).toBe('c1');
-    expect(r.cells[0]).toMatchObject({ projectPath: 'P', manual: true });
-  });
-
-  it('without auto replaces the focused cell when no cell is free', () => {
-    const start = cells().map((c) => ({ ...c, projectPath: c.id }));
-    const r = placeProject(start, '2x2', 'c3', 'P');
-    expect(r.focus).toBe('c3');
-    expect(r.cells.map((c) => c.projectPath)).toEqual(['c1', 'c2', 'P', 'c4']);
-    expect(r.cells[2]).toMatchObject({ manual: true });
-  });
-
-  it('with auto takes an automatic cell and spares the focus and manual cells', () => {
-    const start = cells().map((c) => ({
-      ...c,
-      projectPath: c.id,
-      manual: c.id === 'c1' || c.id === 'c2',
-    }));
-    const r = placeProject(start, '2x2', 'c3', 'P', true);
-    expect(r.focus).toBe('c4');
-    expect(r.cells.map((c) => c.projectPath)).toEqual(['c1', 'c2', 'c3', 'P']);
-  });
-
-  it('with auto still prefers a free cell, then falls back to the unpinned focus', () => {
-    const free = cells().map((c) => (c.id === 'c1' ? { ...c, projectPath: 'A' } : c));
-    expect(placeProject(free, '2x1', 'c1', 'P', true).focus).toBe('c2');
-    const busy = cells().map((c) => ({
-      ...c,
-      projectPath: c.id,
-      manual: c.id !== 'c1',
-    }));
-    const r = placeProject(busy, '2x2', 'c1', 'P', true);
-    expect(r.focus).toBe('c1');
-    expect(r.cells[0]?.projectPath).toBe('P');
-  });
-
-  it('focuses the cell that already shows the project', () => {
-    const start = cells().map((c) => (c.id === 'c2' ? { ...c, projectPath: 'c:\\p\\' } : c));
-    const r = placeProject(start, '2x2', 'c1', 'C:\\P');
-    expect(r.focus).toBe('c2');
-    expect(r.cells[1]).toMatchObject({ projectPath: 'c:\\p\\', manual: true });
-    const held = start.map((c) => (c.id === 'c2' ? { ...c, pinned: true } : c));
-    expect(placeProject(held, '2x2', 'c1', 'C:\\P').cells).toBe(held);
-  });
-
-  it('skips a pinned focus and cells beyond the layout', () => {
-    const start = cells().map((c) =>
-      c.id === 'c1' ? { ...c, projectPath: 'A', pinned: true } : { ...c, projectPath: c.id },
-    );
-    const r = placeProject(start, '2x1', 'c1', 'P');
-    expect(r.focus).toBe('c2');
-    expect(r.cells.map((c) => c.projectPath)).toEqual(['A', 'P', 'c3', 'c4']);
-  });
-});
-
 describe('wall cells', () => {
   const at = (paths: (string | null)[]) =>
     emptyCells().map((c, i) => ({ ...c, projectPath: paths[i] ?? null }));
-
-  it('moves a project from a hidden cell instead of showing it twice', () => {
-    const start = at(['B', null, 'A', null]).map((c) =>
-      c.id === 'c3' ? { ...c, activeTab: 't1', manual: true } : c,
-    );
-    const r = placeProject(start, '1x1', 'c1', 'A');
-    expect(r.cells.map((c) => c.projectPath)).toEqual(['A', null, null, null]);
-    expect(r.cells[0]?.activeTab).toBeUndefined();
-    expect(r.cells[2]).toMatchObject({ manual: false, pinned: false });
-  });
 
   it('normalizes broken persisted cells to four free ones', () => {
     expect(normalizeCells(undefined).map((c) => c.id)).toEqual(['c1', 'c2', 'c3', 'c4']);

@@ -1,8 +1,11 @@
-.cc-layer { position: fixed; top: 0; left: 0; z-index: 60; pointer-events: none; will-change: transform; }
-.cc-card { position: relative; overflow: hidden; width: max-content; max-width: 300px; padding: 12px 14px; border-radius: 16px; background: color-mix(in srgb, var(--color-bg-secondary) 90%, transparent); backdrop-filter: blur(14px) saturate(1.6); box-shadow: 0 12px 32px rgb(0 0 0 / 32%), 0 0 0 1px var(--color-border); color: var(--color-text-primary); font-size: 13px; font-weight: 500; line-height: 1.45; transform-origin: bottom; opacity: 0; scale: 0.7; transition: opacity 160ms cubic-bezier(0.22, 1, 0.36, 1), scale 220ms cubic-bezier(0.22, 1, 0.36, 1); }
-.cc-card::after { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size: 140px; opacity: 0.32; mix-blend-mode: overlay; }
+.cc-layer { position: fixed; top: 0; left: 0; z-index: 100; pointer-events: none; will-change: transform; }
+.cc-card { position: relative; overflow: hidden; width: max-content; max-width: 300px; padding: 12px 14px; border-radius: 16px; background: color-mix(in srgb, var(--color-bg-secondary) 62%, transparent); backdrop-filter: blur(5px) saturate(1.4); box-shadow: 0 1px 3px rgb(0 0 0 / 40%), 0 8px 18px rgb(0 0 0 / 35%), 0 0 0 1px var(--color-border); color: var(--color-text-primary); font-size: 13px; font-weight: 500; line-height: 1.45; transform-origin: bottom; opacity: 0; scale: 0.7; transition: opacity 160ms cubic-bezier(0.22, 1, 0.36, 1), scale 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+.cc-card::after { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size: 140px; opacity: 0.55; mix-blend-mode: soft-light; }
 .cc-layer[data-on] .cc-card { opacity: 1; scale: 1; }
+.cc-card[data-side="right"] { transform-origin: left; }
 .cc-card b { font-weight: 700; }
+.cc-card:is([data-kind="text"], [data-kind="line"]) { max-width: 320px; white-space: pre-line; overflow-wrap: anywhere; }
+.cc-card[data-kind="line"] { padding: 8px 12px; border-radius: 12px; font-size: 12.5px; font-weight: 600; line-height: 1.35; }
 .tt { --tt-a: var(--color-accent); width: 220px; display: flex; flex-direction: column; gap: 10px; font-size: 12px; line-height: 1.35; }
 .tt-h { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .tt-h b { min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -21,14 +24,6 @@
 .tt-dots i { flex: 1; height: 9px; }
 .tt :is(.tt-leg, .tt-dots) i.n { background: var(--tt-a); }
 .tt :is(.tt-leg, .tt-dots) i.c { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tt-a) 55%, transparent); }
-.tip { position: fixed; z-index: 100; pointer-events: none; }
-.tip-box { width: max-content; white-space: nowrap; padding: 6px 10px; border-radius: 12px; background: var(--color-bg-tertiary); box-shadow: 0 0 0 1px var(--color-border), 0 10px 26px rgb(0 0 0 / 34%); color: var(--color-text-primary); font-size: 12.5px; font-weight: 500; animation: tip-in 280ms var(--ease-trail); }
-.tip[data-side="right"] .tip-box { translate: 0 -50%; transform-origin: left center; --tip-from: -4px 0; }
-.tip[data-side="bottom"] .tip-box { translate: -50% 0; transform-origin: top center; --tip-from: 0 -4px; }
-.tip-l { display: block; animation: tip-l 220ms var(--ease-trail); }
-@keyframes tip-in { from { opacity: 0; scale: 0.96; transform: translate(var(--tip-from)); } }
-@keyframes tip-l { from { opacity: 0; transform: translateY(4px); } }
 @media (prefers-reduced-motion: reduce) {
   .cc-card { scale: 1; transition: opacity 160ms linear; }
-  .tip-box, .tip-l { animation: none; }
 }

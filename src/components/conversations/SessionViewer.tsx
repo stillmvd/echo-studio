@@ -169,7 +169,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
           <button
             type="button"
             onClick={onBack}
-            title="К сессиям"
+            data-tip="К сессиям"
             aria-label="К сессиям"
             className={circle}
           >
@@ -211,7 +211,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
                 <button
                   type="button"
                   onClick={() => setQuery('')}
-                  title="Очистить"
+                  data-tip="Очистить"
                   aria-label="Очистить"
                   className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--color-bg-tertiary)] outline-none hover:text-[var(--color-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
                 >
@@ -225,7 +225,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
                 onClick={() => {
                   openInClaudeCode(session.cwd ?? undefined, session.sessionId).catch(() => {});
                 }}
-                title={kimi ? 'Открыть в Kimi' : 'Открыть в Claude'}
+                data-tip={kimi ? 'Открыть в Kimi' : 'Открыть в Claude'}
                 aria-label={kimi ? 'Открыть в Kimi' : 'Открыть в Claude'}
                 className={circle}
               >
@@ -236,7 +236,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
               <button
                 type="button"
                 onClick={() => setRenameOpen(true)}
-                title="Переименовать"
+                data-tip="Переименовать"
                 aria-label="Переименовать"
                 className={circle}
               >
@@ -247,8 +247,8 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
               type="button"
               onClick={onExport}
               disabled={!events.data || events.data.length === 0}
-              title="Экспорт в Markdown"
-              aria-label="Экспорт в Markdown"
+              data-tip="Сохранить в Markdown"
+              aria-label="Сохранить в Markdown"
               className={circle}
             >
               <Download className="h-4 w-4" strokeWidth={1.75} />
@@ -258,7 +258,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
                 type="button"
                 onClick={() => setConfirmDelete(true)}
                 disabled={del.isPending}
-                title="Удалить сессию"
+                data-tip="Удалить сессию"
                 aria-label="Удалить сессию"
                 className={cn(
                   circle,
@@ -520,7 +520,7 @@ function CommandPill({ name, output }: { name: string; output: string | null }) 
   return (
     <div className="flex justify-center">
       <span
-        title={output ?? undefined}
+        data-tip={output ?? undefined}
         className="inline-flex h-[30px] max-w-full items-center gap-2 truncate rounded-full bg-[var(--color-bg-tertiary)] px-3.5 text-xs font-medium text-[var(--color-text-muted)]"
       >
         {name && <b className="font-mono font-normal text-[var(--color-text-primary)]">{name}</b>}

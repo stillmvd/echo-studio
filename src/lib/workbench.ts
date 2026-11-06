@@ -717,45 +717,6 @@ export function emptyCells(): WallCell[] {
   }));
 }
 
-export function placeProject(
-  cells: WallCell[],
-  layout: WallLayout,
-  focus: string | null,
-  path: string,
-  auto = false,
-): { cells: WallCell[]; focus: string } {
-  const count = CELL_COUNT[layout];
-  const shown = cells.slice(0, count);
-  const holds = (c: WallCell) => c.projectPath !== null && samePath(c.projectPath, path);
-  const already = shown.find((c) => holds(c) && c.id === focus) ?? shown.find(holds);
-  if (already?.pinned || already?.manual) return { cells, focus: already.id };
-  if (already) {
-    return {
-      cells: cells.map((c) => (c.id === already.id ? { ...c, manual: true } : c)),
-      focus: already.id,
-    };
-  }
-  const target =
-    shown.find((c) => c.projectPath === null) ??
-    (auto ? shown.find((c) => !c.pinned && !c.manual && c.id !== focus) : undefined) ??
-    shown.find((c) => c.id === focus && !c.pinned) ??
-    shown.find((c) => !c.pinned && !c.manual) ??
-    shown.find((c) => !c.pinned) ??
-    shown[0];
-  if (!target) return { cells, focus: focus ?? '' };
-  const hidden = cells.slice(count).find(holds);
-  return {
-    cells: cells.map((c) => {
-      if (c.id === target.id) {
-        return { ...c, projectPath: path, manual: true, activeTab: undefined };
-      }
-      if (c.id === hidden?.id) return { ...c, ...freeCell() };
-      return c;
-    }),
-    focus: target.id,
-  };
-}
-
 function freeCell(): Omit<WallCell, 'id'> {
   return { projectPath: null, pinned: false, manual: false, lastInputAt: 0, activeTab: undefined };
 }
@@ -905,18 +866,6 @@ export function nextBusyProject(
     seen,
   )[0];
   return top?.projectPath ? { path: top.projectPath, key: top.sessionId } : null;
-}
-
-export function cellShowing(
-  cells: WallCell[],
-  layout: WallLayout,
-  focus: string | null,
-  path: string,
-): string | null {
-  const holders = cells
-    .slice(0, CELL_COUNT[layout])
-    .filter((c) => c.projectPath !== null && samePath(c.projectPath, path));
-  return (holders.find((c) => c.id === focus) ?? holders[0])?.id ?? null;
 }
 
 export type TabPick = (path: string, held: boolean, list: string[]) => (string | undefined)[];

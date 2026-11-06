@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Columns2, Grid2x2, Maximize2, Minimize2, Pin, Plus, Square } from 'lucide-react';
 import { type HTMLAttributes, type ReactNode, useEffect, useState } from 'react';
-import { useAgentName } from '@/hooks/use-agent';
 import { cn } from '@/lib/cn';
 import { listClaudeSessions, listWorkbenchProjects } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
@@ -56,9 +55,13 @@ const LAYOUTS: { key: WallLayout; label: string; Icon: typeof Square }[] = [
   { key: '2x2', label: '2×2', Icon: Grid2x2 },
 ];
 
-export function LayoutPicker() {
-  const layout = useWorkbenchStore((s) => s.layout);
-  const setLayout = useWorkbenchStore((s) => s.setLayout);
+export function LayoutPicker({
+  layout,
+  setLayout,
+}: {
+  layout: WallLayout;
+  setLayout: (layout: WallLayout) => void;
+}) {
   return (
     <fieldset className="wl-seg" aria-label="Раскладка экрана">
       {LAYOUTS.map(({ key, label, Icon }) => (
@@ -67,7 +70,7 @@ export function LayoutPicker() {
           type="button"
           aria-pressed={key === layout}
           aria-label={`Раскладка ${label}`}
-          title={`Раскладка ${label}`}
+          data-tip={`Раскладка ${label}`}
           className={cn(key === layout && 'on')}
           onClick={() => setLayout(key)}
         >
@@ -79,27 +82,20 @@ export function LayoutPicker() {
 }
 
 function showUrgent(moved: WallCell[], sessions: ClaudeSession[], seen: Record<string, number>) {
-  useWorkbenchStore.setState((s) => {
-    const tabs = { ...s.tabs };
-    const activeTab = { ...s.activeTab };
-    const picked = new Map<string, string>();
-    const autoTabs = [...s.autoTabs];
-    for (const c of moved) {
-      if (!c.projectPath) continue;
-      const path = c.projectPath;
-      const key = c.activeTab ?? urgentTab(sessions, path, seen);
-      if (!key) continue;
-      const list = tabs[path] ?? [];
-      if (!list.includes(key)) autoTabs.push(key);
-      tabs[path] = list.includes(key) ? list : [...list, key];
-      activeTab[path] = key;
-      picked.set(c.id, key);
-    }
-    const cells = s.cells.map((c) =>
-      moved.some((m) => m.id === c.id) ? { ...c, activeTab: picked.get(c.id) ?? c.activeTab } : c,
-    );
-    return { tabs, activeTab, cells, autoTabs };
-  });
+  const picked = new Map<string, { path: string; key: string }>();
+  for (const c of moved) {
+    if (!c.projectPath) continue;
+    const key = c.activeTab ?? urgentTab(sessions, c.projectPath, seen);
+    if (key) picked.set(c.id, { path: c.projectPath, key });
+  }
+  const st = useWorkbenchStore.getState();
+  st.adoptTabs([...picked.values()]);
+  useWorkbenchStore.setState((s) => ({
+    cells: s.cells.map((c) => {
+      const p = picked.get(c.id);
+      return p ? { ...c, activeTab: p.key } : c;
+    }),
+  }));
 }
 
 function usePruneCells(projects: Map<string, WorkbenchProject>) {
@@ -147,9 +143,9 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
   const touchCell = useWorkbenchStore((s) => s.touchCell);
   const activateCell = useWorkbenchStore((s) => s.activateCell);
   const moveTabToWallCell = useWorkbenchStore((s) => s.moveTabToWallCell);
+  const setLayout = useWorkbenchStore((s) => s.setLayout);
   const tabs = useWorkbenchStore((s) => s.tabs);
   const activeTab = useWorkbenchStore((s) => s.activeTab);
-  const auto = useWorkbenchStore((s) => s.auto);
   const [tick, setTick] = useState(0);
   const [zoom, setZoom] = useState<string | null>(null);
   const ready =
@@ -163,7 +159,6 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
 
   useEffect(() => {
     void tick;
-    if (!auto) return;
     const now = Date.now();
     const r = arrangeWall(cells, count, sessions, now, focusCell, seen, {
       tabsOf: (path) => tabs[path] ?? [],
@@ -188,20 +183,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
     if (!delay) return;
     const t = setTimeout(() => setTick((n) => n + 1), delay);
     return () => clearTimeout(t);
-  }, [
-    cells,
-    count,
-    sessions,
-    seen,
-    focusCell,
-    setCells,
-    tick,
-    hidden,
-    tabs,
-    activeTab,
-    ready,
-    auto,
-  ]);
+  }, [cells, count, sessions, seen, focusCell, setCells, tick, hidden, tabs, activeTab, ready]);
 
   const shown = cells.slice(0, count);
   const activeOf = (path: string) => activeTab[path];
@@ -218,7 +200,6 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
   }, [focusShown, fallbackFocus]);
   const focused = shown.find((c) => c.id === focusCell)?.projectPath ?? null;
   const focusedProject = focused ? projects.get(focused) : undefined;
-  const agent = useAgentName();
   const startIn = (id: string, path: string, resume?: string) =>
     void onStart(path, resume).then((key) => {
       if (key) activateCell(id, key);
@@ -237,30 +218,19 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
         <ProjectHeader
           project={focusedProject}
           server={devServers.find((d) => samePath(d.projectPath, focusedProject.path))}
-          busy={busy}
-          onClaude={() => startIn(focusCell, focusedProject.path)}
           extra={
             <>
               <ModeSwitch />
-              <LayoutPicker />
+              <LayoutPicker layout={layout} setLayout={setLayout} />
             </>
           }
         />
       ) : (
         <div className="wl-tb">
-          <span className="wb-dim">Выберите проект слева или ячейку в сетке</span>
+          <span className="wb-dim">Сюда встают сессии, которые ждут ответа</span>
           <span className="wb-gap" />
           <ModeSwitch />
-          <LayoutPicker />
-          <button
-            type="button"
-            className="wb-btn p"
-            title={`Новая сессия ${agent} в выбранной ячейке`}
-            disabled
-          >
-            <Plus strokeWidth={2} />
-            <span className="wb-btn-l">{agent}</span>
-          </button>
+          <LayoutPicker layout={layout} setLayout={setLayout} />
         </div>
       )}
       <div className={`wl-grid l-${zoomed ? '1x1' : layout}`}>
@@ -284,7 +254,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
           const strip = !!project && !twin && !quiet;
           const isZoomed = zoomed === c.id;
           const chip = solo ? null : project ? (
-            <span className={cn('wl-cp', strip && 'lead')} title={project.path}>
+            <span className={cn('wl-cp', strip && 'lead')} data-tip={project.path}>
               <ProjectIcon svg={project.icon} />
               <b>{project.name}</b>
             </span>
@@ -297,7 +267,8 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
                 <button
                   type="button"
                   className="wl-pin"
-                  title={isZoomed ? 'Вернуть сетку' : 'Развернуть ячейку'}
+                  data-tip={isZoomed ? 'Вернуть сетку' : 'Развернуть ячейку'}
+                  aria-label={isZoomed ? 'Вернуть сетку' : 'Развернуть ячейку'}
                   onClick={() => toggleZoom(c.id)}
                 >
                   {isZoomed ? <Minimize2 strokeWidth={2} /> : <Maximize2 strokeWidth={2} />}
@@ -307,7 +278,14 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
                 type="button"
                 className={cn('wl-pin', lock === 'pinned' && 'on', lock === 'manual' && 'half')}
                 aria-pressed={lock !== 'auto'}
-                title={
+                data-tip={
+                  lock === 'pinned'
+                    ? 'Открепить ячейку'
+                    : lock === 'manual'
+                      ? 'Открыта вручную — вернуть авто-порядок'
+                      : 'Закрепить ячейку'
+                }
+                aria-label={
                   lock === 'pinned'
                     ? 'Открепить ячейку'
                     : lock === 'manual'
@@ -351,9 +329,7 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
                     {!project && (
                       <div className="wl-free">
                         <span className="wb-dim">
-                          {auto
-                            ? 'Сюда встанет сессия, которая ждёт ответа или работает'
-                            : 'Выберите проект слева или перетащите сюда вкладку'}
+                          Сюда встанет сессия, которая ждёт ответа или работает
                         </span>
                       </div>
                     )}
@@ -368,12 +344,14 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
                         server={devServers.find((d) => samePath(d.projectPath, project.path))}
                         visible={!hidden}
                         focused={c.id === focusCell}
+                        keys={keys[i] ? [keys[i]] : []}
                         activeKey={keys[i] ?? undefined}
                         onActivate={(key) => activateCell(c.id, key)}
                         busy={busy}
                         onStart={(resume) => onStart(project.path, resume)}
                         cellId={c.id}
                         insertAt={insertAt}
+                        canAdd={false}
                       />
                     )}
                     {project && quiet && (

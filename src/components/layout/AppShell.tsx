@@ -3,7 +3,6 @@ import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { LeaveGuard } from '@/components/memory/LeaveGuard';
 import { CursorLayer } from '@/components/ui/CursorCard';
 import { Toaster } from '@/components/ui/Toaster';
-import { TooltipLayer } from '@/components/ui/Tooltip';
 import { WorkbenchLayout } from '@/components/workbench/WorkbenchLayout';
 import { useToolingWatch } from '@/hooks/use-tooling';
 import { useUiStore } from '@/state/ui-store';
@@ -36,7 +35,6 @@ export function AppShell() {
       <LeaveGuard />
       <CloseGuard />
       <CursorLayer />
-      <TooltipLayer />
       <UpdateToast lang="ru" />
       <Toaster />
     </div>

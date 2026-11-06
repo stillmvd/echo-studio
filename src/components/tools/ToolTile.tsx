@@ -69,7 +69,7 @@ export function Runs({ m, max, now }: { m: TileModel; max: number; now: number }
   const width = Math.max(4, (Math.log1p(m.usage.count) / Math.log1p(Math.max(max, 1))) * 100);
   return (
     <>
-      <span className="tl-bar" title={`последний ${ago(m.usage.last, now)}`}>
+      <span className="tl-bar" data-tip={`последний ${ago(m.usage.last, now)}`}>
         <i style={{ width: `${width}%` }} />
       </span>
       <b>{formatCount(m.usage.count)}</b>

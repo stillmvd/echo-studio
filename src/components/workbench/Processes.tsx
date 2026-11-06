@@ -42,7 +42,7 @@ export function ProcessLine({
       role="toolbar"
       aria-label={`${row.name} ${row.pid}`}
       className={cn('wb-pr', nested && 'in', row.orphan && 'orphan')}
-      title={row.commandLine}
+      data-tip={row.commandLine}
       onContextMenu={(e) => on.menu(e, row)}
     >
       <b>{row.name}</b>
@@ -51,7 +51,7 @@ export function ProcessLine({
       <button
         type="button"
         className="wb-ib wb-kill"
-        title="Завершить"
+        data-tip="Завершить"
         aria-label={`Завершить ${row.name} ${row.pid}`}
         onClick={() => on.kill(row)}
       >

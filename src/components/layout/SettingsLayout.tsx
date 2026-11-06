@@ -512,7 +512,7 @@ function AgentChoice({ current, agents }: { current: AgentKind; agents: AgentPro
                   type="button"
                   aria-pressed={on}
                   aria-disabled={missing || busy}
-                  title={
+                  data-tip={
                     missing
                       ? `${a.exe} не найден ни в PATH, ни в ${a.bin}`
                       : !on && a.kind === 'kimi'
@@ -781,7 +781,7 @@ function HiddenProjects() {
                 <button
                   type="button"
                   onClick={() => unhide(path)}
-                  title={`Вернуть ${path} в дерево`}
+                  data-tip={`Вернуть ${path} в дерево`}
                   className={cn(
                     'ml-auto inline-flex h-8 shrink-0 items-center rounded-full px-3 text-xs font-medium whitespace-nowrap text-[var(--color-text-primary)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] active:scale-[.96]',
                     softFill,
@@ -849,7 +849,10 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function PathValue({ path }: { path: string }) {
   return (
-    <span className="min-w-0 font-mono text-xs font-normal [overflow-wrap:anywhere]" title={path}>
+    <span
+      className="min-w-0 font-mono text-xs font-normal [overflow-wrap:anywhere]"
+      data-tip={path}
+    >
       {path}
     </span>
   );
@@ -868,7 +871,7 @@ function RevealButton({
     <button
       type="button"
       onClick={() => reveal(path)}
-      title={path}
+      data-tip={path}
       className={cn(
         !inline && 'ml-auto',
         'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full pr-3 pl-2.5 text-xs font-medium whitespace-nowrap text-[var(--color-text-primary)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] active:scale-[.96]',
@@ -895,7 +898,7 @@ function Tag({
 }) {
   return (
     <span
-      title={title}
+      data-tip={title}
       className={cn(
         'inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap',
         mono && 'font-mono font-normal',
@@ -1019,14 +1022,14 @@ function Backups({ items }: { items: ConfigBackup[] }) {
                 </span>
                 <span
                   className="min-w-0 truncate font-mono text-[11px] font-normal text-[var(--color-text-muted)]"
-                  title={b.file}
+                  data-tip={b.file}
                 >
                   {b.file || fileName(b.backupPath)}
                 </span>
                 <button
                   type="button"
                   onClick={() => reveal(b.backupPath)}
-                  title="В Проводнике"
+                  data-tip="Показать в Проводнике"
                   aria-label={`Показать копию ${fileName(b.file)} в Проводнике`}
                   className={cn(
                     'grid h-8 w-8 place-items-center rounded-full text-[var(--color-text-muted)] transition-colors duration-200 ease-[var(--ease-trail)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-primary)]',

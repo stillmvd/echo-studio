@@ -53,7 +53,7 @@ export function NoticeStep({ notice }: { notice: AgentNotice }) {
           </span>
           {notice.status && (
             <span
-              title={notice.status}
+              data-tip={notice.status}
               className={cn('ml-1 h-2 w-2 shrink-0 rounded-full', dotTone(notice.status))}
             />
           )}

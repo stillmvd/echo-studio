@@ -97,7 +97,7 @@ export function ClaudeTerminal({
         <div className="wb-term-note dt" role="status">
           <span>
             Отключено от сессии
-            <span className="wb-dim" title={statusTitle(status)}>
+            <span className="wb-dim" data-tip={statusTitle(status)}>
               {' '}
               · {STATUS_LABEL[status]}
             </span>

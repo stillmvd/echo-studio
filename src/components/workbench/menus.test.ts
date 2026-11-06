@@ -29,11 +29,15 @@ describe('conversationMenu', () => {
 });
 const labels = (items: MenuItem[]) =>
   items.map((i) =>
-    i === 'separator' ? '—' : i.label + ('onSelect' in i && i.disabled ? ' (x)' : ''),
+    i === 'separator'
+      ? '—'
+      : 'heading' in i
+        ? `# ${i.heading}`
+        : i.label + ('onSelect' in i && i.disabled ? ' (x)' : ''),
   );
 const find = (items: MenuItem[], label: string) =>
   items.find(
-    (i): i is ContextMenuAction => i !== 'separator' && i.label === label && 'onSelect' in i,
+    (i): i is ContextMenuAction => i !== 'separator' && 'onSelect' in i && i.label === label,
   );
 
 const project: WorkbenchProject = {
@@ -74,10 +78,11 @@ const projectActions = {
 describe('projectMenu', () => {
   it('lists project actions with hide last under a line', () => {
     expect(labels(projectMenu({ project, server: undefined, actions: projectActions }))).toEqual([
+      '# Проект',
       'Открыть',
       'Новая сессия Claude',
       'Запустить dev',
-      '—',
+      '# Файлы',
       'В Проводнике',
       'Открыть в VS Code',
       'Копировать путь',
@@ -91,9 +96,10 @@ describe('projectMenu', () => {
     expect(
       labels(projectMenu({ project: folder, server: undefined, actions: projectActions })),
     ).toEqual([
+      '# Папка',
       'Открыть папку',
       'Новая сессия Claude',
-      '—',
+      '# Файлы',
       'В Проводнике',
       'Открыть в VS Code',
       'Копировать путь',
@@ -144,18 +150,21 @@ describe('sessionTabMenu', () => {
       live: true,
       canStop: true,
       cells: { count: 4, current: 1, move },
-      actions,
+      actions: { ...actions, restart: noop },
     });
     expect(labels(items)).toEqual([
-      'В ячейку…',
+      '# Сессия',
+      'Перезапустить',
       'Переподключить',
+      'В ячейку…',
       'Копировать id',
       'Скрыть вкладку',
       '—',
       'Завершить сессию',
     ]);
     expect(items.at(-1)).toMatchObject({ label: 'Завершить сессию', danger: true });
-    const sub = items[0] as ContextSubmenu;
+    const sub = items.find((i): i is ContextSubmenu => typeof i === 'object' && 'items' in i);
+    if (!sub) throw new Error('нет подменю');
     expect(labels(sub.items)).toEqual(['Ячейка 1', 'Ячейка 2 (x)', 'Ячейка 3', 'Ячейка 4']);
     find(sub.items, 'Ячейка 3')?.onSelect();
     expect(move).toHaveBeenCalledWith(2);
@@ -173,6 +182,7 @@ describe('sessionTabMenu', () => {
 
   it('an ended session can only be copied and closed', () => {
     expect(labels(sessionTabMenu({ live: false, canStop: false, cells: null, actions }))).toEqual([
+      '# Сессия',
       'Копировать id',
       'Закрыть вкладку',
     ]);
@@ -184,13 +194,18 @@ describe('devTabMenu', () => {
 
   it('without a port the browser and the address are disabled', () => {
     expect(labels(devTabMenu({ server: server('starting'), actions }))).toEqual([
+      '# Сайт',
       'Открыть в браузере (x)',
-      'Перезапустить',
       'Копировать адрес (x)',
+      '# Сервер',
       'Закрыть лог',
+      'Перезапустить',
       '—',
       'Остановить',
     ]);
+    expect(
+      labels(devTabMenu({ server: server('starting'), actions: { ...actions, showLog: noop } })),
+    ).toContain('Лог');
   });
 
   it('a dev tab can be moved to another cell', () => {
@@ -200,7 +215,8 @@ describe('devTabMenu', () => {
       cells: { count: 2, current: 0, move },
       actions,
     });
-    const sub = items[0] as ContextSubmenu;
+    const sub = items.find((i): i is ContextSubmenu => typeof i === 'object' && 'items' in i);
+    if (!sub) throw new Error('нет подменю');
     expect(sub.label).toBe('В ячейку…');
     expect(labels(sub.items)).toEqual(['Ячейка 1 (x)', 'Ячейка 2']);
     find(sub.items, 'Ячейка 2')?.onSelect();
@@ -209,10 +225,12 @@ describe('devTabMenu', () => {
 
   it('a stopped server can be started, not stopped', () => {
     expect(labels(devTabMenu({ server: server('stopped'), actions }))).toEqual([
+      '# Сайт',
       'Открыть в браузере (x)',
-      'Запустить',
       'Копировать адрес (x)',
+      '# Сервер',
       'Закрыть лог',
+      'Запустить',
     ]);
   });
 });

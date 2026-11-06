@@ -1,6 +1,5 @@
 import { ChevronDown, ChevronsDownUp, ChevronUp, Search, X } from 'lucide-react';
 import { type ReactNode, useEffect, useRef } from 'react';
-import { tooltip } from '@/components/ui/Tooltip';
 import { cn } from '@/lib/cn';
 import { plural } from '@/lib/memory';
 import type { WorkbenchProject } from '@/lib/types';
@@ -141,7 +140,7 @@ export function TreeCard({ open, onOpen, current, total, query, onQuery, childre
                 type="button"
                 className="wb-tc-tg"
                 aria-label="Очистить поиск"
-                {...tooltip('Очистить поиск', 'bottom')}
+                data-tip={'Очистить поиск'}
                 onClick={() => {
                   onQuery('');
                   head.current?.focus();
@@ -153,7 +152,7 @@ export function TreeCard({ open, onOpen, current, total, query, onQuery, childre
             <button
               type="button"
               className="wb-tc-tg"
-              {...tooltip('Свернуть все группы', 'bottom')}
+              data-tip={'Свернуть все группы'}
               aria-label="Свернуть все группы"
               disabled={!anyOpen}
               onClick={collapseGroups}
@@ -163,7 +162,7 @@ export function TreeCard({ open, onOpen, current, total, query, onQuery, childre
             <button
               type="button"
               className="wb-tc-tg"
-              {...tooltip('Скрыть дерево', 'bottom')}
+              data-tip={'Скрыть дерево'}
               aria-label="Скрыть дерево"
               onClick={() => onOpen(false)}
             >

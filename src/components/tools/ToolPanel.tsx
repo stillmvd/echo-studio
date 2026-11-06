@@ -4,7 +4,6 @@ import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 're
 import explorerIcon from '@/assets/apps/explorer.png';
 import zedIcon from '@/assets/apps/zed.png';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { tooltip } from '@/components/ui/Tooltip';
 import { useAgents } from '@/hooks/use-agent';
 import { useDeleteTool, useSetToolEnabled, useUpdateTool, useUpdating } from '@/hooks/use-tooling';
 import { plural } from '@/lib/dashboard';
@@ -207,7 +206,7 @@ export function ToolPanel({
                   type="button"
                   className="tl-cb"
                   aria-pressed={on}
-                  title={path}
+                  data-tip={path}
                   onClick={() =>
                     setSkipped((s) => (on ? [...s, path] : s.filter((x) => x !== path)))
                   }
@@ -226,10 +225,7 @@ export function ToolPanel({
           <button
             type="button"
             className="tl-btn p"
-            {...tooltip(
-              'exe обновляется вручную: скачай новую версию на странице релиза',
-              'bottom',
-            )}
+            data-tip="exe обновляется вручную: новая версия — на странице релиза"
             onClick={() => m.update?.url && open(m.update.url).catch(failOpen)}
           >
             Открыть релиз {m.update.latest}
@@ -254,7 +250,7 @@ export function ToolPanel({
           <button
             type="button"
             className="tl-btn tl-app"
-            {...tooltip('Открыть в Zed', 'bottom')}
+            data-tip={'Открыть в Zed'}
             aria-label="Открыть в Zed"
             onClick={() => openTerminalPath(file, null, null).catch(failOpen)}
           >
@@ -265,7 +261,7 @@ export function ToolPanel({
           <button
             type="button"
             className="tl-btn tl-app"
-            {...tooltip('Показать в Проводнике', 'bottom')}
+            data-tip={'Показать в Проводнике'}
             aria-label="Показать в Проводнике"
             onClick={() => revealInExplorer(file).catch(failOpen)}
           >

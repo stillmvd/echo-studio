@@ -61,14 +61,14 @@ export function LogTerminal({ tabKey, projectPath, visible, server, onRestart }:
             <button
               type="button"
               className="wb-btn"
-              title="К ошибке"
+              data-tip="К ошибке"
               onClick={() => revealText(tabKey, at)}
             >
               <CornerDownRight strokeWidth={2} />
               <span className="wb-devbar-l">К ошибке</span>
             </button>
           )}
-          <button type="button" className="wb-btn p" title="Перезапустить" onClick={onRestart}>
+          <button type="button" className="wb-btn p" data-tip="Перезапустить" onClick={onRestart}>
             <RotateCcw strokeWidth={2} />
             <span className="wb-devbar-l">Перезапустить</span>
           </button>

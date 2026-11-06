@@ -37,6 +37,7 @@ type Group = 'lim' | 'tok' | 'load' | 'ses' | 'orph';
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 const OPEN_DELAY = 200;
+const SHOWN = 5;
 const DOTS = Array.from({ length: 10 }, (_, i) => i);
 
 const SECTION: Record<Group, DashboardSection> = {
@@ -202,7 +203,7 @@ export function MetricsBar({ sessions, projects }: Props) {
                     key={h}
                     className={cn(yesterday && 'y', h === nowHour && 'now')}
                     style={{ height: `${Math.max(2, (v / maxHour) * 100)}%` }}
-                    title={`${h}:00 · ${tok(v)}`}
+                    data-tip={`${h}:00 · ${tok(v)}`}
                   />
                 ))}
               </div>
@@ -257,12 +258,16 @@ export function MetricsBar({ sessions, projects }: Props) {
           'ses',
           <>
             <span className="db-bdots">
-              {loads.slice(0, 3).map((l) => (
+              {loads.slice(0, loads.length > SHOWN ? SHOWN - 1 : SHOWN).map((l) => (
                 <SessionStatus
                   key={l.sessionId}
+                  large
                   session={sessions.find((x) => x.sessionId === l.sessionId)}
                 />
               ))}
+              {loads.length > SHOWN && (
+                <span className="db-bmore">+{loads.length - SHOWN + 1}</span>
+              )}
             </span>
             <b>{loads.length}</b>
             <span className="db-bl">{plural(loads.length, 'сессия', 'сессии', 'сессий')}</span>
@@ -304,7 +309,11 @@ export function MetricsBar({ sessions, projects }: Props) {
           )}
       </div>
       {killer.dialog}
-      <div className="wb-watching" role="status" title="Echo следит за изменениями конфига Claude">
+      <div
+        className="wb-watching"
+        role="status"
+        data-tip="Echo следит за изменениями конфига Claude"
+      >
         <i />
         следит
       </div>

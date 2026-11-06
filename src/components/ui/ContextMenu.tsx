@@ -29,7 +29,11 @@ export interface ContextSubmenu {
   items: MenuItem[];
 }
 
-export type MenuItem = ContextMenuAction | ContextSubmenu | 'separator';
+export interface ContextMenuHeading {
+  heading: string;
+}
+
+export type MenuItem = ContextMenuAction | ContextSubmenu | ContextMenuHeading | 'separator';
 export type ContextMenuItem = MenuItem;
 
 const EASE = 'cubic-bezier(0.2, 0, 0, 1)';
@@ -47,7 +51,8 @@ function frames(el: HTMLElement): Keyframe[] {
 }
 
 function keyOf(item: MenuItem | undefined): string {
-  return item === undefined || item === 'separator' ? 'start' : item.label;
+  if (item === undefined || item === 'separator') return 'start';
+  return 'heading' in item ? `h-${item.heading}` : item.label;
 }
 
 function enabledItems(menu: HTMLElement | null): HTMLButtonElement[] {
@@ -152,6 +157,17 @@ function Panel({ items, place, shared, focusFirst, onBack, panelRef }: PanelProp
                 key={`sep-${keyOf(items[i - 1])}`}
                 className="my-1 h-px w-full shrink-0 border-0 bg-[var(--color-border)]"
               />
+            );
+          }
+          if ('heading' in item) {
+            return (
+              <span
+                key={`h-${item.heading}`}
+                role="presentation"
+                className="shrink-0 px-3 pt-2 pb-0.5 text-[11.5px] font-bold text-[var(--color-text-muted)] first:pt-1"
+              >
+                {item.heading}
+              </span>
             );
           }
           const danger = 'onSelect' in item && item.danger;

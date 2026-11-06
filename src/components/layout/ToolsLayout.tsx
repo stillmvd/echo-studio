@@ -262,7 +262,10 @@ export function ToolsLayout() {
                   {label}
                   <i>{models.filter((m) => m.entry.kind === k).length}</i>
                   {upd > 0 && (
-                    <em className="tl-tab-upd" title={`Обновлений: ${upd}`}>
+                    <em
+                      className="tl-tab-upd"
+                      data-tip={`${upd} ${plural(upd, 'обновление', 'обновления', 'обновлений')}`}
+                    >
                       ↑{upd}
                     </em>
                   )}
@@ -284,13 +287,13 @@ export function ToolsLayout() {
             {kimi && (
               <span
                 className="tl-dim"
-                title="Переключатели, удаление и обновления — только для Claude"
+                data-tip="Переключатели, удаление и обновления — только для Claude"
               >
                 Kimi · только просмотр
               </span>
             )}
             {!kimi && checkErrors.length > 0 && !check.isFetching && (
-              <span className="tl-dim tl-err" title={checkErrors.join('\n')}>
+              <span className="tl-dim tl-err" data-tip={checkErrors.join('\n')}>
                 Не удалось проверить: {checkErrors.join('; ')}
               </span>
             )}
@@ -298,7 +301,7 @@ export function ToolsLayout() {
               <button
                 type="button"
                 className="tl-dim tl-chk"
-                title="Проверить снова"
+                data-tip="Проверить снова"
                 onClick={() => void runCheck()}
               >
                 <Check className="tl-ic" strokeWidth={2.25} />
@@ -384,7 +387,7 @@ export function ToolsLayout() {
                     className="tl-fc"
                     aria-pressed={f === filter}
                     disabled={off}
-                    title={
+                    data-tip={
                       f === 'stale' && shortHistory ? 'Мало истории: меньше 30 дней' : undefined
                     }
                     onClick={() => setFilter(f)}

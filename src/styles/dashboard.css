@@ -125,7 +125,8 @@
 .db-bl { color: var(--dim); }
 .db-bic { width: 16px; height: 16px; color: var(--danger); }
 .db-bpb .db-spk { width: 44px; height: 16px; }
-.db-bdots { display: inline-flex; gap: 2px; }
+.db-bdots { display: inline-flex; align-items: center; gap: 4px; margin-right: 2px; }
+.db-bmore { color: var(--dim); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
 @media (max-width: 1100px) {
   .db-bpb .db-bl { display: none; }
   .db-bpb { gap: 5px; padding: 0 12px 0 10px; }

@@ -254,7 +254,7 @@ export function LiveIcon({
       style={
         { '--lv': LIVE_COLOR[look], ...(size && { width: size, height: size }) } as CSSProperties
       }
-      title={title}
+      data-tip={title}
       data-look={look}
     >
       <Glyph look={look} id={`lv${id.replace(/:/g, '')}`} />

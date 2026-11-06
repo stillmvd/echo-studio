@@ -26,7 +26,7 @@ function ProjectRow({
     <li className="shrink-0">
       <button
         type="button"
-        title={project.cwd ?? project.memoryDir}
+        data-tip={project.cwd ?? project.memoryDir}
         aria-current={selected ? 'true' : undefined}
         onClick={onClick}
         className={cn(
@@ -85,7 +85,7 @@ export function MemoryProjectPanel({
           <button
             type="button"
             aria-pressed={dupesOn}
-            title="Похожие записи во всех проектах"
+            data-tip="Похожие записи во всех проектах"
             onClick={onDupes}
             className={cn(
               'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full pr-3 pl-2.5 text-[13px] font-bold transition-colors duration-200 ease-[var(--ease-trail)] active:scale-[.96]',

@@ -12,6 +12,7 @@ import { sessionSubject } from '@/lib/sessions';
 import type { DevServer, SessionMeta, WorkbenchProject } from '@/lib/types';
 import { sessionDisplayTitle } from '@/lib/types';
 import { isKimiSession, samePath, shortPath } from '@/lib/workbench';
+import { useWorkbenchStore } from '@/state/workbench-store';
 import { DevCapsule } from './DevCapsule';
 import { conversationMenu } from './menus';
 import { ProjectIcon } from './ProjectIcon';
@@ -39,8 +40,35 @@ function when(iso: string | null, now: Date): string {
     .replace('.', '');
 }
 
-const title = (s: SessionMeta) =>
+export const sessionTitle = (s: SessionMeta) =>
   sessionDisplayTitle({ ...s, firstPrompt: s.firstReply?.trim() || s.firstPrompt });
+
+const title = sessionTitle;
+
+function useProjectConversations(project: WorkbenchProject, enabled: boolean, open?: string[]) {
+  const { data: convProjects } = useConversationProjects();
+  const slug = project.path.replace(/[^A-Za-z0-9]/g, '-');
+  const matches = convProjects?.filter((p) => samePath(p.cwd, project.path)) ?? [];
+  const convId = (matches.find((p) => p.id === slug) ?? matches[0])?.id ?? null;
+  const { data, isPending } = useConversationSessions(enabled ? convId : null);
+  const pending = !convProjects || (convId !== null && isPending);
+  const sessions = useMemo(
+    () =>
+      (data ?? [])
+        .filter((s) => !open?.includes(s.sessionId))
+        .sort((a, b) => (b.lastEventAt ?? '').localeCompare(a.lastEventAt ?? '')),
+    [data, open],
+  );
+  return { sessions, pending };
+}
+
+const NONE: string[] = [];
+
+export function useResumable(project: WorkbenchProject, enabled: boolean): SessionMeta[] {
+  const open = useWorkbenchStore((s) => s.tabs[project.path]) ?? NONE;
+  const { sessions } = useProjectConversations(project, enabled, open);
+  return sessions.filter((s) => !isKimiSession(s.sessionId)).slice(0, 8);
+}
 
 interface Props {
   project: WorkbenchProject;
@@ -62,19 +90,7 @@ export function EmptyProject({
   open,
 }: Props) {
   const agent = useAgentName();
-  const { data: convProjects } = useConversationProjects();
-  const slug = project.path.replace(/[^A-Za-z0-9]/g, '-');
-  const matches = convProjects?.filter((p) => samePath(p.cwd, project.path)) ?? [];
-  const convId = (matches.find((p) => p.id === slug) ?? matches[0])?.id ?? null;
-  const { data, isPending } = useConversationSessions(visible ? convId : null);
-  const pending = !convProjects || (convId !== null && isPending);
-  const sessions = useMemo(
-    () =>
-      (data ?? [])
-        .filter((s) => !open?.includes(s.sessionId))
-        .sort((a, b) => (b.lastEventAt ?? '').localeCompare(a.lastEventAt ?? '')),
-    [data, open],
-  );
+  const { sessions, pending } = useProjectConversations(project, visible, open);
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: sessions.length,
@@ -99,8 +115,8 @@ export function EmptyProject({
         <div className="wb-eh">
           <ProjectIcon svg={project.icon} size="hero" />
           <div className="wb-et">
-            <b title={project.name}>{project.name}</b>
-            <span className="wb-path" title={project.path}>
+            <b data-tip={project.name}>{project.name}</b>
+            <span className="wb-path" data-tip={project.path}>
               {shortPath(project.path)}
             </span>
           </div>
@@ -140,7 +156,7 @@ export function EmptyProject({
                       className="wb-rr absolute left-0 top-0"
                       style={{ transform: `translateY(${v.start}px)` }}
                       disabled={busy}
-                      title={title(s)}
+                      data-tip={title(s)}
                       onClick={() => onStart(s.sessionId)}
                       onContextMenu={(e) =>
                         openMenu(

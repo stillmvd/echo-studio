@@ -1,4 +1,3 @@
-import { tooltip } from '@/components/ui/Tooltip';
 import { useToolUpdates } from '@/hooks/use-tooling';
 import { type AppTab, goToTab, useUiStore } from '@/state/ui-store';
 import { NavIcon } from './nav-icons';
@@ -17,7 +16,8 @@ function RailButton({ id, label, dot }: { id: AppTab; label: string; dot?: strin
   return (
     <button
       type="button"
-      {...tooltip(dot ? `${label} · ${dot}` : label)}
+      data-tip={dot ? `${label} · ${dot}` : label}
+      data-tip-side="right"
       aria-label={dot ? `${label}, ${dot}` : label}
       aria-current={active ? 'page' : undefined}
       onClick={() => goToTab(id)}

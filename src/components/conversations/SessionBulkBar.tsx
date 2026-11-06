@@ -55,7 +55,7 @@ export function SessionBulkBar({ sessions, visiblePaths }: Props) {
           {formatBytes(selectedBytes)}
         </span>
         {statusMsg && (
-          <span className="max-w-[220px] truncate text-[var(--color-warning)]" title={statusMsg}>
+          <span className="max-w-[220px] truncate text-[var(--color-warning)]" data-tip={statusMsg}>
             {statusMsg}
           </span>
         )}
@@ -82,7 +82,7 @@ export function SessionBulkBar({ sessions, visiblePaths }: Props) {
           type="button"
           onClick={clear}
           disabled={del.isPending}
-          title="Снять выбор"
+          data-tip="Снять выбор"
           aria-label="Снять выбор"
           className={`${pill} w-9 bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] hover:bg-[var(--color-hover)]`}
         >

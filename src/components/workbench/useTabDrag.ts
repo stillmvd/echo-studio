@@ -1,4 +1,5 @@
 import { type DragEvent, useEffect, useState } from 'react';
+import type { Edge } from '@/lib/project-grid';
 import { TAB_DRAG_TYPE } from '@/lib/workbench';
 
 const TYPE = TAB_DRAG_TYPE;
@@ -46,6 +47,95 @@ function indexAt(zone: HTMLElement, x: number, y: number): number | null {
     const b = el.getBoundingClientRect();
     return b.left + b.width / 2 < x;
   }).length;
+}
+
+const EDGE_BAND = 0.3;
+
+function edgeAt(zone: HTMLElement, x: number, y: number, edges: Edge[]): Edge | null {
+  const r = zone.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  const fx = (x - r.left) / r.width;
+  const fy = (y - r.top) / r.height;
+  const near: [Edge, number][] = [
+    ['left', fx],
+    ['right', 1 - fx],
+    ['top', fy],
+    ['bottom', 1 - fy],
+  ];
+  const hit = near
+    .filter(([edge, d]) => edges.includes(edge) && d < EDGE_BAND)
+    .sort((a, b) => a[1] - b[1])[0];
+  return hit ? hit[0] : null;
+}
+
+interface PaneDropOptions {
+  path: string;
+  cell: string;
+  keys: string[];
+  edges: Edge[];
+  onDrop: (tab: DraggedTab, index: number | undefined, edge: Edge | null) => void;
+}
+
+interface PaneHover {
+  insert: number | null;
+  edge: Edge | null;
+  center: boolean;
+}
+
+const NO_HOVER: PaneHover = { insert: null, edge: null, center: false };
+
+export function usePaneDrop({ path, cell, keys, edges, onDrop }: PaneDropOptions) {
+  const [hover, setHover] = useState<PaneHover>(NO_HOVER);
+  const active = hover !== NO_HOVER;
+  useEffect(() => {
+    if (!active) return;
+    const off = () => setHover(NO_HOVER);
+    window.addEventListener('dragend', off);
+    return () => window.removeEventListener('dragend', off);
+  }, [active]);
+  const resolve = (tab: DraggedTab, zone: HTMLElement, x: number, y: number): PaneHover => {
+    const self = tab.cell === cell;
+    const index = indexAt(zone, x, y);
+    if (index !== null) {
+      const at = keys.indexOf(tab.key);
+      const still = self && at >= 0 && (index === at || index === at + 1);
+      return { insert: still ? null : index, edge: null, center: false };
+    }
+    const allowed = self && keys.length < 2 ? [] : edges;
+    const edge = edgeAt(zone, x, y, allowed);
+    if (edge) return { insert: null, edge, center: false };
+    return self ? NO_HOVER : { insert: null, edge: null, center: true };
+  };
+  return {
+    hover,
+    props: {
+      onDragOver: (e: DragEvent<HTMLElement>) => {
+        if (!e.dataTransfer.types.includes(TYPE) || !dragging || dragging.path !== path) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const next = resolve(dragging, e.currentTarget, e.clientX, e.clientY);
+        setHover((h) =>
+          h.insert === next.insert && h.edge === next.edge && h.center === next.center ? h : next,
+        );
+      },
+      onDragLeave: (e: DragEvent<HTMLElement>) => {
+        const next = e.relatedTarget;
+        if (next instanceof Node && e.currentTarget.contains(next)) return;
+        setHover(NO_HOVER);
+      },
+      onDrop: (e: DragEvent<HTMLElement>) => {
+        const tab = read(e);
+        setHover(NO_HOVER);
+        dragging = null;
+        if (!tab || tab.path !== path) return;
+        e.preventDefault();
+        const h = resolve(tab, e.currentTarget, e.clientX, e.clientY);
+        if (h.edge) onDrop(tab, undefined, h.edge);
+        else if (h.insert !== null) onDrop(tab, h.insert, null);
+        else if (h.center) onDrop(tab, undefined, null);
+      },
+    },
+  };
 }
 
 interface DropOptions {

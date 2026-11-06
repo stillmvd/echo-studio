@@ -121,7 +121,7 @@ function ActionButton({
       type="button"
       aria-pressed={pressed}
       aria-label={label}
-      title={hint ?? label}
+      data-tip={hint ?? label}
       disabled={disabled}
       onClick={onClick}
       className={cn(
@@ -527,7 +527,7 @@ export function MemoryDetail({
             <button
               type="button"
               aria-label="Закрыть"
-              title="Закрыть (Esc)"
+              data-tip="Закрыть (Esc)"
               onClick={requestClose}
               className={cn(
                 'grid h-10 w-10 place-items-center rounded-full hover:bg-[var(--color-hover)]',

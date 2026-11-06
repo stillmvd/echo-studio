@@ -106,7 +106,7 @@ function Tokens({ report }: { report: UsageReport | undefined }) {
                 <span
                   key={d.date}
                   className={cn('db-day', i === s.days.length - 1 && 'now')}
-                  title={`${d.date}: ответы ${tok(d.output)}, запись в кэш ${tok(d.cacheWrite)}, ввод ${tok(d.input)}`}
+                  data-tip={`${d.date}: ответы ${tok(d.output)}, запись в кэш ${tok(d.cacheWrite)}, ввод ${tok(d.input)}`}
                 >
                   <span className="db-dv">{total ? tok(total) : ''}</span>
                   <span className="db-dst" style={{ height: `${(total / max) * 100}%` }}>
@@ -152,7 +152,7 @@ function Models({ report }: { report: UsageReport | undefined }) {
                 key={name}
                 className={`m${i}`}
                 style={{ flexGrow: v }}
-                title={`${name} · ${tok(v)}`}
+                data-tip={`${name} · ${tok(v)}`}
               />
             ))}
           </div>
@@ -207,16 +207,16 @@ function Projects({
           return (
             <span key={path} className="wb-trr">
               <ProjectIcon svg={p?.icon ?? null} />
-              <b title={path}>{p?.name ?? nameOf(path)}</b>
+              <b data-tip={path}>{p?.name ?? nameOf(path)}</b>
               <span className="wb-now">
                 {n > 0 && (
-                  <span className="wb-gc" title="Сессии Claude">
+                  <span className="wb-gc" data-tip="Сессии Claude">
                     <Bot />
                     {n}
                   </span>
                 )}
                 {dev && (
-                  <span className="wb-gc" title="dev-сервер">
+                  <span className="wb-gc" data-tip="dev-сервер">
                     <Server />
                   </span>
                 )}
@@ -253,10 +253,21 @@ export function sessionTitle(
   };
 }
 
-export function SessionStatus({ session }: { session: ClaudeSession | undefined }) {
+export function SessionStatus({
+  session,
+  large = false,
+}: {
+  session: ClaudeSession | undefined;
+  large?: boolean;
+}) {
   const seen = useWorkbenchStore((s) => s.seen);
-  if (!session) return <span className="wb-gl sm" />;
-  return <StatusIcon small session={{ status: statusView(session, seen), phase: session.phase }} />;
+  if (!session) return <span className={large ? 'wb-gl' : 'wb-gl sm'} />;
+  return (
+    <StatusIcon
+      small={!large}
+      session={{ status: statusView(session, seen), phase: session.phase }}
+    />
+  );
 }
 
 function Sessions({
@@ -388,7 +399,7 @@ function Machine({ load }: { load: Load | undefined }) {
             key={s.key}
             className={`s-${s.kind}`}
             style={{ flexGrow: Math.max(s.memory, 1) }}
-            title={`${s.label} · ${mb(s.memory)}`}
+            data-tip={`${s.label} · ${mb(s.memory)}`}
           />
         ))}
       </div>

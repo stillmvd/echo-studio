@@ -155,7 +155,7 @@ export function ConfirmDialog({
         </div>
         {subject && (
           <div className="flex min-h-11 min-w-0 items-center gap-2.5 rounded-[22px] bg-[var(--color-bg-tertiary)] py-2 pr-2 pl-4 text-[13px] font-medium text-[var(--color-text-primary)]">
-            <span className="min-w-0 flex-1 truncate" title={subject.title}>
+            <span className="min-w-0 flex-1 truncate" data-tip={subject.title}>
               {subject.title}
               {subject.id && (
                 <span className="ml-2 font-mono text-[11px] font-normal text-[var(--color-text-muted)]">

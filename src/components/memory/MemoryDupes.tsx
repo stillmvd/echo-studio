@@ -39,7 +39,7 @@ function Similarity({ score }: { score: number }) {
   return (
     <span
       className="inline-flex shrink-0 items-center gap-2"
-      title={`Сходство заголовков: ${Math.round(score * 100)} %`}
+      data-tip={`Сходство заголовков: ${Math.round(score * 100)} %`}
     >
       <span className="h-1.5 w-14 overflow-hidden rounded-full bg-[var(--color-bg-tertiary)]">
         <span
@@ -93,7 +93,7 @@ function PairRow({
       <button
         type="button"
         aria-label={`Не дубли: ${pair.a.name} и ${pair.b.name}`}
-        title="Это разные записи — убрать пару из дублей"
+        data-tip="Это разные записи — убрать пару из дублей"
         onClick={onIgnore}
         className={ghostButton}
       >
@@ -251,7 +251,7 @@ function Compare({
         <button
           type="button"
           disabled={merge.isPending}
-          title="Это разные записи — убрать пару из дублей"
+          data-tip="Это разные записи — убрать пару из дублей"
           onClick={onIgnore}
           className={cn(ghostButton, 'ml-auto')}
         >
@@ -295,7 +295,7 @@ function Compare({
           <button
             type="button"
             aria-label="Поменять местами"
-            title="Поменять, какая запись остаётся"
+            data-tip="Поменять, какая запись остаётся"
             disabled={merge.isPending}
             onClick={() => setSwapped((s) => !s)}
             className={cn(

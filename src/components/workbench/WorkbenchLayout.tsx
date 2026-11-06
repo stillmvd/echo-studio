@@ -6,6 +6,7 @@ import { places, samePath } from '@/lib/workbench';
 import { useUiStore } from '@/state/ui-store';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { MetricsBar } from './MetricsBar';
+import { ProjectScreen } from './ProjectScreen';
 import { ProjectTree } from './ProjectTree';
 import { QuickSwitch } from './QuickSwitch';
 import { RunningList } from './RunningList';
@@ -44,13 +45,13 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
   }, [tree, dataUpdatedAt, projects, tabs]);
   const selected =
     view.kind === 'project' ? projects.find((p) => samePath(p.path, view.path)) : undefined;
-  const select = useWorkbenchStore((s) => s.select);
+  const auto = useWorkbenchStore((s) => s.auto);
   useEffect(() => {
     if (selected || !tree) return;
     const path =
       live.find((s) => s.projectPath)?.projectPath ?? projects.find((p) => !p.folder)?.path;
-    if (path) select({ kind: 'project', path });
-  }, [selected, tree, live, projects, select]);
+    if (path) useWorkbenchStore.setState({ view: { kind: 'project', path } });
+  }, [selected, tree, live, projects]);
 
   return (
     <ContextMenuProvider value={menu.open}>
@@ -95,14 +96,26 @@ export function WorkbenchLayout({ hidden }: { hidden: boolean }) {
             </TreeCard>
           </div>
           <div className="wb-card wb-pv">
-            <Wall
-              hidden={hidden}
-              sessions={live}
-              projects={byPath}
-              busy={busy}
-              devServers={devServers}
-              onStart={start}
-            />
+            {auto || !selected ? (
+              <Wall
+                hidden={hidden}
+                sessions={live}
+                projects={byPath}
+                busy={busy}
+                devServers={devServers}
+                onStart={start}
+              />
+            ) : (
+              <ProjectScreen
+                key={selected.path}
+                project={selected}
+                hidden={hidden}
+                sessions={live}
+                busy={busy}
+                devServers={devServers}
+                onStart={start}
+              />
+            )}
           </div>
         </div>
         <MetricsBar sessions={sessions} projects={byPath} />

@@ -13,7 +13,7 @@ import {
   wallPick,
 } from '@/lib/workbench';
 import { useRecentStore } from '@/state/recent-store';
-import { useWorkbenchStore } from '@/state/workbench-store';
+import { currentKey, useWorkbenchStore } from '@/state/workbench-store';
 import { ProjectIcon } from './ProjectIcon';
 import { openSession, sessionPlace } from './SessionStrip';
 import { StatusIcon } from './StatusIcon';
@@ -51,6 +51,11 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
       return;
     }
     const s = useWorkbenchStore.getState();
+    if (!s.auto) {
+      const own = currentKey(s);
+      if (own) focusTerminal(own);
+      return;
+    }
     const shown = s.cells.slice(0, CELL_COUNT[s.layout]);
     const activeOf = (path: string) => s.activeTab[path];
     const keys = assignTabs(
@@ -148,7 +153,7 @@ export function QuickSwitch({ enabled, sessions, projects }: Props) {
               tabIndex={-1}
               aria-selected={s.sessionId === open.pick}
               className={cn('wb-swr', s.sessionId === open.pick && 'on')}
-              title={statusTitle(status)}
+              data-tip={statusTitle(status)}
               onClick={() => jump(s)}
             >
               <ProjectIcon svg={project?.icon ?? null} />

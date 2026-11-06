@@ -165,14 +165,14 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
               <button
                 type="button"
                 className="wb-pc-h"
-                title={project.path}
+                data-tip={project.path}
                 onClick={() => select({ kind: 'project', path: project.path })}
                 onContextMenu={(e) => projectMenu(e, project)}
               >
                 {name}
               </button>
             ) : (
-              <div className="wb-pc-h" title={g.path ?? ROOT_HINT}>
+              <div className="wb-pc-h" data-tip={g.path ?? ROOT_HINT}>
                 {name}
               </div>
             )}

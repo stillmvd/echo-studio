@@ -81,7 +81,7 @@ function CheckCircle({
 }) {
   return (
     <label
-      title={label}
+      data-tip={label}
       className="relative grid h-5 w-5 shrink-0 place-items-center rounded-full has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-accent)]"
     >
       <input
@@ -132,7 +132,7 @@ function AgeFilterSegment({
         <button
           key={o.value}
           type="button"
-          title={o.label}
+          data-tip={o.label}
           aria-label={o.label}
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
@@ -359,7 +359,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                       <button
                         type="button"
                         onClick={() => setSelectedSessionPath(s.filePath)}
-                        title={`${sessionDisplayTitle(s)}\n${s.sessionId}`}
+                        data-tip={`${sessionDisplayTitle(s)}\n${s.sessionId}`}
                         className={cn(
                           'group grid min-w-0 flex-1 items-center gap-x-3 self-stretch text-left text-[13px] font-medium text-[var(--color-text-muted)] tabular-nums outline-none',
                           grid,

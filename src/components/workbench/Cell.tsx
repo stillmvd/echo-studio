@@ -1,19 +1,34 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus, RotateCcw, Square, X } from 'lucide-react';
+import { Ellipsis, Plus, X } from 'lucide-react';
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
+import { useAgentName } from '@/hooks/use-agent';
 import { cn } from '@/lib/cn';
 import { forgetClaudeSession, restartClaudeSession, stopClaudeSession } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
-import { agentName, CELL_COUNT, devHealth, type StatusView, statusView } from '@/lib/workbench';
+import { agentName, devHealth, type StatusView, statusView } from '@/lib/workbench';
 import { withoutVisit } from '@/state/recent-store';
 import { devTabKey, isDevTab, useWorkbenchStore } from '@/state/workbench-store';
 import { ClaudeTerminal } from './ClaudeTerminal';
-import { closeDevLog, DevDot, devActions, restartDev, useDevControl } from './DevCapsule';
-import { EmptyProject } from './EmptyProject';
+import {
+  closeDevLog,
+  DevDot,
+  devActions,
+  restartDev,
+  showDevLog,
+  useDevControl,
+} from './DevCapsule';
+import { EmptyProject, sessionTitle, useResumable } from './EmptyProject';
 import { LogTerminal } from './LogTerminal';
-import { copyText, devTabMenu, type MoveTargets, sessionTabMenu } from './menus';
+import {
+  copyText,
+  devRuns,
+  devTabMenu,
+  type MoveTargets,
+  newTabMenu,
+  sessionTabMenu,
+} from './menus';
 import { StatusIcon } from './StatusIcon';
 import {
   connect,
@@ -27,8 +42,6 @@ import {
   useClaudeTerm,
 } from './terminals';
 import { type DraggedTab, tabDragProps } from './useTabDrag';
-
-const NO_TABS: string[] = [];
 
 export function useStopSession() {
   const qc = useQueryClient();
@@ -118,24 +131,6 @@ function useRestartSession() {
   return { ask, running, dialog };
 }
 
-function useMoveTargets(path: string, cellId: string | undefined) {
-  const wallLayout = useWorkbenchStore((s) => s.layout);
-  const wallCells = useWorkbenchStore((s) => s.cells);
-  const moveTabToWallCell = useWorkbenchStore((s) => s.moveTabToWallCell);
-  return (key: string): MoveTargets | null => {
-    if (!cellId) return null;
-    const shown = wallCells.slice(0, CELL_COUNT[wallLayout]);
-    return {
-      count: shown.length,
-      current: shown.findIndex((c) => c.id === cellId),
-      move: (i) => {
-        const target = shown[i];
-        if (target) moveTabToWallCell(target.id, path, key);
-      },
-    };
-  };
-}
-
 interface TabInfo {
   key: string;
   session: ClaudeSession | undefined;
@@ -148,7 +143,7 @@ function TabTitle({ info, projectName }: { info: TabInfo; projectName: string })
   const entry = useClaudeTerm(info.key);
   const own = entry.title && entry.title !== projectName ? entry.title : null;
   const title = info.session?.name || own || agentName(info.session);
-  return <span title={title}>{title}</span>;
+  return <span data-tip={title}>{title}</span>;
 }
 
 function TabCapsule({
@@ -180,7 +175,7 @@ function TabCapsule({
       ref={ref}
       role="toolbar"
       aria-label={label}
-      title={label}
+      data-tip={label}
       className={cn('wb-tab', on && 'on')}
       onContextMenu={onContextMenu}
       {...tabDragProps(drag)}
@@ -195,15 +190,16 @@ interface Props {
   sessions: ClaudeSession[];
   server: DevServer | undefined;
   visible: boolean;
-  focused?: boolean;
+  focused: boolean;
+  keys: string[];
   activeKey?: string;
-  onActivate?: (key: string) => void;
+  onActivate: (key: string) => void;
   onStart: (resumeSessionId?: string) => Promise<string | null>;
   busy: boolean;
-  keys?: string[];
-  cellId?: string;
+  cellId: string;
   insertAt?: number | null;
-  accent?: boolean;
+  canAdd?: boolean;
+  moveTargets?: (key: string) => MoveTargets | null;
   lead?: ReactNode;
   tail?: ReactNode;
   onStripDoubleClick?: () => void;
@@ -215,40 +211,35 @@ export function Cell({
   server,
   visible,
   focused,
-  activeKey,
+  keys: tabs,
+  activeKey: active,
   onActivate,
   onStart,
   busy,
-  keys,
   cellId,
   insertAt = null,
-  accent = focused === undefined,
+  canAdd = true,
+  moveTargets = () => null,
   lead,
   tail,
   onStripDoubleClick,
 }: Props) {
-  const controlled = onActivate !== undefined;
-  const isFocused = visible && (focused ?? true);
+  const isFocused = visible && focused;
   const openMenu = useOpenMenu();
   const dev = useDevControl();
   const stop = useStopSession();
   const restart = useRestartSession();
-  const moveTargets = useMoveTargets(project.path, cellId);
-  const projectTabs = useWorkbenchStore((s) => s.tabs[project.path]) ?? NO_TABS;
-  const tabs = keys ?? projectTabs;
-  const projectActive = useWorkbenchStore((s) => s.activeTab[project.path]);
-  const active = activeKey ?? projectActive;
+  const agent = useAgentName();
   const seen = useWorkbenchStore((s) => s.seen);
-  const activateInProject = useWorkbenchStore((s) => s.activate);
+  const projectTabs = useWorkbenchStore((s) => s.tabs[project.path]) ?? tabs;
+  const resumable = useResumable(project, visible && canAdd);
   const activate = (key: string) => {
-    setPick(null);
-    if (onActivate) onActivate(key);
-    else activateInProject(project.path, key);
+    onActivate(key);
     focusSoon(key);
   };
   const startHere = async (resumeSessionId?: string) => {
     const key = await onStart(resumeSessionId);
-    if (key && onActivate) onActivate(key);
+    if (key) onActivate(key);
   };
   const closeTab = useWorkbenchStore((s) => s.closeTab);
   const markSeen = useWorkbenchStore((s) => s.markSeen);
@@ -272,9 +263,6 @@ export function Cell({
   const order = tabs.filter((key) => (key === devKey ? hasDev : !isDevTab(key)));
   const devOn = hasDev && (active === devKey || infos.length === 0);
   const current = devOn ? undefined : (infos.find((i) => i.key === active) ?? infos[0]);
-  const [pick, setPick] = useState<string | null>(null);
-  const pickSig = `${order.length}|${active ?? ''}`;
-  const picking = pick === pickSig;
 
   useEffect(() => {
     if (isFocused && current?.session?.status === 'done') markSeen(current.key);
@@ -282,8 +270,8 @@ export function Cell({
 
   const shownKey = devOn ? devKey : current?.key;
   useEffect(() => {
-    if (onActivate && shownKey && shownKey !== activeKey) withoutVisit(() => onActivate(shownKey));
-  }, [onActivate, shownKey, activeKey]);
+    if (shownKey && !(active && tabs.includes(active))) withoutVisit(() => onActivate(shownKey));
+  }, [onActivate, shownKey, active, tabs]);
 
   const close = (info: TabInfo) => {
     if (!info.live && info.shortId) void forgetClaudeSession(info.shortId).catch(() => {});
@@ -311,6 +299,14 @@ export function Cell({
         canStop: info.live && !!info.shortId && restart.running !== info.key,
         cells: moveTargets(info.key),
         actions: {
+          restart: () =>
+            info.shortId &&
+            restart.ask({
+              path: project.path,
+              key: info.key,
+              shortId: info.shortId,
+              risky: info.session?.status === 'working' || !!info.session?.shells,
+            }),
           reconnect: () =>
             restart.running !== info.key && info.shortId && reattach(info.key, info.shortId),
           copyId: () => copyText(info.key),
@@ -320,7 +316,29 @@ export function Cell({
       }),
     );
 
-  if (projectTabs.length === 0) {
+  const addMenu = (e: React.MouseEvent) =>
+    openMenu(
+      e,
+      newTabMenu({
+        agent,
+        busy,
+        dev: project.dev
+          ? {
+              runs: devRuns(server),
+              open: () => showDevLog(project.path),
+              start: () => void dev.start(project.path),
+            }
+          : null,
+        resume: resumable.map((s) => ({
+          title: sessionTitle(s),
+          start: () => void startHere(s.sessionId),
+        })),
+        actions: { newSession: () => void startHere() },
+      }),
+    );
+
+  const empty = order.length === 0;
+  if (empty && !lead && !tail) {
     return (
       <EmptyProject
         project={project}
@@ -345,7 +363,7 @@ export function Cell({
       >
         {lead}
         {order.map((key, i) => {
-          const drag = cellId ? { path: project.path, key, cell: cellId } : null;
+          const drag = { path: project.path, key, cell: cellId };
           const marker = insertAt === i && <span className="wb-tab-ins" aria-hidden="true" />;
           if (key === devKey) {
             return (
@@ -353,7 +371,7 @@ export function Cell({
                 {marker}
                 <TabCapsule
                   drag={drag}
-                  on={!picking && devOn}
+                  on={devOn}
                   label={project.dev?.command ?? 'dev'}
                   onContextMenu={devMenu}
                 >
@@ -364,12 +382,13 @@ export function Cell({
                     onClick={() => activate(devKey)}
                   >
                     <DevDot server={server} />
-                    <span title={project.dev?.command}>{project.dev?.command ?? 'dev'}</span>
+                    <span data-tip={project.dev?.command}>{project.dev?.command ?? 'dev'}</span>
                   </button>
                   <button
                     type="button"
                     className="wb-tx"
-                    title="Закрыть лог (сервер продолжит работать)"
+                    data-tip="Закрыть лог (сервер продолжит работать)"
+                    aria-label="Закрыть лог (сервер продолжит работать)"
                     onClick={(e) => {
                       e.stopPropagation();
                       closeDev();
@@ -388,7 +407,7 @@ export function Cell({
               {marker}
               <TabCapsule
                 drag={drag}
-                on={!picking && info.key === current?.key}
+                on={info.key === current?.key}
                 label={info.session?.name || agentName(info.session)}
                 onContextMenu={(e) => tabMenu(e, info)}
               >
@@ -410,7 +429,8 @@ export function Cell({
                 <button
                   type="button"
                   className="wb-tx"
-                  title={info.live ? 'Скрыть вкладку — сессия продолжит работать' : 'Закрыть'}
+                  data-tip={info.live ? 'Скрыть вкладку — сессия продолжит работать' : 'Закрыть'}
+                  aria-label={info.live ? 'Скрыть вкладку — сессия продолжит работать' : 'Закрыть'}
                   onClick={(e) => {
                     e.stopPropagation();
                     close(info);
@@ -423,92 +443,68 @@ export function Cell({
           );
         })}
         {insertAt === order.length && <span className="wb-tab-ins" aria-hidden="true" />}
-        {picking ? (
-          <div className="wb-tab on" role="toolbar" aria-label="Новая вкладка">
-            <span className="wb-tab-b">
-              <Plus strokeWidth={2} />
-              <span>Новая вкладка</span>
-            </span>
-            <button type="button" className="wb-tx" title="Отмена" onClick={() => setPick(null)}>
-              <X strokeWidth={2} />
-            </button>
-          </div>
-        ) : (
+        {canAdd && (
           <button
             type="button"
             className="wb-tab add"
-            title="Новая вкладка — сессия или dev"
-            onClick={() => setPick(pickSig)}
+            data-tip="Новая вкладка — сессия или dev"
+            aria-label="Новая вкладка — сессия или dev"
+            aria-haspopup="menu"
+            onClick={addMenu}
           >
             <Plus strokeWidth={2} />
           </button>
         )}
         <span className="wb-gap" />
-        {!picking && current?.live && current.shortId && (
-          <>
-            <button
-              type="button"
-              className="wb-ib"
-              title={`Перезапустить сессию — ${agentName(current.session)} подхватит новые MCP-серверы и настройки`}
-              disabled={restart.running === current.key}
-              onClick={() =>
-                current.shortId &&
-                restart.ask({
-                  path: project.path,
-                  key: current.key,
-                  shortId: current.shortId,
-                  risky: current.session?.status === 'working' || !!current.session?.shells,
-                })
-              }
-            >
-              <RotateCcw strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              className="wb-btn sm wb-stop"
-              title={`Завершить сессию ${agentName(current.session)} (с подтверждением)`}
-              disabled={restart.running === current.key}
-              onClick={() => stop.ask(current.shortId)}
-            >
-              <Square fill="currentColor" strokeWidth={2} />
-              <span className="wb-stop-l">Завершить</span>
-            </button>
-          </>
+        {(devOn || current) && (
+          <button
+            type="button"
+            className="wb-ib"
+            aria-haspopup="menu"
+            data-tip={devOn ? 'Меню dev-сервера' : `Меню сессии ${agentName(current?.session)}`}
+            aria-label={devOn ? 'Меню dev-сервера' : `Меню сессии ${agentName(current?.session)}`}
+            onClick={(e) => {
+              if (devOn) devMenu(e);
+              else if (current) tabMenu(e, current);
+            }}
+          >
+            <Ellipsis strokeWidth={2} />
+          </button>
         )}
         {tail}
       </div>
-      {hasDev && (!controlled || devOn) && (
+      {devOn && (
         <LogTerminal
           tabKey={devKey}
           projectPath={project.path}
-          visible={visible && !picking && devOn}
+          visible={visible}
           server={server}
           onRestart={() => restartDev(dev, project, server)}
         />
       )}
-      {(controlled ? infos.filter((i) => i.key === current?.key) : infos).map((info) => (
+      {current && (
         <ClaudeTerminal
-          key={info.key}
-          sessionKey={info.key}
-          cwd={info.session?.cwd ?? project.path}
-          shortId={info.shortId}
-          live={info.live}
-          status={info.status}
-          visible={visible && !picking && info.key === current?.key}
+          key={current.key}
+          sessionKey={current.key}
+          cwd={current.session?.cwd ?? project.path}
+          shortId={current.shortId}
+          live={current.live}
+          status={current.status}
+          visible={visible}
           focused={isFocused}
-          accent={accent && info.status === 'waiting'}
-          onResume={() => void startHere(info.key)}
-          onStop={() => stop.ask(info.shortId)}
+          accent={false}
+          onResume={() => void startHere(current.key)}
+          onStop={() => stop.ask(current.shortId)}
         />
-      ))}
-      {picking && (
+      )}
+      {empty && (
         <EmptyProject
           embedded
+          open={projectTabs}
           project={project}
           server={server}
           visible={visible}
           busy={busy}
-          open={tabs}
           onStart={(resume) => void startHere(resume)}
         />
       )}

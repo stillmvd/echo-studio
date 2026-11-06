@@ -1,8 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Globe, Play, RotateCcw, Square } from 'lucide-react';
+import { ChevronDown, Play, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
+import { cn } from '@/lib/cn';
 import { openDevServer, startDevServer, stopDevServer } from '@/lib/ipc';
 import { devLook } from '@/lib/live-status';
 import type { DevServer, WorkbenchProject } from '@/lib/types';
@@ -16,6 +17,12 @@ export function closeDevLog(path: string) {
   const key = devTabKey(path);
   dispose(key);
   useWorkbenchStore.getState().closeTab(path, key);
+}
+
+export function showDevLog(path: string) {
+  const key = devTabKey(path);
+  useWorkbenchStore.getState().openTab(path, key);
+  focusSoon(key);
 }
 
 export function devActions(
@@ -58,7 +65,8 @@ export function RestartDev({
     <button
       type="button"
       className={className}
-      title="Перезапустить dev-сервер"
+      data-tip="Перезапустить dev-сервер"
+      aria-label="Перезапустить dev-сервер"
       onClick={(e) => {
         e.stopPropagation();
         restartDev(dev, project, server);
@@ -157,25 +165,30 @@ export function DevCapsule({
   project: WorkbenchProject;
   server: DevServer | undefined;
 }) {
-  const openTab = useWorkbenchStore((s) => s.openTab);
   const openMenu = useOpenMenu();
   const dev = useDevControl();
   const { dialogs } = dev;
   if (!project.dev) return null;
   const state = devState(server);
-  const key = devTabKey(project.path);
   const start = () => dev.start(project.path);
-  const askStop = () => dev.askStop(project);
   const onContextMenu = (e: React.MouseEvent) =>
-    openMenu(e, devTabMenu({ server, actions: devActions(dev, project, server) }));
+    openMenu(
+      e,
+      devTabMenu({
+        server,
+        actions: { ...devActions(dev, project, server), showLog: () => showDevLog(project.path) },
+      }),
+    );
 
-  const ports = server?.ports ?? [];
+  const port = server?.ports[0];
+  const health = devHealth(server);
+  const url = (health === 'running' || health === 'errors') && port ? `localhost:${port}` : null;
   const body =
     state === 'stopped' ? (
       <button
         type="button"
         className="wb-btn"
-        title={project.dev.command}
+        data-tip={project.dev.command}
         onClick={start}
         onContextMenu={onContextMenu}
       >
@@ -186,57 +199,34 @@ export function DevCapsule({
       <span
         role="toolbar"
         aria-label="dev-сервер"
-        className="wb-cap"
-        title={project.dev.command}
+        className={cn('wb-cap', (health === 'crashed' || health === 'errors') && 'err')}
+        data-tip={project.dev.command}
         onContextMenu={onContextMenu}
       >
         <DevDot server={server} />
+        {url ? (
+          <button
+            type="button"
+            className="wb-cap-url"
+            data-tip={`Открыть ${url}`}
+            onClick={() => dev.openBrowser(project.path)}
+          >
+            {url}
+          </button>
+        ) : (
+          <span>{server ? devStatusLabel(server) : ''}</span>
+        )}
+        <RestartDev project={project} server={server} dev={dev} className="wb-cap-i" />
         <button
           type="button"
-          onClick={() => {
-            openTab(project.path, key);
-            focusSoon(key);
-          }}
+          className="wb-cap-i"
+          aria-haspopup="menu"
+          data-tip="Меню dev-сервера"
+          aria-label="Меню dev-сервера"
+          onClick={onContextMenu}
         >
-          <b>dev</b>
+          <ChevronDown strokeWidth={2} />
         </button>
-        <span>{server ? devStatusLabel(server) : ''}</span>
-        {state === 'error' ? (
-          <>
-            <RestartDev project={project} server={server} dev={dev} className="wb-cap-i" />
-            {!!server?.pids.length && (
-              <button
-                type="button"
-                className="wb-cap-i wb-stop"
-                title="Остановить dev-сервер"
-                onClick={askStop}
-              >
-                <Square fill="currentColor" strokeWidth={2} />
-              </button>
-            )}
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              className="wb-cap-i"
-              title={ports[0] ? `Открыть localhost:${ports[0]}` : 'Порт ещё не открыт'}
-              disabled={!ports[0]}
-              onClick={() => dev.openBrowser(project.path)}
-            >
-              <Globe strokeWidth={2} />
-            </button>
-            <RestartDev project={project} server={server} dev={dev} className="wb-cap-i" />
-            <button
-              type="button"
-              className="wb-cap-i wb-stop"
-              title="Остановить dev-сервер"
-              onClick={askStop}
-            >
-              <Square fill="currentColor" strokeWidth={2} />
-            </button>
-          </>
-        )}
       </span>
     );
 
