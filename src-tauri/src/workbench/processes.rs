@@ -38,6 +38,7 @@ const INHERIT: [&str; 6] = [
 ];
 const RUNTIMES: [&str; 3] = ["node.exe", "bun.exe", "cargo.exe"];
 const MAX_DEPTH: usize = 30;
+const FRESH_MS: u64 = 10_000;
 const COMMAND_MAX: usize = 240;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -134,6 +135,8 @@ pub struct Snapshot {
     pub listening: Vec<u32>,
     #[serde(default)]
     pub ports_unknown: bool,
+    #[serde(default)]
+    pub taken_at: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -223,6 +226,7 @@ struct Classifier<'a> {
     jobs: HashMap<u32, &'a str>,
     listening: HashSet<u32>,
     ports_unknown: bool,
+    taken_at: u64,
     agents: &'a [AgentRef],
     hooks: &'a [HookSession],
     projects: &'a [ProjectRef],
@@ -354,6 +358,7 @@ impl<'a> Classifier<'a> {
             jobs,
             listening: snap.listening.iter().copied().collect(),
             ports_unknown: snap.ports_unknown,
+            taken_at: snap.taken_at,
             agents: &snap.agents,
             hooks: &snap.hook_sessions,
             projects,
@@ -527,6 +532,19 @@ impl<'a> Classifier<'a> {
         } else if self.ports_unknown {
             Class {
                 rule: "no-project-ports-unknown",
+                ..Class::default()
+            }
+        } else if cmd.is_empty() && p.memory == 0 {
+            Class {
+                rule: "no-project-unreadable",
+                ..Class::default()
+            }
+        } else if self.taken_at > 0
+            && p.start_time > 0
+            && self.taken_at.saturating_sub(p.start_time) < FRESH_MS
+        {
+            Class {
+                rule: "no-project-fresh",
                 ..Class::default()
             }
         } else {
@@ -1053,6 +1071,9 @@ fn take(
         agents,
         dev_jobs,
         ports_unknown: listening.is_none(),
+        taken_at: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_millis() as u64),
         listening: listening
             .unwrap_or_default()
             .into_iter()
@@ -1352,6 +1373,40 @@ mod tests {
         let c = &classify(&snap, &[], r"C:\P")[&50];
         assert_eq!(c.orphan, None, "{c:?}");
         assert_eq!(c.rule, "no-project-ports-unknown");
+    }
+
+    #[test]
+    fn unreadable_or_fresh_process_is_not_an_orphan() {
+        let blank = Proc {
+            cmd: Some(String::new()),
+            memory: 0,
+            ..proc(60, 2, "node.exe", "", r"D:\")
+        };
+        let fresh = Proc {
+            start_time: 95_000,
+            memory: 40 << 20,
+            ..proc(61, 2, "node.exe", "node hook.js", r"D:\work\old")
+        };
+        let old = Proc {
+            start_time: 50_000,
+            memory: 40 << 20,
+            ..proc(62, 2, "node.exe", "node vite.js", r"D:\work\old")
+        };
+        let snap = Snapshot {
+            processes: vec![blank, fresh, old],
+            outside_parents: vec![proc(2, 1, "sh.exe", "sh", r"D:\")],
+            taken_at: 100_000,
+            ..Snapshot::default()
+        };
+        let classes = classify(&snap, &[], r"C:\P");
+        assert_eq!(classes[&60].orphan, None, "{:?}", classes[&60]);
+        assert_eq!(classes[&60].rule, "no-project-unreadable");
+        assert_eq!(classes[&61].orphan, None, "{:?}", classes[&61]);
+        assert_eq!(classes[&61].rule, "no-project-fresh");
+        assert_eq!(
+            classes[&62].orphan.as_ref().map(|o| o.reason),
+            Some(OrphanReason::NoProject)
+        );
     }
 
     #[test]
