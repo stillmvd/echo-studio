@@ -2,29 +2,45 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { handoff, handoffFile, nextThreshold, usagePath } from './handoff.mjs';
+import { handoff, handoffFile, readUsage, usagePath } from './handoff.mjs';
 
 const session = 'handoff-test-session';
+const input = (extra = {}) => ({ session_id: session, cwd: dir, ...extra });
+let dir;
 
-function setUsage(pct) {
+function setUsage(data) {
   const file = usagePath(session);
   mkdirSync(join(file, '..'), { recursive: true });
-  writeFileSync(file, JSON.stringify({ used_pct: pct, size: 200000 }));
+  writeFileSync(file, JSON.stringify(data));
+}
+
+function setTokens(tokens, window = 250000) {
+  setUsage({ used_pct: Math.round((tokens / window) * 100), size: window, tokens, window });
 }
 
 function fresh() {
-  const dir = mkdtempSync(join(tmpdir(), 'echo-handoff-'));
+  dir = mkdtempSync(join(tmpdir(), 'echo-handoff-'));
   writeFileSync(join(dir, 'MEMORY.md'), '');
-  return { dir, state: { memory_dir: dir, note_path: null, asked: null, handoff_next: 50 } };
+  return { memory_dir: dir, note_path: null, asked: null, handoff_armed: true };
 }
 
 afterEach(() => rmSync(usagePath(session), { force: true }));
 
-describe('nextThreshold', () => {
-  it('steps by 15 past the current usage', () => {
-    expect(nextThreshold(50)).toBe(65);
-    expect(nextThreshold(70)).toBe(80);
-    expect(nextThreshold(40)).toBe(50);
+describe('readUsage', () => {
+  it('reads tokens and window', () => {
+    setUsage({ used_pct: 9, size: 1000000, tokens: 95420, window: 250000 });
+    expect(readUsage(session)).toEqual({ tokens: 95420, window: 250000, pct: 38 });
+  });
+
+  it('falls back to used_pct and size', () => {
+    setUsage({ used_pct: 50, size: 200000 });
+    expect(readUsage(session)).toEqual({ tokens: 100000, window: 200000, pct: 50 });
+  });
+
+  it('returns null without usage', () => {
+    expect(readUsage(session)).toBeNull();
+    setUsage({ size: 200000 });
+    expect(readUsage(session)).toBeNull();
   });
 });
 
@@ -39,28 +55,53 @@ describe('handoffFile', () => {
 });
 
 describe('handoff', () => {
-  it('stays quiet below the threshold and in subagents', () => {
-    const { dir, state } = fresh();
-    setUsage(49);
-    expect(handoff(state, { session_id: session, cwd: dir }, 'tool')).toBeNull();
-    setUsage(55);
-    expect(handoff(state, { session_id: session, cwd: dir, agent_id: 'a1' }, 'tool')).toBeNull();
-    expect(state.handoff_next).toBe(50);
+  it('stays quiet below window minus 40k and in subagents', () => {
+    const state = fresh();
+    setTokens(209000);
+    expect(handoff(state, input(), 'tool')).toBeNull();
+    setTokens(215000);
+    expect(handoff(state, input({ agent_id: 'a1' }), 'tool')).toBeNull();
+    expect(state.handoff_armed).toBe(true);
   });
 
-  it('writes the instruction, asks for the summary and moves the threshold', () => {
-    const { dir, state } = fresh();
-    setUsage(52);
-    const hint = handoff(state, { session_id: session, cwd: dir }, 'prompt');
+  it('fires once at 210k of 250k and writes the instruction', () => {
+    const state = fresh();
+    setTokens(210000);
+    const hint = handoff(state, input(), 'prompt');
     const file = join(dir, '.echo-handoff.txt');
     expect(hint).toContain(file);
-    expect(state.handoff_next).toBe(65);
+    expect(hint).toContain('210k из 250k');
+    expect(hint).toContain('этой сессии');
+    expect(state.handoff_armed).toBe(false);
     expect(state.asked).not.toBeNull();
-    expect(state.handoff_asked).not.toBeNull();
     const text = readFileSync(file, 'utf8');
-    expect(text).toContain('52%');
+    expect(text).toContain('210k из 250k');
     expect(text).toContain(join(dir, 'HANDOFF.md'));
     expect(text).not.toMatch(/\{\{\w+\}\}/);
-    expect(handoff(state, { session_id: session, cwd: dir }, 'tool')).toBeNull();
+    expect(text).not.toContain('Промпт для новой сессии:');
+    setTokens(240000);
+    expect(handoff(state, input(), 'tool')).toBeNull();
+  });
+
+  it('re-arms after compaction drops below half the window', () => {
+    const state = fresh();
+    setTokens(220000);
+    expect(handoff(state, input(), 'tool')).not.toBeNull();
+    setTokens(130000);
+    expect(handoff(state, input(), 'tool')).toBeNull();
+    expect(state.handoff_armed).toBe(false);
+    setTokens(60000);
+    expect(handoff(state, input(), 'tool')).toBeNull();
+    expect(state.handoff_armed).toBe(true);
+    setTokens(212000);
+    expect(handoff(state, input(), 'tool')).not.toBeNull();
+  });
+
+  it('uses used_pct and size when tokens are missing', () => {
+    const state = fresh();
+    setUsage({ used_pct: 79, size: 200000 });
+    expect(handoff(state, input(), 'tool')).toBeNull();
+    setUsage({ used_pct: 80, size: 200000 });
+    expect(handoff(state, input(), 'tool')).toContain('160k из 200k');
   });
 });

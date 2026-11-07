@@ -65,8 +65,7 @@ const defaults = {
   first_prompt: null,
   touched: [],
   recent: [],
-  handoff_next: 50,
-  handoff_asked: null,
+  handoff_armed: true,
 };
 
 export function loadState(sessionId) {
