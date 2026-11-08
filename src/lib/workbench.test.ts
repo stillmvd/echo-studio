@@ -25,6 +25,7 @@ import {
   isImagePaste,
   isOuterDrop,
   isPathTitle,
+  isWordDelete,
   type KeyInput,
   keepOnShrink,
   misplacedTabs,
@@ -1018,6 +1019,22 @@ describe('echoedKeys', () => {
       count: 2,
       x: 5,
     });
+  });
+
+  it('follows a word delete by spaces and by word characters', () => {
+    const word = { ch: null, dx: 0, del: true, shown: false, word: true };
+    expect(echoedKeys('❯ git commit', 12, [word], '❯ git', 2)).toEqual({ count: 1, x: 6 });
+    expect(echoedKeys('❯ a/b.ts', 8, [word], '❯ a/b.', 2)).toEqual({ count: 1, x: 6 });
+    expect(echoedKeys('❯ a/b.ts', 8, [word], '❯', 2)).toEqual({ count: 1, x: 2 });
+    expect(echoedKeys('❯ ab cd', 7, [word, char('x')], '❯ ab x', 2)).toEqual({ count: 2, x: 6 });
+  });
+});
+
+describe('isWordDelete', () => {
+  it('treats Ctrl+Backspace and Ctrl+W as a word delete', () => {
+    expect(isWordDelete('\b')).toBe(true);
+    expect(isWordDelete('\x17')).toBe(true);
+    expect(isWordDelete('\x7f')).toBe(false);
   });
 });
 

@@ -30,6 +30,7 @@ import {
   isImagePaste,
   isOuterDrop,
   isPathTitle,
+  isWordDelete,
   mouseReport,
   pathsText,
   plainTitle,
@@ -432,11 +433,16 @@ function attachCaret(entry: Entry) {
   term.onResize(place);
   entry.placeCaret = place;
   entry.nudgeCaret = (data) => {
+    if (isWordDelete(data)) {
+      fresh();
+      typed.push({ t: performance.now(), ch: null, dx: 0, del: true, shown: false, word: true });
+      return;
+    }
     const dx = caretStep(data);
     if (dx === 0) return;
     fresh();
     const t = performance.now();
-    const del = data === '\x7f' || data === '\b';
+    const del = data === '\x7f';
     if (!del && !data.startsWith('\x1b'))
       for (const ch of data) typed.push({ t, ch, dx: 1, del, shown: false });
     else typed.push({ t, ch: null, dx, del, shown: false });
@@ -649,12 +655,29 @@ export function mount(entry: Entry, container: HTMLElement) {
     e.stopPropagation();
     dropInto(entry, e.dataTransfer);
   });
+  attachGl(entry);
+  entry.opened = true;
+}
+
+const GL_RETRY_MS = 1000;
+const GL_RETRIES = 5;
+const disposed = new WeakSet<Entry>();
+
+function attachGl(entry: Entry, tries = 0) {
   try {
     const gl = new WebglAddon();
-    gl.onContextLoss(() => gl.dispose());
+    gl.onContextLoss(() => {
+      gl.dispose();
+      if (tries >= GL_RETRIES) return;
+      setTimeout(
+        () => {
+          if (!disposed.has(entry)) attachGl(entry, tries + 1);
+        },
+        GL_RETRY_MS * (tries + 1),
+      );
+    });
     entry.term.loadAddon(gl);
   } catch {}
-  entry.opened = true;
 }
 
 export function unmount(entry: Entry, container: HTMLElement) {
@@ -775,6 +798,7 @@ export function dispose(key: string) {
   stopTail(key);
   if (entry.terminalId) detach(entry.terminalId);
   if (busy(entry.state)) wakeTwins(entry.shortId);
+  disposed.add(entry);
   entry.term.dispose();
   entry.host.remove();
 }

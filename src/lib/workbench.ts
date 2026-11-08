@@ -236,6 +236,7 @@ export interface TypedKey {
   dx: number;
   del: boolean;
   shown: boolean;
+  word?: boolean;
 }
 
 export function echoedKeys(
@@ -246,21 +247,55 @@ export function echoedKeys(
   start = 0,
 ): { count: number; x: number } | null {
   let best: { count: number; x: number } | null = null;
-  const unshown = typed.findIndex((k) => !k.shown);
-  const last = unshown < 0 ? typed.length - 1 : unshown;
-  for (let from = 0; from <= last; from++) {
-    let text = base.padEnd(at);
-    let x = at;
+  const note = (count: number, text: string, x: number) => {
+    if (count > (best?.count ?? 0) && text.trimEnd() === actual) best = { count, x };
+  };
+  const visit = (from: number, text: string, x: number) => {
     for (let i = from; i < typed.length; i++) {
       const k = typed[i];
-      if (!k) break;
+      if (!k) return;
+      if (k.word) {
+        for (const cut of wordStarts(text, x, start)) {
+          const next = text.slice(0, cut) + text.slice(x);
+          note(i + 1, next, cut);
+          visit(i + 1, next, cut);
+        }
+        return;
+      }
       if (k.ch !== null) text = text.slice(0, x) + k.ch + text.slice(x);
       else if (k.del && x > start) text = text.slice(0, x - 1) + text.slice(x);
       x = Math.max(x >= start ? start : 0, Math.min(text.length, x + k.dx));
-      if (i + 1 > (best?.count ?? 0) && text.trimEnd() === actual) best = { count: i + 1, x };
+      note(i + 1, text, x);
     }
-  }
+  };
+  const unshown = typed.findIndex((k) => !k.shown);
+  const last = unshown < 0 ? typed.length - 1 : unshown;
+  for (let from = 0; from <= last; from++) visit(from, base.padEnd(at), at);
   return best;
+}
+
+const WORD_CHAR = /[\p{L}\p{N}_]/u;
+
+function wordStarts(text: string, x: number, start: number): number[] {
+  const back = (skip: (c: string) => boolean, take: (c: string) => boolean) => {
+    let i = x;
+    while (i > start && skip(text[i - 1] ?? '')) i--;
+    while (i > start && take(text[i - 1] ?? '')) i--;
+    return i;
+  };
+  const bySpace = back(
+    (c) => /\s/.test(c),
+    (c) => !/\s/.test(c),
+  );
+  const byWord = back(
+    (c) => !WORD_CHAR.test(c),
+    (c) => WORD_CHAR.test(c),
+  );
+  return bySpace === byWord ? [bySpace] : [bySpace, byWord];
+}
+
+export function isWordDelete(data: string): boolean {
+  return data === '\b' || data === '\x17';
 }
 
 export function pathsText(paths: string[]): string {
