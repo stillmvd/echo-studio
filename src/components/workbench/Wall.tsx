@@ -5,12 +5,16 @@ import { cn } from '@/lib/cn';
 import { listClaudeSessions, listWorkbenchProjects } from '@/lib/ipc';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import {
+  agentName,
   arrangeWall,
   assignTabs,
+  byUrgency,
   CELL_COUNT,
+  effectiveStatus,
   HANDS_ON_MS,
   STATUS_LABEL,
   samePath,
+  statusView,
   topStatus,
   urgentTab,
   type WallCell,
@@ -123,6 +127,8 @@ function usePruneCells(projects: Map<string, WorkbenchProject>) {
 let lastScan = 0;
 let missing = new Set<string>();
 
+const PICK_MAX = 8;
+
 interface Props {
   hidden: boolean;
   sessions: ClaudeSession[];
@@ -192,6 +198,21 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
     activeOf,
     wallPick(sessions, seen, activeOf),
   );
+  const onScreen = new Set(keys.filter((k): k is string => !!k));
+  const pickable = byUrgency(
+    sessions.filter(
+      (s) =>
+        s.kind === 'shell' &&
+        !!s.projectPath &&
+        effectiveStatus(s, seen) !== 'exited' &&
+        !onScreen.has(s.sessionId),
+    ),
+    seen,
+  ).slice(0, PICK_MAX);
+  const projectName = (s: ClaudeSession) =>
+    (s.projectPath && projects.get(s.projectPath)?.name) ||
+    s.projectPath?.split(/[\\/]/).pop() ||
+    '';
   const focusShown = shown.some((c) => c.id === focusCell);
   const fallbackFocus = (shown.find((c) => c.projectPath) ?? shown[0])?.id ?? null;
   useEffect(() => {
@@ -329,6 +350,29 @@ export function Wall({ hidden, sessions, projects, busy, devServers, onStart }: 
                         <span className="wb-dim">
                           Сюда встанет сессия, которая ждёт ответа или работает
                         </span>
+                        {pickable.length > 0 && (
+                          <div className="wl-pick">
+                            <span className="wl-pick-h">Или выберите сессию</span>
+                            {pickable.map((s) => (
+                              <button
+                                key={s.sessionId}
+                                type="button"
+                                className="wl-pick-i"
+                                onClick={() =>
+                                  s.projectPath &&
+                                  moveTabToWallCell(c.id, s.projectPath, s.sessionId)
+                                }
+                              >
+                                <StatusIcon
+                                  small
+                                  session={{ status: statusView(s, seen), phase: s.phase }}
+                                />
+                                <b>{projectName(s)}</b>
+                                <span>{s.name || agentName(s)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                     {strip && (

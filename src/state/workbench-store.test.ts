@@ -42,6 +42,20 @@ describe('workbench store', () => {
     expect(st().recency).toEqual(['a', 'b']);
   });
 
+  it('puts a session of any project into a wall cell and keeps the wall on', () => {
+    useWorkbenchStore.setState({ auto: true, autoTabs: ['s2'] });
+    st().openTab(P, 's1');
+    st().moveTabToWallCell('c1', P, 's1');
+    st().moveTabToWallCell('c2', B, 's2');
+    const [c1, c2] = st().cells;
+    expect(c1).toMatchObject({ projectPath: P, activeTab: 's1', manual: true });
+    expect(c2).toMatchObject({ projectPath: B, activeTab: 's2', manual: true });
+    expect(st().tabs[B]).toEqual(['s2']);
+    expect(st().autoTabs).toEqual([]);
+    expect(st().focusCell).toBe('c2');
+    expect(st().auto).toBe(true);
+  });
+
   it('closing the active tab activates the last remaining tab of its pane', () => {
     for (const k of ['a', 'b', 'c']) st().openTab(P, k);
     st().activate(P, 'a');

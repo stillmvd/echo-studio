@@ -247,13 +247,6 @@
 .wb-tw { position: relative; flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 20px; background: var(--ground); overflow: hidden; }
 .wb-tw.on { box-shadow: inset 0 0 0 1.5px var(--gb); }
 .wb-tw[hidden] { display: none; }
-.wb-devbar { flex: none; display: flex; align-items: center; gap: 8px; height: 44px; margin: 8px 8px 0; padding: 0 6px 0 16px; border-radius: 999px; background: var(--color-danger-soft); font-size: 13px; font-weight: 500; white-space: nowrap; }
-.wb-devbar.warn { background: color-mix(in srgb, var(--color-warning) 16%, transparent); }
-.wb-devbar > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.wb-devbar .wb-btn { flex: none; height: 32px; padding: 0 12px; gap: 6px; font-size: 13px; }
-@container (max-width: 520px) { .wb-devbar-l { display: none; } .wb-devbar .wb-btn { padding: 0 9px; } }
-.wb-devbar .wb-btn svg { width: 14px; height: 14px; }
-.wb-devbar .wb-btn:not(.p) { background: var(--cosmic); }
 .wb-term { position: relative; flex: 1; min-height: 0; min-width: 0; padding: 12px 4px 8px 16px; }
 :root[data-idle] .wb-term { display: none; }
 .wb-term .xterm { height: 100%; }
@@ -303,6 +296,12 @@
 .wl-free, .wl-twin { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; color: var(--dim); font-size: 12px; font-weight: 500; text-align: center; overflow: hidden; }
 .wl-free > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; color: var(--fg); font-size: 14px; }
 .wl-twin .wb-btn { color: var(--fg); }
+.wl-free > .wl-pick { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 4px; width: min(360px, 100%); min-height: 0; overflow-y: auto; font-size: 13px; }
+.wl-pick-h { margin-bottom: 4px; color: var(--dim); font-size: 12px; }
+.wl-pick-i { flex: none; display: flex; align-items: center; gap: 8px; height: 36px; min-width: 0; padding: 0 14px 0 10px; border-radius: 999px; background: var(--raised); text-align: left; transition: background-color 200ms var(--ease-trail); }
+.wl-pick-i:hover { background: var(--hover-strong); }
+.wl-pick-i > b { flex: none; font-weight: 600; }
+.wl-pick-i > span { min-width: 0; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @container (max-width: 360px) {
   .wb-term-note > span:first-child { display: none; }
   .wb-term-note { padding-left: 6px; }

@@ -2,6 +2,7 @@ import {
   ArrowRight,
   Code,
   Copy,
+  CornerDownRight,
   EyeOff,
   FolderCode,
   FolderOpen,
@@ -219,9 +220,11 @@ export function devTabMenu({
     copyUrl: () => void;
     closeLog: () => void;
     showLog?: () => void;
+    toError?: () => void;
   };
 }): MenuItem[] {
   const url = devUrl(server);
+  const errorAt = devHealth(server) === 'errors' && server?.errors?.at;
   const port = server?.ports[0];
   return [
     { heading: 'Сайт' },
@@ -231,6 +234,9 @@ export function devTabMenu({
     }),
     action('Копировать адрес', Link, actions.copyUrl, { disabled: !url }),
     { heading: 'Сервер' },
+    ...(errorAt && actions.toError
+      ? [action('Показать ошибку', CornerDownRight, actions.toError)]
+      : []),
     ...moveTo(cells),
     ...zoomItem(zoom),
     actions.showLog
@@ -309,6 +315,7 @@ export function runningDevMenu({
     restart: () => void;
     copyUrl: () => void;
     stop: () => void;
+    dismiss: () => void;
   };
 }): MenuItem[] {
   const health = devHealth(server);
@@ -319,6 +326,8 @@ export function runningDevMenu({
       ? [action('Перезапустить', RotateCcw, actions.restart)]
       : []),
     action('Копировать адрес', Link, actions.copyUrl, { disabled: !devUrl(server) }),
-    ...(devRuns(server) ? danger('Остановить', Square, actions.stop) : []),
+    ...(devRuns(server)
+      ? danger('Остановить', Square, actions.stop)
+      : danger('Закрыть', X, actions.dismiss)),
   ];
 }

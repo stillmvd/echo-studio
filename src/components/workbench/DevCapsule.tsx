@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, Play, RotateCcw, Square } from 'lucide-react';
+import { ChevronDown, Play, RotateCcw, Square, X } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
@@ -11,7 +11,7 @@ import { devHealth, devStatusLabel } from '@/lib/workbench';
 import { devTabKey, useWorkbenchStore } from '@/state/workbench-store';
 import { LiveIcon } from './live/LiveIcon';
 import { copyText, devRuns, devTabMenu, devUrl } from './menus';
-import { dispose, focusSoon, startTail } from './terminals';
+import { dispose, focusSoon, revealText, startTail } from './terminals';
 
 export function closeDevLog(path: string) {
   const key = devTabKey(path);
@@ -37,13 +37,20 @@ export function devActions(
   server: DevServer | undefined,
 ) {
   const url = devUrl(server);
+  const at = server?.errors?.at;
   return {
     openBrowser: () => dev.openBrowser(project.path),
     restart: () => (devRuns(server) ? dev.askStop(project, true) : dev.start(project.path)),
     copyUrl: () => url && copyText(url),
     closeLog: () => closeDevLog(project.path),
     stop: () => dev.askStop(project),
+    toError: at ? () => revealDevError(project.path, at) : undefined,
   };
+}
+
+function revealDevError(path: string, at: string) {
+  showDevLog(path);
+  requestAnimationFrame(() => requestAnimationFrame(() => revealText(devTabKey(path), at)));
 }
 
 export function devState(server: DevServer | undefined) {
@@ -155,6 +162,11 @@ export function useDevControl() {
       restart = false,
     ) => setStopping({ path: project.path, command: project.dev?.command ?? 'dev', restart }),
     openBrowser: (path: string) => void openDevServer(path).catch(fail('Адрес не открылся')),
+    dismiss: (path: string) =>
+      void stopDevServer(path)
+        .then(() => closeDevLog(path))
+        .catch(fail('Не удалось остановить dev-сервер'))
+        .finally(refresh),
     fail,
     dialogs,
   };
@@ -218,7 +230,7 @@ export function DevCapsule({
           <span>{server ? devStatusLabel(server) : ''}</span>
         )}
         <RestartDev project={project} server={server} dev={dev} className="wb-cap-i" />
-        {devRuns(server) && (
+        {devRuns(server) ? (
           <button
             type="button"
             className="wb-cap-i wb-stop"
@@ -226,6 +238,16 @@ export function DevCapsule({
             onClick={() => dev.askStop(project)}
           >
             <Square strokeWidth={2} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="wb-cap-i"
+            data-tip="Остановить и закрыть лог"
+            aria-label="Остановить dev-сервер и закрыть лог"
+            onClick={() => dev.dismiss(project.path)}
+          >
+            <X strokeWidth={2} />
           </button>
         )}
         <button

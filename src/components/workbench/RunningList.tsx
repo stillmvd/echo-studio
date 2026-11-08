@@ -6,6 +6,7 @@ import { devLook, LIVE_COLOR, type LiveLook, sessionLook } from '@/lib/live-stat
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
 import {
   agentName,
+  CELL_COUNT,
   devStatusLabel,
   EXTERNAL_LABEL,
   runningGroups,
@@ -21,6 +22,7 @@ import { canStopSession, copyText, devUrl, runningDevMenu, runningMenu } from '.
 import { useProjectMenu } from './ProjectTree';
 import { openSession } from './SessionStrip';
 import { focusSoon } from './terminals';
+import { tabDragProps } from './useTabDrag';
 
 interface Props {
   sessions: ClaudeSession[];
@@ -33,8 +35,25 @@ interface Props {
 const folderName = (path: string | null | undefined) => path?.split(/[\\/]/).filter(Boolean).pop();
 
 const ROOT_HINT = 'Сессии вне папки Projects';
+const RUNNING_CELL = 'running';
+
+function showInWall(s: ClaudeSession) {
+  if (!s.projectPath) return;
+  const st = useWorkbenchStore.getState();
+  const shown = st.cells.slice(0, CELL_COUNT[st.layout]);
+  const holder = shown.find((c) => c.activeTab === s.sessionId);
+  if (holder) useWorkbenchStore.setState({ focusCell: holder.id });
+  else {
+    const target =
+      shown.find((c) => c.id === st.focusCell) ?? shown.find((c) => !c.projectPath) ?? shown[0];
+    if (!target) return;
+    st.moveTabToWallCell(target.id, s.projectPath, s.sessionId);
+  }
+  focusSoon(s.sessionId);
+}
 
 export function RunningList({ sessions, devServers, projects, busy, onStart }: Props) {
+  const auto = useWorkbenchStore((s) => s.auto);
   const seen = useWorkbenchStore((s) => s.seen);
   const view = useWorkbenchStore((s) => s.view);
   const activeTab = useWorkbenchStore((s) => s.activeTab);
@@ -58,12 +77,15 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
   const isOn = (path: string | null, key: string) =>
     view.kind === 'project' && view.path === path && activeTab[path ?? ''] === key;
 
+  const toWall = (s: ClaudeSession) => auto && s.kind === 'shell' && !!s.projectPath;
+
   const goSession = (s: ClaudeSession, anchor: HTMLElement) => {
     if (s.kind === 'external') {
       void openExternal(s, anchor);
       return;
     }
-    openSession(s);
+    if (toWall(s)) showInWall(s);
+    else openSession(s);
   };
 
   const tileStyle = (look: LiveLook) => ({ '--c': LIVE_COLOR[look] }) as CSSProperties;
@@ -96,6 +118,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
                 restart: () => restartDev(dev, project, d),
                 copyUrl: () => url && copyText(url),
                 stop: () => dev.askStop(project),
+                dismiss: () => dev.dismiss(d.projectPath),
               },
             }),
           )
@@ -126,6 +149,9 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
         )}
         style={tileStyle(look)}
         disabled={!external && !s.projectPath}
+        {...(toWall(s) && s.projectPath
+          ? tabDragProps({ path: s.projectPath, key: s.sessionId, cell: RUNNING_CELL })
+          : {})}
         onClick={(e) => goSession(s, e.currentTarget)}
         onContextMenu={(e) => {
           if (!external && !s.projectPath) return;

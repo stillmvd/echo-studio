@@ -289,10 +289,36 @@ describe('runningMenu', () => {
       labels(
         runningDevMenu({
           server: server('running'),
-          actions: { go: noop, openBrowser: noop, restart: noop, copyUrl: noop, stop: noop },
+          actions: {
+            go: noop,
+            openBrowser: noop,
+            restart: noop,
+            copyUrl: noop,
+            stop: noop,
+            dismiss: noop,
+          },
         }),
       ),
     ).toEqual(['Перейти', 'Открыть в браузере (x)', 'Копировать адрес (x)', '—', 'Остановить']);
+  });
+
+  it('a dead dev server can be closed from the menu', () => {
+    const dismiss = vi.fn();
+    const items = runningDevMenu({
+      server: { ...server('error'), pids: [] },
+      actions: { go: noop, openBrowser: noop, restart: noop, copyUrl: noop, stop: noop, dismiss },
+    });
+    expect(labels(items)).toEqual([
+      'Перейти',
+      'Открыть в браузере (x)',
+      'Перезапустить',
+      'Копировать адрес (x)',
+      '—',
+      'Закрыть',
+    ]);
+    const close = items.at(-1) as ContextMenuAction;
+    close.onSelect();
+    expect(dismiss).toHaveBeenCalledOnce();
   });
 
   it('a crashed dev server can be restarted from the menu', () => {
@@ -300,7 +326,14 @@ describe('runningMenu', () => {
       labels(
         runningDevMenu({
           server: server('error'),
-          actions: { go: noop, openBrowser: noop, restart: noop, copyUrl: noop, stop: noop },
+          actions: {
+            go: noop,
+            openBrowser: noop,
+            restart: noop,
+            copyUrl: noop,
+            stop: noop,
+            dismiss: noop,
+          },
         }),
       ),
     ).toEqual([

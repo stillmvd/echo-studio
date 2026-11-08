@@ -11,14 +11,7 @@ import { agentName, devHealth, type StatusView, statusView } from '@/lib/workben
 import { withoutVisit } from '@/state/recent-store';
 import { devTabKey, isDevTab, useWorkbenchStore } from '@/state/workbench-store';
 import { ClaudeTerminal } from './ClaudeTerminal';
-import {
-  closeDevLog,
-  DevDot,
-  devActions,
-  restartDev,
-  showDevLog,
-  useDevControl,
-} from './DevCapsule';
+import { closeDevLog, DevDot, devActions, showDevLog, useDevControl } from './DevCapsule';
 import { EmptyProject, sessionTitle, useResumable } from './EmptyProject';
 import { LogTerminal } from './LogTerminal';
 import {
@@ -496,15 +489,7 @@ export function Cell({
         )}
         {tail}
       </div>
-      {devOn && (
-        <LogTerminal
-          tabKey={devKey}
-          projectPath={project.path}
-          visible={visible}
-          server={server}
-          onRestart={() => restartDev(dev, project, server)}
-        />
-      )}
+      {devOn && <LogTerminal tabKey={devKey} projectPath={project.path} visible={visible} />}
       {current && (
         <ClaudeTerminal
           key={current.key}

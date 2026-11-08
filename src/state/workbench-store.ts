@@ -236,8 +236,13 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       moveTabToWallCell: (id, path, key) =>
         set((s) => {
           const target = s.cells.find((c) => c.id === id);
-          if (!target || !(s.tabs[path] ?? []).includes(key)) return {};
+          if (!target) return {};
+          const adopted = (s.tabs[path] ?? []).includes(key)
+            ? {}
+            : put(s, path, adoptInGrid(gridOf(s, path), key));
           return {
+            ...adopted,
+            autoTabs: s.autoTabs.filter((k) => k !== key),
             cells: s.cells.map((c) =>
               c.id === id
                 ? { ...c, projectPath: path, manual: !c.pinned, activeTab: key }
