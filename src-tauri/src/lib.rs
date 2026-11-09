@@ -44,14 +44,14 @@ pub fn run() {
     let builder = tauri::Builder::default();
     #[cfg(not(debug_assertions))]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _| {
-        if let Some(path) = workbench::request::path_arg(&args) {
+        if let Some(arg) = workbench::request::path_arg(&args) {
             let shown = app
                 .get_webview_window("main")
                 .is_some_and(|w| w.is_visible().unwrap_or(false));
             if !shown {
                 splash::stay_behind();
             }
-            workbench::request::handle(app, path);
+            workbench::request::handle(app, arg);
             return;
         }
         if let Some(window) = app.get_webview_window("main") {

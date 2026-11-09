@@ -20,9 +20,9 @@ struct Fail(i32, String);
 
 pub fn run(identifier: &str) -> Option<i32> {
     let args: Vec<String> = std::env::args().collect();
-    let raw = request::path_arg(&args)?;
+    let arg = request::path_arg(&args)?;
     imp::attach_console();
-    let code = match start(identifier, &raw, timeout_arg(&args)) {
+    let code = match start(identifier, &arg, timeout_arg(&args)) {
         Ok(url) => {
             let _ = writeln!(std::io::stdout(), "{url}");
             0
@@ -61,24 +61,27 @@ fn check(path: &str) -> Result<String, String> {
         .ok_or_else(|| format!("У проекта нет dev-команды: {}", project.path))
 }
 
-fn start(identifier: &str, raw: &str, timeout: Duration) -> Result<String, Fail> {
-    let raw = raw.trim();
+fn start(identifier: &str, arg: &request::Arg, timeout: Duration) -> Result<String, Fail> {
+    let raw = arg.path.trim();
     if raw.is_empty() {
         return Err(Fail(
             EXIT_BAD_PROJECT,
-            "Нужна папка проекта после --dev".into(),
+            format!("Нужна папка проекта после {}", arg.flag()),
         ));
     }
     let abs = std::path::absolute(raw)
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|_| raw.to_owned());
     let checked = check(&abs);
-    let target = checked.clone().unwrap_or(abs);
-    let _ = dev::take_failure(&target);
+    let target = request::Arg {
+        path: checked.clone().unwrap_or(abs),
+        restart: arg.restart,
+    };
+    let _ = dev::take_failure(&target.path);
     let since = now_ms();
     deliver(identifier, &target)?;
     let path = checked.map_err(|e| Fail(EXIT_BAD_PROJECT, e))?;
-    wait(&path, since, timeout)
+    wait(&path, since, timeout, arg.restart)
 }
 
 fn wait_window(identifier: &str) -> bool {
@@ -92,8 +95,8 @@ fn wait_window(identifier: &str) -> bool {
     false
 }
 
-fn deliver(identifier: &str, path: &str) -> Result<(), Fail> {
-    if imp::forward(identifier, path) {
+fn deliver(identifier: &str, arg: &request::Arg) -> Result<(), Fail> {
+    if imp::forward(identifier, arg) {
         return Ok(());
     }
     if !imp::is_running(identifier) {
@@ -114,7 +117,7 @@ fn deliver(identifier: &str, path: &str) -> Result<(), Fail> {
                 )
             })?;
     }
-    if wait_window(identifier) && imp::forward(identifier, path) {
+    if wait_window(identifier) && imp::forward(identifier, arg) {
         return Ok(());
     }
     Err(Fail(
@@ -152,14 +155,19 @@ fn verdict(server: &dev::DevServer, since: u64, watched: Option<u64>) -> Option<
     }
 }
 
-fn wait(path: &str, since: u64, timeout: Duration) -> Result<String, Fail> {
+fn wait(path: &str, since: u64, timeout: Duration, restart: bool) -> Result<String, Fail> {
     let deadline = Instant::now() + timeout;
     let mut watched = None;
     loop {
         if let Some(e) = dev::take_failure(path) {
-            return Err(Fail(EXIT_FAILED, format!("dev не запустился: {e}")));
+            let what = if restart {
+                "dev не перезапустился"
+            } else {
+                "dev не запустился"
+            };
+            return Err(Fail(EXIT_FAILED, format!("{what}: {e}")));
         }
-        let server = dev::status(path);
+        let server = dev::status(path).filter(|s| !restart || s.started_at >= since);
         if let Some(s) = server.as_ref().filter(|s| !s.pids.is_empty()) {
             watched = Some(s.started_at);
         }
@@ -190,7 +198,7 @@ mod imp {
         FindWindowW, SendMessageTimeoutW, SMTO_NORMAL, WM_COPYDATA,
     };
 
-    use crate::workbench::request::FLAG;
+    use crate::workbench::request::Arg;
 
     const SINGLE_INSTANCE_DATA_NUL: usize = 1543;
     const FORWARD_TIMEOUT_MS: u32 = 10_000;
@@ -230,7 +238,7 @@ mod imp {
         true
     }
 
-    pub fn forward(identifier: &str, path: &str) -> bool {
+    pub fn forward(identifier: &str, arg: &Arg) -> bool {
         let hwnd = target(identifier);
         if hwnd.is_null() {
             return false;
@@ -240,7 +248,7 @@ mod imp {
             .to_string_lossy()
             .into_owned();
         let exe = std::env::args().next().unwrap_or_default();
-        let data = format!("{cwd}\0{exe}\0{FLAG}\0{path}");
+        let data = format!("{cwd}\0{exe}\0{}\0{}", arg.flag(), arg.path);
         let bytes = data.as_bytes();
         let cds = COPYDATASTRUCT {
             dwData: SINGLE_INSTANCE_DATA_NUL,

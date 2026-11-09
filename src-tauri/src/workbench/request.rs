@@ -6,7 +6,24 @@ use tauri::{AppHandle, Emitter};
 use super::{dev, projects};
 
 pub const FLAG: &str = "--dev";
+pub const RESTART_FLAG: &str = "--restart";
 pub const EVENT_DEV_REQUEST: &str = "workbench://dev-request";
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Arg {
+    pub path: String,
+    pub restart: bool,
+}
+
+impl Arg {
+    pub fn flag(&self) -> &'static str {
+        if self.restart {
+            RESTART_FLAG
+        } else {
+            FLAG
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -17,9 +34,12 @@ pub struct DevRequest {
 
 static PENDING: Mutex<Vec<DevRequest>> = Mutex::new(Vec::new());
 
-pub fn path_arg(args: &[String]) -> Option<String> {
-    let at = args.iter().position(|a| a == FLAG)?;
-    Some(args.get(at + 1).cloned().unwrap_or_default())
+pub fn path_arg(args: &[String]) -> Option<Arg> {
+    let at = args.iter().position(|a| a == FLAG || a == RESTART_FLAG)?;
+    Some(Arg {
+        path: args.get(at + 1).cloned().unwrap_or_default(),
+        restart: args[at] == RESTART_FLAG,
+    })
 }
 
 pub fn take() -> Vec<DevRequest> {
@@ -33,7 +53,7 @@ fn push(request: DevRequest) {
         .push(request);
 }
 
-fn run(app: &AppHandle, path: &str) -> DevRequest {
+fn run(app: &AppHandle, path: &str, restart: bool) -> DevRequest {
     let project = match projects::ensure_project(path) {
         Ok(p) => p,
         Err(e) => {
@@ -43,6 +63,18 @@ fn run(app: &AppHandle, path: &str) -> DevRequest {
             }
         }
     };
+    if restart {
+        if let Err(e) = dev::stop(&project.path) {
+            if dev::status(&project.path).is_some() {
+                dev::note_failure(&project.path, &e);
+                return DevRequest {
+                    project_path: project.path,
+                    error: Some(e),
+                };
+            }
+        }
+        let _ = app.emit(dev::EVENT_DEV, ());
+    }
     let notify = app.clone();
     let error = match dev::start(&project.path, move || {
         let _ = notify.emit(dev::EVENT_DEV, ());
@@ -60,10 +92,10 @@ fn run(app: &AppHandle, path: &str) -> DevRequest {
     }
 }
 
-pub fn handle(app: &AppHandle, path: String) {
+pub fn handle(app: &AppHandle, arg: Arg) {
     let app = app.clone();
     std::thread::spawn(move || {
-        push(run(&app, &path));
+        push(run(&app, &arg.path, arg.restart));
         let _ = app.emit(dev::EVENT_DEV, ());
         let _ = app.emit(EVENT_DEV_REQUEST, ());
     });
@@ -79,11 +111,46 @@ mod tests {
 
     #[test]
     fn reads_path_after_flag() {
+        let dev = |path: &str| {
+            Some(Arg {
+                path: path.into(),
+                restart: false,
+            })
+        };
         assert_eq!(
             path_arg(&args(&["echo.exe", "--dev", "C:\\P\\A"])),
-            Some("C:\\P\\A".into())
+            dev("C:\\P\\A")
         );
-        assert_eq!(path_arg(&args(&["echo.exe", "--dev"])), Some(String::new()));
+        assert_eq!(path_arg(&args(&["echo.exe", "--dev"])), dev(""));
         assert_eq!(path_arg(&args(&["echo.exe"])), None);
+    }
+
+    #[test]
+    fn reads_path_after_restart_flag() {
+        let restart = |path: &str| {
+            Some(Arg {
+                path: path.into(),
+                restart: true,
+            })
+        };
+        assert_eq!(
+            path_arg(&args(&["echo.exe", "--restart", "C:\\P\\A"])),
+            restart("C:\\P\\A")
+        );
+        assert_eq!(
+            path_arg(&args(&[
+                "echo.exe",
+                "--restart",
+                "C:\\P\\A",
+                "--timeout",
+                "30"
+            ])),
+            restart("C:\\P\\A")
+        );
+        assert_eq!(path_arg(&args(&["echo.exe", "--restart"])), restart(""));
+        assert_eq!(
+            path_arg(&args(&["echo.exe", "--restart", "C:\\P\\A"])).map(|a| a.flag()),
+            Some(RESTART_FLAG)
+        );
     }
 }
