@@ -10,6 +10,7 @@ import { placeDevLog } from './DevCapsule';
 const folder = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 
 function busyElsewhere(path: string) {
+  if (useWorkbenchStore.getState().auto) return true;
   if (!document.hasFocus()) return false;
   if (useUiStore.getState().activeTab !== 'workbench') return true;
   const view = useWorkbenchStore.getState().view;

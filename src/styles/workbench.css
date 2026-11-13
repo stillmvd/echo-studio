@@ -239,7 +239,7 @@
 .wb-tab[draggable="true"] .wb-tab-b { cursor: inherit; }
 .wb-tab-ins { flex: none; align-self: center; width: 2px; height: 24px; margin: 0 -3px; border-radius: 1px; background: var(--color-accent); pointer-events: none; }
 .wb-tx { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; color: var(--dim); overflow: hidden; transition: width 160ms var(--ease-trail), opacity 160ms var(--ease-trail), background-color 200ms var(--ease-trail), color 200ms var(--ease-trail); }
-.wb-tab:not(.on):not(:hover):not(:focus-within) .wb-tx { width: 0; margin-left: -4px; opacity: 0; }
+.wb-tab:not(:hover):not(:has(:focus-visible)) .wb-tx { width: 0; margin-left: -4px; opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .wb-tx { transition: none; } }
 .wb-tx:hover { background: var(--hover-strong); color: var(--fg); }
 .wb-tx svg { width: 14px; height: 14px; }
