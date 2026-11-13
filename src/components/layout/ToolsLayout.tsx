@@ -151,7 +151,7 @@ export function ToolsLayout() {
   const chosen = shown.filter((m) => picked.includes(m.entry.id));
   const toOn = chosen.filter((m) => switchable(m, true));
   const toOff = chosen.filter((m) => switchable(m, false));
-  const toUpd = chosen.filter((m) => m.update && !m.update.url);
+  const toUpd = chosen.filter((m) => m.update && !m.update.url && !m.update.source);
   const toDel = chosen.filter((m) => !pluginPart(m));
   const idsRef = useRef(ids);
   idsRef.current = ids;
@@ -413,16 +413,22 @@ export function ToolsLayout() {
           ) : (
             start !== null && <span className="tl-dim">История с {shortDate(start)}</span>
           )}
-          {filter === 'upd' && !chosen.length && shown.some((m) => m.update && !m.update.url) && (
-            <button
-              type="button"
-              className="tl-btn p"
-              disabled={busy}
-              onClick={() => void updateMany(shown.filter((m) => m.update && !m.update.url))}
-            >
-              {updating ? 'Обновляю…' : 'Обновить всё'}
-            </button>
-          )}
+          {filter === 'upd' &&
+            !chosen.length &&
+            shown.some((m) => m.update && !m.update.url && !m.update.source) && (
+              <button
+                type="button"
+                className="tl-btn p"
+                disabled={busy}
+                onClick={() =>
+                  void updateMany(
+                    shown.filter((m) => m.update && !m.update.url && !m.update.source),
+                  )
+                }
+              >
+                {updating ? 'Обновляю…' : 'Обновить всё'}
+              </button>
+            )}
         </div>
 
         <div className="tl-list">

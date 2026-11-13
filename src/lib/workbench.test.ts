@@ -32,6 +32,7 @@ import {
   mouseReport,
   movedTabs,
   nextBusyProject,
+  nextGlTry,
   nextInRecency,
   normalizeCells,
   pathsText,
@@ -1216,5 +1217,18 @@ describe('findLinks', () => {
   it('skips versions, dates and paths inside URLs', () => {
     expect(at('v2.24.0 es2022|firefox115 26.10.2026 15:19:59')).toEqual([]);
     expect(pick('http://localhost:9000/src/main.ts').map((l) => l.kind)).toEqual(['url']);
+  });
+});
+
+describe('nextGlTry', () => {
+  it('gives up after quick losses in a row', () => {
+    expect(nextGlTry(0, 500)).toBe(1);
+    expect(nextGlTry(4, 500)).toBe(5);
+    expect(nextGlTry(5, 500)).toBeNull();
+  });
+
+  it('starts over after a context lived long enough', () => {
+    expect(nextGlTry(5, 60_000)).toBe(0);
+    expect(nextGlTry(3, 3_600_000)).toBe(0);
   });
 });

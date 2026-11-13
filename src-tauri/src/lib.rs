@@ -3,6 +3,7 @@ mod cli;
 mod commands;
 mod conversations;
 mod memory;
+mod renderer;
 mod splash;
 mod tooling;
 mod visibility;
@@ -28,6 +29,27 @@ fn app_ready(window: tauri::WebviewWindow, splash: tauri::State<Option<splash::S
     }
 }
 
+fn journal<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
+    tauri_plugin_log::Builder::new()
+        .clear_targets()
+        .target(Target::new(TargetKind::LogDir {
+            file_name: Some("echo".into()),
+        }))
+        .level(log::LevelFilter::Warn)
+        .max_file_size(2_000_000)
+        .rotation_strategy(RotationStrategy::KeepSome(3))
+        .build()
+}
+
+fn log_panics() {
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        log::error!("{info}\n{}", std::backtrace::Backtrace::force_capture());
+        previous(info);
+    }));
+}
+
 #[tauri::command]
 fn toasts_muted() -> bool {
     splash::background()
@@ -41,6 +63,7 @@ pub fn run() {
         std::process::exit(code);
     }
     let splash = splash::show(&context.config().identifier);
+    log_panics();
     let builder = tauri::Builder::default();
     #[cfg(not(debug_assertions))]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _| {
@@ -88,6 +111,7 @@ pub fn run() {
                     .detach_all();
             }
         })
+        .plugin(journal())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -178,6 +202,7 @@ pub fn run() {
             commands::workbench::kill_processes,
             commands::workbench::list_claude_sessions,
             visibility::window_visible,
+            renderer::renderer_load,
             commands::workbench::focus_session_window,
             commands::workbench::session_window_foreground,
             commands::workbench::clipboard_file_paths,

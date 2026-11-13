@@ -965,3 +965,11 @@ export function nextInRecency(
   const step = back ? -1 : 1;
   return order[(Math.max(i, 0) + step + order.length) % order.length] ?? null;
 }
+
+const GL_RETRIES = 5;
+const GL_STABLE_MS = 60_000;
+
+export function nextGlTry(tries: number, livedMs: number): number | null {
+  const next = livedMs >= GL_STABLE_MS ? 0 : tries + 1;
+  return next > GL_RETRIES ? null : next;
+}

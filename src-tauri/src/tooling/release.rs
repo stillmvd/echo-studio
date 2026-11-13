@@ -77,6 +77,10 @@ fn download(url: &str, to: &Path) -> Result<(), String> {
     let mut cmd = child_command("curl.exe");
     cmd.args([
         "-sSfL",
+        "--proto",
+        "=https",
+        "--proto-redir",
+        "=https",
         "--max-time",
         "900",
         "-H",
@@ -135,7 +139,13 @@ pub fn replace(exe: &Path, new: &Path) -> Result<PathBuf, String> {
         return Err(format!("{}: {e}", exe.display()));
     }
     if let Err(e) = fs::rename(&staged, exe) {
-        let _ = fs::rename(&bak, exe);
+        if let Err(back) = fs::rename(&bak, exe) {
+            log::error!(
+                "{}: не вернулся из {}: {back}",
+                exe.display(),
+                bak.display()
+            );
+        }
         let _ = fs::remove_file(&staged);
         return Err(format!("{}: {e}", exe.display()));
     }
@@ -151,17 +161,21 @@ fn fetch(exe: &Path, stem: &str, work: &Path) -> Result<String, String> {
         .ok_or_else(|| format!("{stem}: у релиза нет версии"))?;
     let (asset, url) = pick_asset(&rel, stem, arch())
         .ok_or_else(|| format!("{stem}: в релизе нет сборки для Windows"))?;
-    let file = work.join(asset);
+    let local = Path::new(asset)
+        .file_name()
+        .filter(|n| n.to_string_lossy() == asset)
+        .ok_or_else(|| format!("{asset}: недопустимое имя файла в релизе"))?;
+    let file = work.join(local);
+    let sums = checksums_asset(&rel)
+        .ok_or_else(|| format!("{stem}: в релизе нет checksums.txt — сборку не обновляем"))?;
+    let list = work.join("checksums.txt");
+    download(sums, &list)?;
+    let text = fs::read_to_string(&list).map_err(|e| format!("checksums.txt: {e}"))?;
+    let want = expected_sha(&text, asset)
+        .ok_or_else(|| format!("{asset}: нет в checksums.txt — сборку не обновляем"))?;
     download(url, &file)?;
-    if let Some(sums) = checksums_asset(&rel) {
-        let list = work.join("checksums.txt");
-        download(sums, &list)?;
-        let text = fs::read_to_string(&list).unwrap_or_default();
-        if let Some(want) = expected_sha(&text, asset) {
-            if sha256(&file)? != want {
-                return Err(format!("{asset}: контрольная сумма не совпала"));
-            }
-        }
+    if sha256(&file)? != want {
+        return Err(format!("{asset}: контрольная сумма не совпала"));
     }
     let name = format!("{stem}.exe");
     let new = if asset.to_ascii_lowercase().ends_with(".zip") {

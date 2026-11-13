@@ -11,7 +11,7 @@ use serde_json::Value;
 use super::actions::output_within;
 use super::inventory::Entry;
 use super::paths::{claude_dir, installed_plugins};
-use super::release::{arch, pick_asset};
+use super::release::{arch, checksums_asset, pick_asset};
 use super::{Kind, Origin};
 use crate::agent::claude_cli;
 use crate::workbench::child_command;
@@ -23,6 +23,15 @@ pub struct Update {
     pub current: String,
     pub latest: String,
     pub url: Option<String>,
+    pub source: Option<String>,
+}
+
+pub fn release_source(rel: &Value) -> Option<String> {
+    let url = rel.get("html_url")?.as_str()?;
+    let rest = url.strip_prefix("https://github.com/")?;
+    let mut parts = rest.split('/');
+    let (owner, repo) = (parts.next()?, parts.next()?);
+    (!owner.is_empty() && !repo.is_empty()).then(|| format!("github.com/{owner}/{repo}"))
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -172,6 +181,7 @@ fn check_plugins(home: &Path, names: &[String], tick: &dyn Fn(), out: &mut Check
                 current,
                 latest,
                 url: None,
+                source: None,
             });
         }
     }
@@ -250,6 +260,7 @@ fn check_group(repo: &str, parent: &str, list: Vec<Skill>, out: &mut Check) {
                         current: hash.chars().take(7).collect(),
                         latest: sha.chars().take(7).collect(),
                         url: None,
+                        source: None,
                     });
                 }
             }
@@ -356,6 +367,7 @@ fn check_git(id: &str, dir: &Path, out: &mut Check) {
                 current,
                 latest,
                 url: None,
+                source: None,
             });
         }
     }
@@ -437,19 +449,21 @@ fn check_release(id: &str, exe: &Path, out: &mut Check) {
                 .get("tag_name")
                 .and_then(Value::as_str)
                 .and_then(version_of);
-            let url = if pick_asset(&rel, &stem, arch()).is_some() {
-                None
-            } else {
-                rel.get("html_url")
-                    .and_then(Value::as_str)
-                    .map(String::from)
-            };
+            let url =
+                if pick_asset(&rel, &stem, arch()).is_some() && checksums_asset(&rel).is_some() {
+                    None
+                } else {
+                    rel.get("html_url")
+                        .and_then(Value::as_str)
+                        .map(String::from)
+                };
             if let Some(latest) = tag.filter(|t| newer(t, &current)) {
                 out.updates.push(Update {
                     id: id.into(),
                     current,
                     latest,
                     url,
+                    source: release_source(&rel),
                 });
             }
         }
@@ -485,6 +499,7 @@ fn check_own(id: &str, source: Own, out: &mut Check) {
                 current,
                 latest,
                 url: None,
+                source: None,
             }),
             Ok(_) => {}
             Err(e) => out.errors.push(e),

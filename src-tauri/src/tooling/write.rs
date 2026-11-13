@@ -1,12 +1,14 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
 use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use super::paths::{claude_json, normalize_project, project_dir, same_project, user_settings};
-use super::settings::read_json;
+use super::settings::parse_json;
 use super::{ToggleFile, ToggleKey, ToggleTarget};
 
 const KEEP: usize = 20;
@@ -210,14 +212,18 @@ pub fn list_backups(backups_root: &Path) -> Vec<ConfigBackup> {
     out
 }
 
-fn write_atomic(file: &Path, root: &Value) -> Result<(), String> {
+fn pretty_json(root: &Value) -> Result<String, String> {
     let mut text = serde_json::to_string_pretty(root)
         .map_err(|e| format!("Не удалось сохранить JSON: {e}"))?;
     text.push('\n');
-    write_text_atomic(file, &text)
+    Ok(text)
 }
 
-pub fn write_text_atomic(file: &Path, text: &str) -> Result<(), String> {
+static EDITS: Mutex<()> = Mutex::new(());
+static TEMP_SEQ: AtomicU64 = AtomicU64::new(0);
+const EDIT_TRIES: usize = 3;
+
+fn stage(file: &Path, text: &str) -> Result<PathBuf, String> {
     let parent = file.parent().ok_or("У файла нет папки")?;
     fs::create_dir_all(parent)
         .map_err(|e| format!("Не удалось создать {}: {e}", parent.display()))?;
@@ -225,12 +231,63 @@ pub fn write_text_atomic(file: &Path, text: &str) -> Result<(), String> {
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
-    let tmp = parent.join(format!(".{name}.echo-studio.tmp"));
+    let seq = TEMP_SEQ.fetch_add(1, Ordering::Relaxed);
+    let tmp = parent.join(format!(
+        ".{name}.{}-{seq}.echo-studio.tmp",
+        std::process::id()
+    ));
     fs::write(&tmp, text).map_err(|e| format!("Не удалось записать {}: {e}", tmp.display()))?;
-    fs::rename(&tmp, file).map_err(|e| {
-        let _ = fs::remove_file(&tmp);
+    Ok(tmp)
+}
+
+fn commit(tmp: &Path, file: &Path) -> Result<(), String> {
+    fs::rename(tmp, file).map_err(|e| {
+        let _ = fs::remove_file(tmp);
         format!("Не удалось заменить {}: {e}", file.display())
     })
+}
+
+pub fn write_text_atomic(file: &Path, text: &str) -> Result<(), String> {
+    let tmp = stage(file, text)?;
+    commit(&tmp, file)
+}
+
+fn stamp_of(file: &Path) -> Option<(SystemTime, u64)> {
+    let meta = fs::metadata(file).ok()?;
+    Some((meta.modified().ok()?, meta.len()))
+}
+
+pub fn edit_text(
+    file: &Path,
+    backups_root: &Path,
+    edit: impl Fn(Option<&str>) -> Result<String, String>,
+) -> Result<(), String> {
+    let _guard = EDITS.lock().unwrap_or_else(|e| e.into_inner());
+    for _ in 0..EDIT_TRIES {
+        let before = stamp_of(file);
+        let text = match fs::read_to_string(file) {
+            Ok(text) => Some(text),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+            Err(e) => return Err(format!("{}: {e}", file.display())),
+        };
+        let next = edit(text.as_deref())?;
+        if text.as_deref() == Some(next.as_str()) {
+            return Ok(());
+        }
+        if text.is_some() {
+            backup(file, backups_root, SystemTime::now())?;
+        }
+        let tmp = stage(file, &next)?;
+        if stamp_of(file) != before {
+            let _ = fs::remove_file(&tmp);
+            continue;
+        }
+        return commit(&tmp, file);
+    }
+    Err(format!(
+        "{} постоянно меняется — повторите чуть позже",
+        file.display()
+    ))
 }
 
 fn exclude_local_settings(project: &Path) {
@@ -258,7 +315,9 @@ fn exclude_local_settings(project: &Path) {
     }
     text.push_str(".claude/settings.local.json\n");
     let _ = fs::create_dir_all(git_dir.join("info"));
-    let _ = fs::write(exclude, text);
+    if let Err(e) = fs::write(&exclude, text) {
+        log::warn!("{}: {e}", exclude.display());
+    }
 }
 
 pub fn set_enabled(
@@ -269,14 +328,15 @@ pub fn set_enabled(
     enabled: bool,
 ) -> Result<(), String> {
     let file = target_file(home, t, known_projects)?;
-    let existing = read_json(&file)?;
-    let created = existing.is_none();
-    let mut root = existing.unwrap_or_else(|| Value::Object(Map::new()));
-    apply(&mut root, t, enabled)?;
-    if !created {
-        backup(&file, backups_root, SystemTime::now())?;
-    }
-    write_atomic(&file, &root)?;
+    let created = !file.exists();
+    edit_text(&file, backups_root, |text| {
+        let mut root = match text {
+            Some(text) => parse_json(text, &file)?,
+            None => Value::Object(Map::new()),
+        };
+        apply(&mut root, t, enabled)?;
+        pretty_json(&root)
+    })?;
     if created && t.file == ToggleFile::ProjectLocalSettings {
         if let Some(p) = &t.project_path {
             exclude_local_settings(Path::new(&normalize_project(p)));

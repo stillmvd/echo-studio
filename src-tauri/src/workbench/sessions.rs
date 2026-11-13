@@ -16,7 +16,6 @@ const EXITED_WINDOW_MS: u64 = 3_600_000;
 const CLAUDE_TIMEOUT: Duration = Duration::from_secs(20);
 const RESTART_WAIT: Duration = Duration::from_secs(15);
 const START_TIMEOUT: Duration = Duration::from_secs(60);
-const FULL_REPAINT: &str = "CLAUDE_CODE_ALT_SCREEN_FULL_REPAINT";
 const PIPE_GRACE: Duration = Duration::from_millis(500);
 const DAEMON_LOG_TAIL: u64 = 256 * 1024;
 
@@ -178,9 +177,6 @@ fn claude(args: &[&str], cwd: Option<&Path>) -> Result<Output, String> {
         .stderr(Stdio::piped());
     if let Some(dir) = cwd {
         cmd.current_dir(dir);
-    }
-    if args.contains(&"--bg") {
-        cmd.env(FULL_REPAINT, "0");
     }
     let mut child = cmd.spawn().map_err(|e| format!("{what}: {e}"))?;
     let stdout = Pipe::read(child.stdout.take());
@@ -546,7 +542,10 @@ pub fn parse_backgrounded(text: &str) -> Option<String> {
         .map(String::from)
 }
 
+static STARTING: Mutex<()> = Mutex::new(());
+
 pub fn start(project: &Path, resume: Option<&str>) -> Result<Started, String> {
+    let _guard = STARTING.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(id) = resume {
         if !is_session_id(id) {
             return Err(format!("Неверный id сессии: {id}"));

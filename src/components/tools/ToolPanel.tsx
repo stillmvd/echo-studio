@@ -99,8 +99,14 @@ export function ToolPanel({
   const kimi = useAgents().data?.current === 'kimi';
   const [skipped, setSkipped] = useState<string[]>([]);
   const [confirm, setConfirm] = useState(false);
+  const [confirmUpdate, setConfirmUpdate] = useState(false);
   const remove = useDeleteTool();
   const update = useUpdateTool();
+  const runUpdate = () =>
+    update.mutate(e.id, {
+      onSuccess: () => toast('Обновлено. Применится в новых сессиях Claude'),
+      onError: (err) => toast(`Не удалось обновить: ${String(err)}`, 'fail'),
+    });
   const updating = useUpdating();
   const unset = useSetToolEnabled();
   const projects = [...new Map(e.copies.map((c) => [c.path, c.project])).entries()];
@@ -235,12 +241,7 @@ export function ToolPanel({
             type="button"
             className="tl-btn p"
             disabled={updating}
-            onClick={() =>
-              update.mutate(e.id, {
-                onSuccess: () => toast('Обновлено. Применится в новых сессиях Claude'),
-                onError: (err) => toast(`Не удалось обновить: ${String(err)}`, 'fail'),
-              })
-            }
+            onClick={() => (m.update?.source ? setConfirmUpdate(true) : runUpdate())}
           >
             {update.isPending ? 'Обновляю…' : `Обновить до ${m.update.latest}`}
           </button>
@@ -305,6 +306,17 @@ export function ToolPanel({
           onClose();
         }}
         onCancel={() => setConfirm(false)}
+      />
+      <ConfirmDialog
+        open={confirmUpdate}
+        title={`Обновить ${e.name} до ${m.update?.latest ?? ''}?`}
+        description={`Сборка из ${m.update?.source ?? ''} заменит exe. Репозиторий найден по имени файла — сверьте владельца.`}
+        confirmLabel="Обновить"
+        onConfirm={() => {
+          setConfirmUpdate(false);
+          runUpdate();
+        }}
+        onCancel={() => setConfirmUpdate(false)}
       />
     </div>
   );

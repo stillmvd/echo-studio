@@ -8,7 +8,15 @@ pub async fn write_text_file(file_path: String, content: String) -> Result<(), S
     if path.extension().and_then(|e| e.to_str()) != Some("md") {
         return Err(format!("Запись только в .md: {file_path}"));
     }
-    std::fs::write(&path, content).map_err(|e| format!("Не удалось записать файл: {e}"))
+    if file_path.starts_with("\\\\") || file_path.starts_with("//") {
+        return Err(format!(
+            "Сетевые пути не подходят для экспорта: {file_path} — нужна локальная папка"
+        ));
+    }
+    super::conversations::blocking(move || {
+        crate::tooling::write::write_text_atomic(&path, &content)
+    })
+    .await?
 }
 
 #[tauri::command]

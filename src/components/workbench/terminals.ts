@@ -32,6 +32,7 @@ import {
   isPathTitle,
   isWordDelete,
   mouseReport,
+  nextGlTry,
   pathsText,
   plainTitle,
   type TermLink,
@@ -660,24 +661,30 @@ export function mount(entry: Entry, container: HTMLElement) {
 }
 
 const GL_RETRY_MS = 1000;
-const GL_RETRIES = 5;
 const disposed = new WeakSet<Entry>();
 
 function attachGl(entry: Entry, tries = 0) {
+  const started = performance.now();
+  const retry = () => {
+    const next = nextGlTry(tries, performance.now() - started);
+    if (next === null) return;
+    setTimeout(
+      () => {
+        if (!disposed.has(entry)) attachGl(entry, next);
+      },
+      GL_RETRY_MS * (next + 1),
+    );
+  };
   try {
     const gl = new WebglAddon();
     gl.onContextLoss(() => {
       gl.dispose();
-      if (tries >= GL_RETRIES) return;
-      setTimeout(
-        () => {
-          if (!disposed.has(entry)) attachGl(entry, tries + 1);
-        },
-        GL_RETRY_MS * (tries + 1),
-      );
+      retry();
     });
     entry.term.loadAddon(gl);
-  } catch {}
+  } catch {
+    retry();
+  }
 }
 
 export function unmount(entry: Entry, container: HTMLElement) {

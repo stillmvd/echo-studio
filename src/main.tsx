@@ -4,6 +4,7 @@ import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from '@/App';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { installAutoRefresh } from '@/lib/auto-refresh';
 import { installNativeMenuGuard } from '@/lib/context-menu';
 import { installKeyboardMode } from '@/lib/keyboard-mode';
 import { installMouseNavigation } from '@/lib/nav-history';
@@ -16,6 +17,7 @@ installNativeMenuGuard(import.meta.env.DEV);
 installMouseNavigation();
 installKeyboardMode();
 installWindowActivity();
+installAutoRefresh();
 
 const Feedback = import.meta.env.DEV
   ? lazy(() => import('agentation').then((m) => ({ default: m.Agentation })))

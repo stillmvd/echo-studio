@@ -303,6 +303,10 @@ export async function terminalDetachAll(): Promise<void> {
   return invoke('terminal_detach_all');
 }
 
+export async function rendererLoad(): Promise<number | null> {
+  return invoke('renderer_load');
+}
+
 export async function listDevServers(): Promise<DevServer[]> {
   return invoke<DevServer[]>('list_dev_servers');
 }

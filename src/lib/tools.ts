@@ -36,6 +36,7 @@ export interface ToolUpdate {
   current: string;
   latest: string;
   url: string | null;
+  source: string | null;
 }
 
 export interface UpdateCheck {

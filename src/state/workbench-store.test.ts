@@ -3,6 +3,7 @@ import { emptyCells } from '@/lib/workbench';
 import {
   currentKey,
   devTabKey,
+  freshSeen,
   isDevTab,
   migrateWorkbench,
   useWorkbenchStore,
@@ -206,6 +207,25 @@ describe('migrateWorkbench', () => {
     expect(s.view).toEqual({ kind: 'overview' });
     expect(s.grids).toEqual({});
     expect(s.auto).toBe(false);
+  });
+
+  it('drops a broken recency and seen instead of crashing later', () => {
+    const s = migrateWorkbench({ recency: 'x', seen: [1, 2] });
+    expect(s.recency).toEqual([]);
+    expect(s.seen).toEqual({});
+  });
+
+  it('forgets sessions seen long ago and keeps the newest', () => {
+    const now = 100 * 24 * 60 * 60 * 1000;
+    const day = 24 * 60 * 60 * 1000;
+    expect(freshSeen({ old: now - 30 * day, fresh: now - day, bad: 'x' }, now)).toEqual({
+      fresh: now - day,
+    });
+    const many = Object.fromEntries(Array.from({ length: 600 }, (_, i) => [`s${i}`, now - i]));
+    const kept = freshSeen(many, now);
+    expect(Object.keys(kept)).toHaveLength(500);
+    expect(kept.s0).toBe(now);
+    expect(kept.s599).toBeUndefined();
   });
 
   it('turns v4 project tabs into one pane per project', () => {

@@ -7,7 +7,7 @@ use serde_yaml::{Mapping, Value as YamlValue};
 use super::index::{append_line, line_for, move_out_of_facts, move_to_facts, remove_links};
 use super::scan::read_record;
 use super::{MemoryRecord, RecordPatch, ARCHIVE_DIR, INDEX_FILE, MEMORY_DIR};
-use crate::tooling::write::{backup, write_text_atomic};
+use crate::tooling::write::{backup, edit_text, write_text_atomic};
 
 pub struct Located {
     pub path: PathBuf,
@@ -97,19 +97,13 @@ fn safe_write(file: &Path, text: &str, backups: &Path) -> Result<(), String> {
 pub fn update_index(
     dir: &Path,
     backups: &Path,
-    change: impl FnOnce(&str) -> String,
+    change: impl Fn(&str) -> String,
 ) -> Result<(), String> {
     let file = dir.join(INDEX_FILE);
-    let before = match fs::read_to_string(&file) {
-        Ok(t) => t,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
-        Err(e) => return Err(format!("Не удалось прочитать {}: {e}", file.display())),
-    };
-    let after = change(&before);
-    if after == before {
+    if !file.exists() && change("").is_empty() {
         return Ok(());
     }
-    safe_write(&file, &after, backups)
+    edit_text(&file, backups, |text| Ok(change(text.unwrap_or_default())))
 }
 
 fn index_line_of(dir: &Path, file: &str) -> Option<String> {

@@ -135,6 +135,19 @@ function fromProjectLayout(raw: unknown, tabs: string[]): ProjectGrid | null {
   return normalizeGrid({ layout, panes, focus: 0 });
 }
 
+const SEEN_KEEP_MS = 14 * 24 * 60 * 60 * 1000;
+const SEEN_MAX = 500;
+
+export function freshSeen(seen: unknown, now: number): Record<string, number> {
+  if (!seen || typeof seen !== 'object' || Array.isArray(seen)) return {};
+  const kept = Object.entries(seen).filter(
+    (e): e is [string, number] =>
+      typeof e[1] === 'number' && Number.isFinite(e[1]) && now - e[1] < SEEN_KEEP_MS,
+  );
+  if (kept.length > SEEN_MAX) kept.sort((a, b) => b[1] - a[1]).length = SEEN_MAX;
+  return Object.fromEntries(kept);
+}
+
 export function migrateWorkbench(persisted: unknown): Partial<WorkbenchState> {
   const state = (persisted && typeof persisted === 'object' ? persisted : {}) as Partial<
     Omit<WorkbenchState, 'view' | 'grids'>
@@ -209,6 +222,8 @@ export function migrateWorkbench(persisted: unknown): Partial<WorkbenchState> {
     focusCell,
     hiddenProjects: strings(state.hiddenProjects),
     autoTabs: strings(state.autoTabs),
+    recency: strings(state.recency),
+    seen: freshSeen(state.seen, Date.now()),
   };
 }
 

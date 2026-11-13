@@ -205,6 +205,9 @@ pub async fn open_terminal_path(
     line: Option<u32>,
     column: Option<u32>,
 ) -> Result<(), String> {
+    if path.starts_with("\\\\") || path.starts_with("//") {
+        return Err(format!("сетевой путь не открывается: {path}"));
+    }
     let opener = blocking(move || {
         let target = Path::new(&path);
         (target.is_absolute() && target.exists())

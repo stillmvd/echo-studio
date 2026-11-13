@@ -6,14 +6,14 @@ use serde_json::Value;
 
 use super::paths::same_project;
 
+pub fn parse_json(text: &str, path: &Path) -> Result<Value, String> {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    serde_json::from_str(text).map_err(|e| format!("{}: {e}", path.display()))
+}
+
 pub fn read_json(path: &Path) -> Result<Option<Value>, String> {
     match fs::read_to_string(path) {
-        Ok(text) => {
-            let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
-            serde_json::from_str(text)
-                .map(Some)
-                .map_err(|e| format!("{}: {e}", path.display()))
-        }
+        Ok(text) => parse_json(&text, path).map(Some),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(e) => Err(format!("{}: {e}", path.display())),
     }

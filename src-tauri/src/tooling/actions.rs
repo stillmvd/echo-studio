@@ -13,7 +13,7 @@ use super::paths::{
 };
 use super::release::install;
 use super::updates::{git_dir, npm_latest, npm_pin, release_exe};
-use super::write::{backup, write_text_atomic};
+use super::write::{backup, edit_text};
 use super::{Kind, Origin};
 use crate::agent::claude_cli;
 use crate::workbench::child_command;
@@ -421,13 +421,12 @@ pub fn execute(
         let step = || -> Result<(), String> {
             match s {
                 Step::Trash(p) => to_trash(&check_trash(p, &roots)?),
-                Step::DropMcp { file, name } => {
-                    let text =
-                        fs::read_to_string(file).map_err(|e| format!("{}: {e}", file.display()))?;
-                    let next = drop_mcp(&text, name)?;
-                    backup(file, backups, now)?;
-                    write_text_atomic(file, &next)
-                }
+                Step::DropMcp { file, name } => edit_text(file, backups, |text| {
+                    drop_mcp(
+                        text.ok_or_else(|| format!("{}: файл не найден", file.display()))?,
+                        name,
+                    )
+                }),
                 Step::BumpMcp {
                     name,
                     index,
@@ -435,10 +434,15 @@ pub fn execute(
                     to,
                 } => {
                     let file = claude_json(home);
-                    backup(&file, backups, now)?;
-                    let text = fs::read_to_string(&file)
-                        .map_err(|e| format!("{}: {e}", file.display()))?;
-                    write_text_atomic(&file, &bump_mcp(&text, name, *index, from, to)?)
+                    edit_text(&file, backups, |text| {
+                        bump_mcp(
+                            text.ok_or_else(|| format!("{}: файл не найден", file.display()))?,
+                            name,
+                            *index,
+                            from,
+                            to,
+                        )
+                    })
                 }
                 Step::Run { program, args, cwd } => run(program, args, cwd.as_deref()).map(|_| ()),
                 Step::ReplaceExe(exe) => install(exe).map(|_| ()),
