@@ -7,7 +7,9 @@ import {
   hookRules,
   hooksBlock,
   mergeMcp,
+  rebuildConfig,
   replaceBlock,
+  ruleKey,
   syncGlobal,
   syncProject,
   topBlock,
@@ -178,6 +180,66 @@ describe('syncGlobal', () => {
     writeFileSync(join(kimi, 'config.toml'), 'default_model = "k4"\n');
     syncGlobal({ home, kimi });
     expect(readFileSync(join(kimi, 'config.toml.echo-bak'), 'utf8')).toBe(backup);
+  });
+});
+
+describe('Kimi rewrites config.toml', () => {
+  const kimiStyle = (text) =>
+    text
+      .replace(/^#.*\r?\n/gm, '')
+      .replace(/\["~\/\.claude\/(\w+)",".claude\/\w+"\]/g, '[ "~/.claude/$1", ".claude/$1" ]');
+
+  it('drops marker-less copies of its own hooks instead of doubling them', () => {
+    const { home, kimi } = fixture();
+    syncGlobal({ home, kimi });
+    const path = join(kimi, 'config.toml');
+    const once = readFileSync(path, 'utf8');
+    const hooks = (t) => (t.match(/^\[\[hooks\]\]/gm) ?? []).length;
+    writeFileSync(path, kimiStyle(once));
+    const result = syncGlobal({ home, kimi });
+    const next = readFileSync(path, 'utf8');
+    expect(hooks(next)).toBe(hooks(once));
+    expect(next).toBe(once);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('keeps hooks and dirs the user added himself', () => {
+    const own = '[[hooks]]\nevent = "Stop"\ncommand = "node C:/mine.js"\ntimeout = 5\n';
+    const { text, conflicts } = rebuildConfig(
+      `extra_skill_dirs = [ "~/team" ]\n\n${own}`,
+      [{ event: 'Stop', matcher: null, command: 'node C:/h/status.js', timeout: 30 }],
+      [],
+    );
+    expect(text).toContain('node C:/mine.js');
+    expect(text).toContain('node C:/h/status.js');
+    expect(conflicts).toEqual(['extra_skill_dirs']);
+  });
+
+  it('removes a hook that left settings.json but stayed unmarked', () => {
+    const gone = { event: 'Stop', matcher: 'Bash', command: 'node C:/old.js', timeout: 5 };
+    const unmarked =
+      '[[hooks]]\nevent = "Stop"\nmatcher = "^(Bash)$"\ncommand = "node C:/old.js"\n';
+    const { text } = rebuildConfig(`a = 1\n\n${unmarked}`, [], [ruleKey(gone)]);
+    expect(text).not.toContain('old.js');
+  });
+});
+
+describe('claude-history skill', () => {
+  it('is generated next to command skills and survives their cleanup', () => {
+    const { home, kimi } = fixture();
+    syncGlobal({ home, kimi, plugin: 'C:\\plug' });
+    const file = join(kimi, 'skills', 'claude-history', 'SKILL.md');
+    expect(readFileSync(file, 'utf8')).toContain('node "C:/plug/bin/claude-history.mjs" search');
+    syncGlobal({ home, kimi, plugin: 'C:\\plug' });
+    expect(existsSync(file)).toBe(true);
+  });
+
+  it('adds ~/.claude/KIMI.md to AGENTS.md', () => {
+    const { home, claude, kimi } = fixture();
+    writeFileSync(join(claude, 'KIMI.md'), '## Для Kimi\nСтраницы — локальный HTML.\n');
+    syncGlobal({ home, kimi });
+    const agents = readFileSync(join(kimi, 'AGENTS.md'), 'utf8');
+    expect(agents.indexOf('Страницы — локальный HTML')).toBeGreaterThan(agents.indexOf('Коротко.'));
   });
 });
 

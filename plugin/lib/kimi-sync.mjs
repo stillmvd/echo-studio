@@ -13,7 +13,9 @@ import {
 import { homedir } from 'node:os';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { needsEnsure, stableScript } from '../bin/claude-archive.mjs';
 import { kimiHome } from './agent.mjs';
+import { MIGRATION, refreshMigration } from './migration.mjs';
 import { workDir, writeAtomic } from './run.mjs';
 
 export const MARK = 'echo-sync';
@@ -73,7 +75,91 @@ function outsideBlocks(text) {
   return [
     [TOP_OPEN, TOP_CLOSE],
     [HOOKS_OPEN, HOOKS_CLOSE],
-  ].reduce((acc, [open, close]) => replaceBlock(acc, open, close, '', false), text);
+  ].reduce((acc, [open, close]) => {
+    try {
+      return replaceBlock(acc, open, close, '', false);
+    } catch {
+      return acc
+        .split(/\r?\n/)
+        .filter((line) => line.trim() !== open && line.trim() !== close)
+        .join('\n');
+    }
+  }, text);
+}
+
+function tomlValue(lines, key) {
+  const re = new RegExp(`^\\s*${key}\\s*=\\s*(.+?)\\s*$`);
+  const raw = lines.map((l) => re.exec(l)?.[1]).find((v) => v !== undefined);
+  if (raw === undefined) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
+export const ruleKey = (r) =>
+  JSON.stringify([r.event, r.matcher ? `^(${r.matcher})$` : null, r.command]);
+
+function chunkKey(lines) {
+  return JSON.stringify([
+    tomlValue(lines, 'event'),
+    tomlValue(lines, 'matcher'),
+    tomlValue(lines, 'command'),
+  ]);
+}
+
+export function stripOwnedHooks(text, keys) {
+  const out = [];
+  let chunk = null;
+  const flush = () => {
+    if (chunk && !keys.has(chunkKey(chunk))) out.push(...chunk);
+    chunk = null;
+  };
+  for (const line of text.split(/\r?\n/)) {
+    if (/^\s*\[/.test(line)) {
+      flush();
+      if (/^\s*\[\[\s*hooks\s*\]\]\s*$/.test(line)) {
+        chunk = [line];
+        continue;
+      }
+    }
+    if (chunk) chunk.push(line);
+    else out.push(line);
+  }
+  flush();
+  return out.join('\n');
+}
+
+const sameDirs = (value, dirs) =>
+  Array.isArray(value) && value.length === dirs.length && dirs.every((d) => value.includes(d));
+
+export function stripOwnedTop(text) {
+  const table = text.search(/^\s*\[/m);
+  const head = table >= 0 ? text.slice(0, table) : text;
+  const kept = head.split(/\r?\n/).filter((line) => {
+    for (const [key, dirs] of [
+      ['extra_skill_dirs', SKILL_DIRS],
+      ['extra_agent_dirs', AGENT_DIRS],
+    ])
+      if (new RegExp(`^\\s*${key}\\s*=`).test(line) && sameDirs(tomlValue([line], key), dirs))
+        return false;
+    return true;
+  });
+  return kept.join('\n').replace(/^\s+/, '') + (table >= 0 ? text.slice(table) : '');
+}
+
+export function rebuildConfig(config, rules, owned = []) {
+  const eol = config.includes('\r\n') ? '\r\n' : '\n';
+  const keys = new Set([...owned, ...rules.map(ruleKey)]);
+  const lf = config.replace(/\r\n/g, '\n');
+  const base = stripOwnedTop(stripOwnedHooks(outsideBlocks(lf), keys)).replace(/\n{3,}/g, '\n\n');
+  const { body, conflicts } = topBlock(base);
+  let next = replaceBlock(base, TOP_OPEN, TOP_CLOSE, body, true);
+  next = replaceBlock(next, HOOKS_OPEN, HOOKS_CLOSE, hooksBlock(rules), false);
+  if (next === lf) next = config;
+  else if (eol === '\r\n') next = next.replace(/\n/g, '\r\n');
+  return { text: next, conflicts, owned: rules.map(ruleKey) };
 }
 
 export function hookRules(settings) {
@@ -162,12 +248,45 @@ export function commandSkill(name, text) {
   return `${head.join('\n')}${body}\n`;
 }
 
+export const HISTORY_SKILL = 'claude-history';
+
+export function historySkill(script) {
+  const run = `node "${script.replaceAll('\\', '/')}"`;
+  return `---
+name: ${HISTORY_SKILL}
+description: "Поиск и чтение прошлых переписок с Claude Code (вся история до переезда на Kimi): что делали в проекте, какие решения приняли, о чём договорились. Использовать, когда пользователь ссылается на прошлую работу («помнишь», «как мы делали», «в прошлый раз»), когда нужна история проекта сверх памяти и HANDOFF.md, или перед повтором задачи, которую уже решали."
+---
+
+${GENERATED}
+
+Переписки Claude Code лежат в \`~/.claude/projects/<папка>/<id>.jsonl\`. Скрипт читает их без изменений и держит кэш текста. Первый запуск занимает до минуты.
+
+Команды (запускать через Bash):
+
+- \`${run} search <слова…> [--project <часть пути>]\` — сессии, где есть все слова, с фрагментами и номерами реплик;
+- \`${run} list [--project <часть пути>] [--days N]\` — последние сессии: дата, id, папка, название;
+- \`${run} read <id или начало id> [--from N]\` — сессия целиком в markdown, порциями до 60 тыс. символов; продолжение — \`--from\` из последней строки.
+
+Порядок: сначала память проекта и \`HANDOFF.md\`, затем \`search\` по 2–3 характерным словам (имя файла, команда, термин), затем \`read\` нужной сессии с реплики из результата. В ответе ссылайся на дату и id сессии. Реплики «Claude» — это прошлый агент, а не ты: его выводы проверяй по текущему коду.
+`;
+}
+
+function syncHistory(kimi, plugin, changed) {
+  const managed = join(kimi, 'plugins', 'managed', 'echo-memory', 'bin', 'claude-history.mjs');
+  const script = existsSync(managed) ? managed : join(plugin, 'bin', 'claude-history.mjs');
+  const file = join(kimi, 'skills', HISTORY_SKILL, 'SKILL.md');
+  const current = read(file);
+  if (current !== null && !current.includes(GENERATED)) return;
+  writeIfChanged(file, historySkill(script), changed);
+}
+
 function syncCommands(claude, kimi, changed) {
   const target = join(kimi, 'skills');
   const wanted = new Map(walkMarkdown(join(claude, 'commands')).map((c) => [c.name, c.path]));
   if (existsSync(target)) {
     for (const name of readdirSync(target)) {
       const file = join(target, name, 'SKILL.md');
+      if (name === HISTORY_SKILL) continue;
       if (!wanted.has(name) && (read(file) ?? '').includes(GENERATED)) {
         rmSync(join(target, name), { recursive: true, force: true });
         changed.push(join(target, name));
@@ -192,6 +311,8 @@ function instructions(claude) {
     const styleText = style ? read(join(claude, 'output-styles', `${style}.md`)) : null;
     if (styleText) parts.push(stripFrontmatter(styleText).trim());
   } catch {}
+  const own = read(join(claude, 'KIMI.md'));
+  if (own?.trim()) parts.push(own.trim());
   return parts.length ? `${GENERATED}\n\n${parts.join('\n\n')}\n` : null;
 }
 
@@ -209,7 +330,13 @@ function mcpServers(source) {
 
 const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
 
-export function syncGlobal({ home = homedir(), kimi = kimiHome(process.env, home) } = {}) {
+export const pluginDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+export function syncGlobal({
+  home = homedir(),
+  kimi = kimiHome(process.env, home),
+  plugin = pluginDir,
+} = {}) {
   if (!existsSync(kimi)) return null;
   const claude = join(home, '.claude');
   const changed = [];
@@ -226,7 +353,7 @@ export function syncGlobal({ home = homedir(), kimi = kimiHome(process.env, home
     writeIfChanged(agentsPath, agents, changed);
   }
 
-  let settings = {};
+  let settings = null;
   try {
     settings = JSON.parse(read(join(claude, 'settings.json')) ?? '{}');
   } catch {
@@ -234,24 +361,29 @@ export function syncGlobal({ home = homedir(), kimi = kimiHome(process.env, home
   }
   const configPath = join(kimi, 'config.toml');
   const config = read(configPath) ?? '';
-  const { rules, skipped } = hookRules(settings);
-  try {
-    const { body, conflicts } = topBlock(config);
-    for (const key of conflicts)
-      warnings.push(
-        `${key} уже задан в config.toml вне блока — ~/.claude не подключён, добавь сам`,
-      );
-    let next = replaceBlock(config, TOP_OPEN, TOP_CLOSE, body, true);
-    next = replaceBlock(next, HOOKS_OPEN, HOOKS_CLOSE, hooksBlock(rules), false);
-    if (next !== config) {
-      if (config && !existsSync(`${configPath}.echo-bak`))
-        writeAtomic(`${configPath}.echo-bak`, config);
-      writeAtomic(configPath, next);
-      changed.push(configPath);
+  const { rules, skipped } = hookRules(settings ?? {});
+  let hooksOwned;
+  if (settings)
+    try {
+      const {
+        text: next,
+        conflicts,
+        owned,
+      } = rebuildConfig(config, rules, readStatus(kimi).hooksOwned ?? []);
+      for (const key of conflicts)
+        warnings.push(
+          `${key} уже задан в config.toml вне блока — ~/.claude не подключён, добавь сам`,
+        );
+      hooksOwned = owned;
+      if (next !== config) {
+        if (config && !existsSync(`${configPath}.echo-bak`))
+          writeAtomic(`${configPath}.echo-bak`, config);
+        writeAtomic(configPath, next);
+        changed.push(configPath);
+      }
+    } catch (error) {
+      warnings.push(error.message);
     }
-  } catch (error) {
-    warnings.push(error.message);
-  }
 
   let mcpOwned;
   try {
@@ -280,7 +412,9 @@ export function syncGlobal({ home = homedir(), kimi = kimiHome(process.env, home
   }
 
   const commands = syncCommands(claude, kimi, changed);
-  if (mcpOwned) writeStatus({ mcpOwned }, kimi);
+  syncHistory(kimi, plugin, changed);
+  if (mcpOwned || hooksOwned)
+    writeStatus({ ...(mcpOwned && { mcpOwned }), ...(hooksOwned && { hooksOwned }) }, kimi);
   return { changed, warnings, hooks: rules.length, skippedHooks: skipped, commands };
 }
 
@@ -391,7 +525,29 @@ export function syncForKimi(
     },
     kimi,
   );
-  const stale = install && readStatus(kimi).plugin?.fingerprint !== pluginFingerprint(plugin);
+  const status = readStatus(kimi);
+  let migration = null;
+  try {
+    migration = refreshMigration({ home, kimi, plugin, status, now });
+    if (migration) writeStatus({ migration, migrationError: null }, kimi);
+  } catch (error) {
+    writeStatus(
+      {
+        migration: { ...(status.migration ?? {}), at: new Date(now).toISOString() },
+        migrationError: error.message,
+      },
+      kimi,
+    );
+  }
+  if (migration && existsSync(join(home, MIGRATION)) && needsEnsure(kimi)) {
+    spawn(process.execPath, [stableScript(kimi), '--ensure'], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+      env: { ...process.env, KIMI_CODE_HOME: kimi },
+    }).unref();
+  }
+  const stale = install && status.plugin?.fingerprint !== pluginFingerprint(plugin);
   if (stale && takeLock(now)) {
     const log = openSync(join(workDir, 'kimi-sync.log'), 'a');
     spawn(process.execPath, [join(plugin, 'bin', 'kimi-sync.mjs'), '--plugin', '--locked'], {

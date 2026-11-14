@@ -13,9 +13,13 @@
 - **FR-K05** «Инструменты» показывают skills, агентов, MCP и плагины Kimi (`~/.kimi-code`, `~/.agents/skills`, проектные `.kimi-code/` и `.agents/`).
 - **FR-K06** «Переписки» читают сессии Kimi (`session_index.jsonl`, `state.json`, `agents/*/wire.jsonl`) только на чтение.
 - **FR-K07** Переключение — одно действие с понятным списком того, что произойдёт, и обратным ходом.
+- **FR-K08** Переписки Claude остаются доступны после переезда: в режиме Kimi «Переписки» показывают вкладки «Kimi» и «Архив Claude», а Kimi получает skill `claude-history` (`list`, `search`, `read` по `~/.claude/projects/*.jsonl`, кэш в `%LOCALAPPDATA%/echo-memory/claude-history`).
+- **FR-K09** Агента можно сменить из командной строки: `echo-studio.exe --agent claude|kimi` (запущенному Echo — через single-instance, иначе запись `agent.json`); код `0` — готово.
+- **FR-K10** Папка `~/Kimi Migration` не устаревает: при старте сессии Kimi (не чаще раза в 30 минут) и по `kimi-sync --all` обновляются `README.md`, план `ПЕРЕЕЗД.md` для Kimi и копии памяти и хуков; архив `~/.claude` раз в неделю собирает задача Планировщика `EchoStudio-ClaudeArchive`, хранится одна копия.
+- **FR-K11** Синхронизация переживает перезапись `config.toml` самим Kimi: свои хуки и папки узнаются по содержимому (`hooksOwned` в `echo-sync.json`), а не по маркерам-комментариям, — дублей нет. Личные правила под Kimi — `~/.claude/KIMI.md`, дописываются в `AGENTS.md`.
 
 ## Не цели
 
-- Переносить сессии Claude в Kimi (у Kimi есть свой `/import-sessions`).
+- Переносить сессии Claude в Kimi (у Kimi есть свой `/import-sessions` — максимум 100 сессий; полный архив читает `claude-history`).
 - Менять что-либо в конфиге Claude Code.
 - Работать с Kimi как основным агентом до явного переключения.

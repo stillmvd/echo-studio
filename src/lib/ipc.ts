@@ -86,12 +86,15 @@ export async function quitStoppingKimi(): Promise<void> {
   return invoke('quit_stopping_kimi');
 }
 
-export async function listConversationProjects(): Promise<ConversationProject[]> {
-  return invoke<ConversationProject[]>('list_conversation_projects');
+export async function listConversationProjects(source?: AgentKind): Promise<ConversationProject[]> {
+  return invoke<ConversationProject[]>('list_conversation_projects', { source });
 }
 
-export async function listConversationSessions(projectId: string): Promise<SessionMeta[]> {
-  return invoke<SessionMeta[]>('list_conversation_sessions', { projectId });
+export async function listConversationSessions(
+  projectId: string,
+  source?: AgentKind,
+): Promise<SessionMeta[]> {
+  return invoke<SessionMeta[]>('list_conversation_sessions', { projectId, source });
 }
 
 export async function readSessionEvents(filePath: string): Promise<DisplayItem[]> {
@@ -101,8 +104,9 @@ export async function readSessionEvents(filePath: string): Promise<DisplayItem[]
 export async function searchSessionText(
   projectId: string,
   query: string,
+  source?: AgentKind,
 ): Promise<SessionSearchHit[]> {
-  return invoke<SessionSearchHit[]>('search_session_text', { projectId, query });
+  return invoke<SessionSearchHit[]>('search_session_text', { projectId, query, source });
 }
 
 export async function renameSession(filePath: string, title: string): Promise<void> {

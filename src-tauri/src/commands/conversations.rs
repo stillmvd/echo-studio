@@ -59,9 +59,11 @@ pub(crate) async fn blocking<T: Send + 'static>(
 }
 
 #[tauri::command]
-pub async fn list_conversation_projects() -> Result<Vec<ConversationProject>, String> {
-    blocking(|| {
-        if kimi_active() {
+pub async fn list_conversation_projects(
+    source: Option<AgentKind>,
+) -> Result<Vec<ConversationProject>, String> {
+    blocking(move || {
+        if kimi_source(source) {
             kimi::list_projects()
         } else {
             list_projects()
@@ -70,14 +72,17 @@ pub async fn list_conversation_projects() -> Result<Vec<ConversationProject>, St
     .await
 }
 
-fn kimi_active() -> bool {
-    agent::current_kind() == AgentKind::Kimi
+fn kimi_source(source: Option<AgentKind>) -> bool {
+    source.unwrap_or_else(agent::current_kind) == AgentKind::Kimi
 }
 
 #[tauri::command]
-pub async fn list_conversation_sessions(project_id: String) -> Result<Vec<SessionMeta>, String> {
+pub async fn list_conversation_sessions(
+    project_id: String,
+    source: Option<AgentKind>,
+) -> Result<Vec<SessionMeta>, String> {
     blocking(move || {
-        if kimi_active() {
+        if kimi_source(source) {
             kimi::list_sessions(&project_id)
         } else {
             list_sessions(&project_id)
@@ -103,9 +108,10 @@ pub async fn read_session_events(file_path: String) -> Result<Vec<DisplayItem>, 
 pub async fn search_session_text(
     project_id: String,
     query: String,
+    source: Option<AgentKind>,
 ) -> Result<Vec<SessionSearchHit>, String> {
     blocking(move || {
-        if kimi_active() {
+        if kimi_source(source) {
             kimi::search(&project_id, &query)
         } else {
             search_in_sessions(&project_id, &query)

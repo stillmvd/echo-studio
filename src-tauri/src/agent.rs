@@ -15,6 +15,21 @@ pub enum AgentKind {
 impl AgentKind {
     pub const ALL: [AgentKind; 2] = [AgentKind::Claude, AgentKind::Kimi];
 
+    pub fn parse(text: &str) -> Option<Self> {
+        match text.trim().to_ascii_lowercase().as_str() {
+            "claude" => Some(AgentKind::Claude),
+            "kimi" => Some(AgentKind::Kimi),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            AgentKind::Claude => "claude",
+            AgentKind::Kimi => "kimi",
+        }
+    }
+
     pub fn project_dir(self) -> &'static str {
         match self {
             AgentKind::Claude => ".claude",
@@ -173,12 +188,46 @@ pub fn current_kind() -> AgentKind {
 }
 
 pub fn load(data_dir: &Path) {
-    let path = data_dir.join("agent.json");
+    let path = data_dir.join(STORE_FILE);
     let kind = read_stored(&path).unwrap_or_default();
     let _ = STORE.set(path);
     if let Ok(mut k) = CURRENT.write() {
         *k = kind;
     }
+}
+
+#[cfg(not(debug_assertions))]
+pub fn ensure_loaded(data_dir: &Path) {
+    if STORE.get().is_none() {
+        load(data_dir);
+    }
+}
+
+pub const AGENT_FLAG: &str = "--agent";
+pub const STORE_FILE: &str = "agent.json";
+
+pub fn agent_arg(args: &[String]) -> Option<Option<AgentKind>> {
+    let at = args.iter().position(|a| a == AGENT_FLAG)?;
+    Some(args.get(at + 1).and_then(|s| AgentKind::parse(s)))
+}
+
+pub fn cli_missing(kind: AgentKind, home: &Path) -> Option<String> {
+    let profile = Profile::of(kind, home);
+    profile.find_cli().is_none().then(|| {
+        format!(
+            "{} не найден ни в PATH, ни в {}",
+            profile.exe,
+            profile.bin.display()
+        )
+    })
+}
+
+pub fn stored(path: &Path) -> AgentKind {
+    read_stored(path).unwrap_or_default()
+}
+
+pub fn store(path: &Path, kind: AgentKind) -> Result<(), String> {
+    write_stored(path, kind)
 }
 
 fn read_stored(path: &Path) -> Option<AgentKind> {
@@ -266,5 +315,27 @@ mod tests {
         assert_eq!(read_stored(&path), Some(AgentKind::Kimi));
         fs::write(&path, "{broken").unwrap();
         assert_eq!(read_stored(&path).unwrap_or_default(), AgentKind::Claude);
+    }
+
+    #[test]
+    fn agent_flag_is_parsed_from_args() {
+        let args = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(agent_arg(&args(&["echo.exe"])), None);
+        assert_eq!(
+            agent_arg(&args(&["echo.exe", "--agent", "Kimi"])),
+            Some(Some(AgentKind::Kimi))
+        );
+        assert_eq!(
+            agent_arg(&args(&["echo.exe", "--agent", "claude"])),
+            Some(Some(AgentKind::Claude))
+        );
+        assert_eq!(
+            agent_arg(&args(&["echo.exe", "--agent", "gpt"])),
+            Some(None)
+        );
+        assert_eq!(agent_arg(&args(&["echo.exe", "--agent"])), Some(None));
+        for kind in AgentKind::ALL {
+            assert_eq!(AgentKind::parse(kind.as_str()), Some(kind));
+        }
     }
 }

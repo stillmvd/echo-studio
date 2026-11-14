@@ -67,6 +67,15 @@ pub fn run() {
     let builder = tauri::Builder::default();
     #[cfg(not(debug_assertions))]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _| {
+        if let Some(Some(kind)) = agent::agent_arg(&args) {
+            if let Ok(dir) = app.path().app_data_dir() {
+                agent::ensure_loaded(&dir);
+            }
+            if let Err(e) = commands::agent::switch(app, kind) {
+                log::warn!("--agent {}: {e}", kind.as_str());
+            }
+            return;
+        }
         if let Some(arg) = workbench::request::path_arg(&args) {
             let shown = app
                 .get_webview_window("main")

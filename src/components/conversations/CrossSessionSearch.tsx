@@ -6,13 +6,14 @@ import { useCrossSessionSearch } from '@/hooks/use-session';
 import { cn } from '@/lib/cn';
 import { plural } from '@/lib/dashboard';
 import { formatShortDateTime } from '@/lib/projects';
-import { sessionDisplayTitle, shortSessionId } from '@/lib/types';
+import { type AgentKind, sessionDisplayTitle, shortSessionId } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 
 const VISIBLE_HITS = 50;
 
 interface Props {
   projectId: string | null;
+  source: AgentKind;
   children: ReactNode;
 }
 
@@ -46,7 +47,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
-export function CrossSessionSearch({ projectId, children }: Props) {
+export function CrossSessionSearch({ projectId, source, children }: Props) {
   const cross = useUiStore((s) => s.crossSessionSearchQuery);
   const setCross = useUiStore((s) => s.setCrossSessionSearchQuery);
   const setSelectedSessionPath = useUiStore((s) => s.setSelectedSessionPath);
@@ -63,8 +64,8 @@ export function CrossSessionSearch({ projectId, children }: Props) {
     setDraft(cross);
   }, [cross]);
 
-  const results = useCrossSessionSearch(projectId, debounced);
-  const sessions = useConversationSessions(projectId);
+  const results = useCrossSessionSearch(projectId, debounced, source);
+  const sessions = useConversationSessions(projectId, source);
   const titles = useMemo(
     () => new Map((sessions.data ?? []).map((s) => [s.sessionId, sessionDisplayTitle(s)])),
     [sessions.data],

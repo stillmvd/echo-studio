@@ -1,7 +1,8 @@
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use crate::agent::{self, AgentKind, Profile};
 use crate::workbench::{self, dev, projects, request};
 
 const WAIT_DEFAULT: u64 = 120;
@@ -20,9 +21,15 @@ struct Fail(i32, String);
 
 pub fn run(identifier: &str) -> Option<i32> {
     let args: Vec<String> = std::env::args().collect();
-    let arg = request::path_arg(&args)?;
-    imp::attach_console();
-    let code = match start(identifier, &arg, timeout_arg(&args)) {
+    let result = if let Some(kind) = agent::agent_arg(&args) {
+        imp::attach_console();
+        switch_agent(identifier, kind)
+    } else {
+        let arg = request::path_arg(&args)?;
+        imp::attach_console();
+        start(identifier, &arg, timeout_arg(&args))
+    };
+    let code = match result {
         Ok(url) => {
             let _ = writeln!(std::io::stdout(), "{url}");
             0
@@ -35,6 +42,59 @@ pub fn run(identifier: &str) -> Option<i32> {
     let _ = std::io::stdout().flush();
     let _ = std::io::stderr().flush();
     Some(code)
+}
+
+const AGENT_WAIT: Duration = Duration::from_secs(5);
+
+fn agent_store(identifier: &str) -> Result<PathBuf, Fail> {
+    std::env::var_os("APPDATA")
+        .map(|d| PathBuf::from(d).join(identifier).join(agent::STORE_FILE))
+        .ok_or_else(|| Fail(EXIT_FAILED, "Не нашли папку APPDATA".into()))
+}
+
+fn switch_agent(identifier: &str, kind: Option<AgentKind>) -> Result<String, Fail> {
+    let kind = kind.ok_or_else(|| {
+        Fail(
+            EXIT_BAD_PROJECT,
+            "Агент не указан — добавьте --agent claude или --agent kimi".into(),
+        )
+    })?;
+    let home = agent::home().ok_or_else(|| Fail(EXIT_FAILED, "Не нашли домашнюю папку".into()))?;
+    if let Some(error) = agent::cli_missing(kind, &home) {
+        return Err(Fail(EXIT_FAILED, error));
+    }
+    let store = agent_store(identifier)?;
+    let done = format!("Агент: {}", Profile::of(kind, &home).name);
+    if agent::stored(&store) == kind {
+        return Ok(done);
+    }
+    if imp::has_window(identifier) {
+        if !imp::forward_raw(identifier, agent::AGENT_FLAG, kind.as_str()) {
+            return Err(Fail(
+                EXIT_NO_ECHO,
+                "Echo Studio не ответил — перезапустите приложение и повторите".into(),
+            ));
+        }
+        let until = Instant::now() + AGENT_WAIT;
+        while Instant::now() < until {
+            if agent::stored(&store) == kind {
+                return Ok(done);
+            }
+            std::thread::sleep(POLL);
+        }
+        return Err(Fail(
+            EXIT_FAILED,
+            "Echo Studio не переключился — выберите агента в Настройки → Агент".into(),
+        ));
+    }
+    if imp::is_running(identifier) {
+        return Err(Fail(
+            EXIT_NO_ECHO,
+            "Echo Studio запускается — повторите через несколько секунд".into(),
+        ));
+    }
+    agent::store(&store, kind).map_err(|e| Fail(EXIT_FAILED, e))?;
+    Ok(done)
 }
 
 fn timeout_arg(args: &[String]) -> Duration {
@@ -239,6 +299,10 @@ mod imp {
     }
 
     pub fn forward(identifier: &str, arg: &Arg) -> bool {
+        forward_raw(identifier, arg.flag(), &arg.path)
+    }
+
+    pub fn forward_raw(identifier: &str, flag: &str, value: &str) -> bool {
         let hwnd = target(identifier);
         if hwnd.is_null() {
             return false;
@@ -248,7 +312,7 @@ mod imp {
             .to_string_lossy()
             .into_owned();
         let exe = std::env::args().next().unwrap_or_default();
-        let data = format!("{cwd}\0{exe}\0{}\0{}", arg.flag(), arg.path);
+        let data = format!("{cwd}\0{exe}\0{flag}\0{value}");
         let bytes = data.as_bytes();
         let cds = COPYDATASTRUCT {
             dwData: SINGLE_INSTANCE_DATA_NUL,

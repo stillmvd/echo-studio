@@ -1,9 +1,14 @@
 import { Group, Panel, useDefaultLayout } from 'react-resizable-panels';
 import { ConversationsProjectSidebar } from '@/components/conversations/ConversationsProjectSidebar';
+import { ConversationsSourceTabs } from '@/components/conversations/ConversationsSourceTabs';
 import { CrossSessionSearch } from '@/components/conversations/CrossSessionSearch';
 import { SessionTable } from '@/components/conversations/SessionTable';
 import { SessionViewer } from '@/components/conversations/SessionViewer';
-import { useConversationProjects, useConversationSessions } from '@/hooks/use-conversations';
+import {
+  useConversationProjects,
+  useConversationSessions,
+  useConversationSource,
+} from '@/hooks/use-conversations';
 import { sessionDisplayTitle } from '@/lib/types';
 import { useUiStore } from '@/state/ui-store';
 import { PanelSeparator, panelCard } from './panels';
@@ -18,8 +23,9 @@ export function ConversationsLayout() {
     id: 'echo-studio.conversations.panel-sizes',
     storage: localStorage,
   });
-  const projects = useConversationProjects();
-  const sessions = useConversationSessions(projectId);
+  const source = useConversationSource();
+  const projects = useConversationProjects(source);
+  const sessions = useConversationSessions(projectId, source);
 
   const selectedProject = projects.data?.find((p) => p.id === projectId) ?? null;
   const selectedSession = sessions.data?.find((s) => s.filePath === selectedSessionPath) ?? null;
@@ -38,7 +44,8 @@ export function ConversationsLayout() {
     <Group orientation="horizontal" {...layout}>
       <Panel defaultSize="28" minSize="20" className={panelCard}>
         <div className="flex h-full flex-col overflow-hidden">
-          <CrossSessionSearch projectId={projectId}>
+          <ConversationsSourceTabs />
+          <CrossSessionSearch projectId={projectId} source={source}>
             {projects.isLoading ? (
               <p className="px-2 text-sm text-[var(--color-text-muted)]">Загрузка…</p>
             ) : (

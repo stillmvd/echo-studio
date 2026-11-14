@@ -19,6 +19,7 @@ interface UiState {
   selectedSessionPath: string | null;
   sessionSearchQuery: string;
   crossSessionSearchQuery: string;
+  conversationsArchive: boolean;
   conversationsBulkSelection: string[];
   conversationsAgeFilter: 'all' | 'older30' | 'older90' | 'older365';
   projectsSort: ProjectSort;
@@ -40,6 +41,7 @@ interface UiState {
 
   setActiveTab: (tab: AppTab) => void;
   setConversationsProjectId: (id: string | null) => void;
+  setConversationsArchive: (archive: boolean) => void;
   setConversationsSort: (by: 'date' | 'size' | 'duration' | 'msgs', dir: 'asc' | 'desc') => void;
   setSelectedSessionPath: (path: string | null) => void;
   setSessionSearchQuery: (q: string) => void;
@@ -88,6 +90,7 @@ export const useUiStore = create<UiState>()(
       selectedSessionPath: null,
       sessionSearchQuery: '',
       crossSessionSearchQuery: '',
+      conversationsArchive: false,
       conversationsBulkSelection: [],
       conversationsAgeFilter: 'all',
       projectsSort: 'recent',
@@ -110,6 +113,14 @@ export const useUiStore = create<UiState>()(
       setActiveTab: (activeTab) => set({ activeTab }),
       setConversationsProjectId: (conversationsProjectId) =>
         set({ conversationsProjectId, selectedSessionPath: null, conversationsBulkSelection: [] }),
+      setConversationsArchive: (conversationsArchive) =>
+        set({
+          conversationsArchive,
+          conversationsProjectId: null,
+          selectedSessionPath: null,
+          conversationsBulkSelection: [],
+          sessionSearchQuery: '',
+        }),
       setConversationsSort: (conversationsSortBy, conversationsSortDir) =>
         set({ conversationsSortBy, conversationsSortDir }),
       setSelectedSessionPath: (selectedSessionPath) =>

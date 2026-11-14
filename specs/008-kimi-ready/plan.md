@@ -79,3 +79,10 @@ Rust: `agent` модуль — `AgentKind { Claude, Kimi }`, пути данны
 - `kimi import-sessions` без флагов и интерактивный (выбор 15/30 дней) — поэтому окно, а не фоновый запуск.
 - Вход проверяется офлайн: токен в файле есть, но сервер мог его отклонить; отличить без сети нельзя — для этого «Войти заново».
 - UI: «Настройки → Агент» — строки «Вход в Kimi», «Перенос настроек», «Плагин памяти»; панель «Переход на Kimi» со списком шагов и отметками; сегмент Claude/Kimi запускает тот же переход; «Вернуться к Claude» — обратный ход.
+
+## Фаза 7 — переезд без устаревания (FR-K08…FR-K11)
+
+Модель (сверено с владельцем 2026-11-14): переписки — «Echo + skill для Kimi»; переезд — «Только план для Kimi» (вход и оплату владелец делает сам, потом даёт Kimi `ПЕРЕЕЗД.md`); свежесть — «Всё лёгкое, архив раз в неделю».
+
+- Плагин 0.5.0: `lib/history.mjs` + `bin/claude-history.mjs` (кэш по размеру и mtime), skill `claude-history` из `kimi-sync`; `lib/migration.mjs` + `lib/migration-docs.mjs` (`~/Kimi Migration`: README, план из 8 шагов, зеркала `memory/` и `hooks/`); `bin/claude-archive.mjs --ensure` (задача Планировщика, `tar.exe` из System32, temp → rename); `rebuildConfig` и `hooksOwned` против задвоения хуков после перезаписи `config.toml` самим Kimi; `~/.claude/KIMI.md` — в конец `AGENTS.md`.
+- Echo: `--agent claude|kimi` (`agent::agent_arg`, `cli::switch_agent`, `commands::agent::switch`; запущенному экземпляру — `WM_COPYDATA`, подтверждение — по `agent.json` за 5 с); в «Переписках» вкладки «Kimi» и «Архив Claude» (`source` в `list_conversation_*` и `search_session_text`, `useConversationSource`).

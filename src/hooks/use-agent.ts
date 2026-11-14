@@ -16,6 +16,7 @@ function resetAgentSelection() {
     selectedToolId: null,
     conversationsBulkSelection: [],
     sessionSearchQuery: '',
+    conversationsArchive: false,
   });
 }
 
@@ -24,7 +25,7 @@ export function useAgents() {
   useEffect(() => {
     const off = listen('echo://agent-changed', () => {
       resetAgentSelection();
-      qc.invalidateQueries({ queryKey: AGENTS });
+      void qc.invalidateQueries();
     });
     return () => {
       off.then((f) => f()).catch(() => {});

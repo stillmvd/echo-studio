@@ -14,6 +14,7 @@ import {
   takeLock,
   writeStatus,
 } from '../lib/kimi-sync.mjs';
+import { refreshMigration } from '../lib/migration.mjs';
 import { projectRoot } from '../lib/paths.mjs';
 
 const pluginRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -153,6 +154,10 @@ async function main(argv) {
   const at = argv.indexOf('--project');
   if (at >= 0 && argv[at + 1]) projects.push(projectRoot(argv[at + 1]));
   report.projects = projects.map((root) => ({ root, changed: syncProject(root) }));
+  if (argv.includes('--all')) {
+    report.migration = refreshMigration({ kimi, plugin: pluginRoot, force: true });
+    if (report.migration) writeStatus({ migration: report.migration, migrationError: null }, kimi);
+  }
   writeStatus(
     {
       at: new Date().toISOString(),

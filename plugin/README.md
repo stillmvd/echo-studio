@@ -39,6 +39,21 @@ CLAUDE.md по повторяющимся поправкам (CLAUDE.md не м�
 таблица «удалить / обновить / слить / оставить» с доказательствами, правки только после «да», удалённое — в
 `.archive/`.
 
+## Kimi Code
+
+Тот же плагин ставится в Kimi Code (`kimi.plugin.json`). `node bin/kimi-sync.mjs --all` переносит в
+`~/.kimi-code` общие хуки, skills, команды и инструкции; на старте каждой сессии Kimi синхронизация идёт сама.
+
+- Свои хуки и папки в `config.toml` узнаются по содержимому (`hooksOwned` в `~/.kimi-code/echo-sync.json`):
+  Kimi переписывает файл и стирает комментарии-маркеры, дублей при этом нет.
+- `~/.claude/KIMI.md` — личные правила под Kimi, дописываются в конец `AGENTS.md`.
+- `bin/claude-history.mjs list|search|read|index` — архив переписок Claude для Kimi (skill `claude-history`);
+  кэш в `%LOCALAPPDATA%/echo-memory/claude-history`.
+- `~/Kimi Migration` (если папка есть): `README.md`, план `ПЕРЕЕЗД.md`, копии памяти и хуков — не чаще раза в
+  30 минут и сразу по `--all`.
+- `bin/claude-archive.mjs --ensure` — задача Планировщика `EchoStudio-ClaudeArchive` (воскресенье 13:00) и
+  архив `~/Kimi Migration/claude-home.tar.gz`, одна копия.
+
 ## Handoff по заполнению контекста
 
 Handoff — сохранение перед автосжатием: сессия продолжается. Когда до окна остаётся 40k

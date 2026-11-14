@@ -148,7 +148,7 @@ function AgeFilterSegment({
 }
 
 export function SessionTable({ sessions, isLoading, selectedProjectName }: Props) {
-  const kimi = useAgents().data?.current === 'kimi';
+  const readOnly = useAgents().data?.current === 'kimi';
   const sortBy = useUiStore((s) => s.conversationsSortBy);
   const sortDir = useUiStore((s) => s.conversationsSortDir);
   const setSort = useUiStore((s) => s.setConversationsSort);
@@ -258,7 +258,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
         ) : (
           <>
             <div className="flex h-8 shrink-0 items-center gap-2.5 px-3 text-xs font-medium text-[var(--color-text-muted)] select-none">
-              {!kimi && (
+              {!readOnly && (
                 <CheckCircle
                   state={allChecked ? 'on' : someChecked ? 'mixed' : 'off'}
                   label="Выбрать все видимые"
@@ -346,7 +346,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                             : 'hover:bg-[var(--color-hover)]',
                       )}
                     >
-                      {!kimi && (
+                      {!readOnly && (
                         <CheckCircle
                           state={checked ? 'on' : 'off'}
                           label={`Выбрать сессию ${shortSessionId(s.sessionId)}`}
@@ -418,7 +418,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
           </>
         )}
 
-        {!kimi && <SessionBulkBar sessions={sessions} visiblePaths={visiblePaths} />}
+        {!readOnly && <SessionBulkBar sessions={sessions} visiblePaths={visiblePaths} />}
       </div>
 
       {menu && (
@@ -427,7 +427,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
           y={menu.y}
           onClose={() => setMenu(null)}
           items={[
-            ...(menu.session.cwd
+            ...(menu.session.cwd && (!readOnly || isKimiSession(menu.session.sessionId))
               ? [
                   {
                     label: isKimiSession(menu.session.sessionId)
@@ -442,7 +442,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                   },
                 ]
               : []),
-            ...(isKimiSession(menu.session.sessionId)
+            ...(readOnly || isKimiSession(menu.session.sessionId)
               ? []
               : [
                   {
@@ -458,7 +458,7 @@ export function SessionTable({ sessions, isLoading, selectedProjectName }: Props
                 revealInExplorer(menu.session.filePath).catch(() => {});
               },
             },
-            ...(isKimiSession(menu.session.sessionId)
+            ...(readOnly || isKimiSession(menu.session.sessionId)
               ? []
               : [
                   'separator' as const,

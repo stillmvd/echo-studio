@@ -45,18 +45,19 @@ pub async fn get_agents() -> Result<Agents, String> {
 
 #[tauri::command]
 pub async fn set_agent(app: AppHandle, kind: AgentKind) -> Result<Agents, String> {
-    if kind != agent::current_kind() {
-        let home = agent::home().ok_or("Не найдена домашняя папка")?;
-        let profile = Profile::of(kind, &home);
-        if profile.find_cli().is_none() {
-            return Err(format!(
-                "{} не найден ни в PATH, ни в {}",
-                profile.exe,
-                profile.bin.display()
-            ));
-        }
-        agent::set_current(kind)?;
-        let _ = app.emit(EVENT_AGENT, kind);
-    }
+    switch(&app, kind)?;
     get_agents().await
+}
+
+pub fn switch(app: &AppHandle, kind: AgentKind) -> Result<(), String> {
+    if kind == agent::current_kind() {
+        return Ok(());
+    }
+    let home = agent::home().ok_or("Не найдена домашняя папка")?;
+    if let Some(error) = agent::cli_missing(kind, &home) {
+        return Err(error);
+    }
+    agent::set_current(kind)?;
+    let _ = app.emit(EVENT_AGENT, kind);
+    Ok(())
 }

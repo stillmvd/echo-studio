@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Markdown } from '@/components/markdown/Markdown';
 import { ClaudeIcon } from '@/components/ui/ClaudeIcon';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useAgents } from '@/hooks/use-agent';
 import { useSessionEvents } from '@/hooks/use-session';
 import { useDeleteSession } from '@/hooks/use-session-actions';
 import { parseAsk } from '@/lib/ask-question';
@@ -102,6 +103,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const del = useDeleteSession();
   const kimi = !!session && isKimiSession(session.sessionId);
+  const archived = useAgents().data?.current === 'kimi' && !kimi;
   const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -212,7 +214,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
                 </button>
               )}
             </label>
-            {session?.cwd && (
+            {session?.cwd && !archived && (
               <button
                 type="button"
                 onClick={() => {
@@ -225,7 +227,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
                 <ClaudeIcon className="h-4 w-4" />
               </button>
             )}
-            {session && !kimi && (
+            {session && !kimi && !archived && (
               <button
                 type="button"
                 onClick={() => setRenameOpen(true)}
@@ -245,7 +247,7 @@ export function SessionViewer({ filePath, title, session, onBack }: Props) {
             >
               <Download className="h-4 w-4" strokeWidth={1.75} />
             </button>
-            {!kimi && (
+            {!kimi && !archived && (
               <button
                 type="button"
                 onClick={() => setConfirmDelete(true)}
