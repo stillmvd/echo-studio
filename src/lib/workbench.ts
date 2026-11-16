@@ -25,8 +25,8 @@ export function errorsLabel(count: number): string {
   return `${count} ${plural(count, 'ошибка', 'ошибки', 'ошибок')}`;
 }
 
-export function crashLabel(server: Pick<DevServer, 'exitCode' | 'restarted'>): string {
-  return `${server.restarted ? 'упал снова' : 'упал'} · код ${server.exitCode ?? '?'}`;
+export function crashLabel(server: Pick<DevServer, 'exitCode'>): string {
+  return server.exitCode === null ? 'упал' : `упал · код ${server.exitCode}`;
 }
 
 export function devStatusLabel(server: DevServer): string {
@@ -414,15 +414,14 @@ export function runningGroups(
   sessions: ClaudeSession[],
   servers: DevServer[],
   seen: Record<string, number>,
+  quietDev: (path: string) => boolean = () => false,
 ): RunningGroup[] {
   const rank = (item: RunningItem) =>
-    urgency(
-      item.kind === 'session'
-        ? effectiveStatus(item.session, seen)
-        : devHealth(item.server) === 'errors'
-          ? 'error'
-          : DEV_STATUS[item.server.state],
-    );
+    item.kind === 'session'
+      ? urgency(effectiveStatus(item.session, seen))
+      : quietDev(item.server.projectPath)
+        ? urgency('exited')
+        : urgency(devHealth(item.server) === 'errors' ? 'error' : DEV_STATUS[item.server.state]);
   const groups = new Map<string, Omit<RunningGroup, 'top'>>();
   const group = (path: string | null) => {
     const key = path ? norm(path) : '';
@@ -972,4 +971,27 @@ const GL_STABLE_MS = 60_000;
 export function nextGlTry(tries: number, livedMs: number): number | null {
   const next = livedMs >= GL_STABLE_MS ? 0 : tries + 1;
   return next > GL_RETRIES ? null : next;
+}
+
+export function swapCells<C extends { id: string }>(cells: C[], a: string, b: string): C[] {
+  const i = cells.findIndex((c) => c.id === a);
+  const j = cells.findIndex((c) => c.id === b);
+  if (i < 0 || j < 0 || i === j) return cells;
+  const next = [...cells];
+  const first = next[i] as C;
+  next[i] = next[j] as C;
+  next[j] = first;
+  return next;
+}
+
+export function pickableSessions(
+  sessions: ClaudeSession[],
+  seen: Record<string, number>,
+): ClaudeSession[] {
+  return byUrgency(
+    sessions.filter(
+      (s) => s.kind !== 'external' && !!s.projectPath && effectiveStatus(s, seen) !== 'exited',
+    ),
+    seen,
+  );
 }

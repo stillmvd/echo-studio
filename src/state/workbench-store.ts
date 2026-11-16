@@ -52,6 +52,7 @@ interface WorkbenchState {
   cells: WallCell[];
   focusCell: string | null;
   hiddenProjects: string[];
+  hiddenDevs: string[];
   autoTabs: string[];
 
   select: (view: WorkbenchView) => void;
@@ -79,6 +80,7 @@ interface WorkbenchState {
   pruneCells: (exists: (path: string) => boolean) => void;
   hideProject: (path: string) => void;
   unhideProject: (path: string) => void;
+  setDevHidden: (path: string, hidden: boolean) => void;
 }
 
 type Derived = Pick<WorkbenchState, 'grids' | 'tabs' | 'activeTab'>;
@@ -221,6 +223,7 @@ export function migrateWorkbench(persisted: unknown): Partial<WorkbenchState> {
     cells,
     focusCell,
     hiddenProjects: strings(state.hiddenProjects),
+    hiddenDevs: strings(state.hiddenDevs),
     autoTabs: strings(state.autoTabs),
     recency: strings(state.recency),
     seen: freshSeen(state.seen, Date.now()),
@@ -244,6 +247,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
       cells: emptyCells(),
       focusCell: 'c1',
       hiddenProjects: [],
+      hiddenDevs: [],
       autoTabs: [],
 
       select: (view) => set(view.kind === 'project' ? { view, auto: false } : { view }),
@@ -424,6 +428,11 @@ export const useWorkbenchStore = create<WorkbenchState>()(
         ),
       unhideProject: (path) =>
         set((s) => ({ hiddenProjects: s.hiddenProjects.filter((p) => !samePath(p, path)) })),
+      setDevHidden: (path, hidden) =>
+        set((s) => {
+          const rest = s.hiddenDevs.filter((p) => !samePath(p, path));
+          return { hiddenDevs: hidden ? [...rest, path] : rest };
+        }),
     }),
     {
       name: 'echo-workbench',
@@ -444,6 +453,7 @@ export const useWorkbenchStore = create<WorkbenchState>()(
         cells: s.cells,
         focusCell: s.focusCell,
         hiddenProjects: s.hiddenProjects,
+        hiddenDevs: s.hiddenDevs,
         autoTabs: s.autoTabs,
       }),
     },

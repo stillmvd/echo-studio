@@ -4,6 +4,7 @@ import { useTauriEvent } from '@/hooks/use-workbench';
 import { focusSessionWindow, sessionWindowForeground, toastsMuted } from '@/lib/ipc';
 import { type Marks, marksOf, pickToasts, rememberToast, takeActivation } from '@/lib/toasts';
 import type { ClaudeSession, DevServer, WorkbenchProject } from '@/lib/types';
+import { samePath } from '@/lib/workbench';
 import { useUiStore } from '@/state/ui-store';
 import { useWorkbenchStore } from '@/state/workbench-store';
 import { focusSoon, isShown } from './terminals';
@@ -23,10 +24,11 @@ export function useToasts(
     const before = prev.current;
     prev.current = marksOf(sessions, devs);
     if (!before) return;
+    const hidden = useWorkbenchStore.getState().hiddenDevs;
     const toasts = pickToasts({
       prev: before,
       sessions,
-      devs,
+      devs: devs.filter((d) => !hidden.some((p) => samePath(p, d.projectPath))),
       name: (path) => projects.get(path)?.name ?? folder(path),
       unseen: (tab) => !document.hasFocus() || !isShown(tab),
       last: last.current,

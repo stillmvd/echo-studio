@@ -55,7 +55,6 @@ const server = (state: DevServer['state'], ports: number[] = []): DevServer => (
   projectPath: project.path,
   command: 'pnpm tauri dev',
   errors: null,
-  restarted: false,
   state,
   ports,
   startedAt: 0,
@@ -284,35 +283,51 @@ describe('runningMenu', () => {
     );
   });
 
+  const devActions = {
+    go: noop,
+    openBrowser: noop,
+    restart: noop,
+    copyUrl: noop,
+    toggleHidden: noop,
+    stop: noop,
+    dismiss: noop,
+  };
+
   it('a dev server without a port has no address', () => {
-    expect(
-      labels(
-        runningDevMenu({
-          server: server('running'),
-          actions: {
-            go: noop,
-            openBrowser: noop,
-            restart: noop,
-            copyUrl: noop,
-            stop: noop,
-            dismiss: noop,
-          },
-        }),
-      ),
-    ).toEqual(['Перейти', 'Открыть в браузере (x)', 'Копировать адрес (x)', '—', 'Остановить']);
+    expect(labels(runningDevMenu({ server: server('running'), actions: devActions }))).toEqual([
+      'Перейти',
+      'Открыть в браузере (x)',
+      'Копировать адрес (x)',
+      'Скрыть dev',
+      '—',
+      'Остановить',
+    ]);
+  });
+
+  it('a hidden dev server can be shown again', () => {
+    const toggleHidden = vi.fn();
+    const items = runningDevMenu({
+      server: server('running'),
+      hidden: true,
+      actions: { ...devActions, toggleHidden },
+    });
+    const show = items.find((i) => i !== 'separator' && 'label' in i && i.label === 'Показать dev');
+    (show as ContextMenuAction).onSelect();
+    expect(toggleHidden).toHaveBeenCalledOnce();
   });
 
   it('a dead dev server can be closed from the menu', () => {
     const dismiss = vi.fn();
     const items = runningDevMenu({
       server: { ...server('error'), pids: [] },
-      actions: { go: noop, openBrowser: noop, restart: noop, copyUrl: noop, stop: noop, dismiss },
+      actions: { ...devActions, dismiss },
     });
     expect(labels(items)).toEqual([
       'Перейти',
       'Открыть в браузере (x)',
       'Перезапустить',
       'Копировать адрес (x)',
+      'Скрыть dev',
       '—',
       'Закрыть',
     ]);
@@ -322,25 +337,12 @@ describe('runningMenu', () => {
   });
 
   it('a crashed dev server can be restarted from the menu', () => {
-    expect(
-      labels(
-        runningDevMenu({
-          server: server('error'),
-          actions: {
-            go: noop,
-            openBrowser: noop,
-            restart: noop,
-            copyUrl: noop,
-            stop: noop,
-            dismiss: noop,
-          },
-        }),
-      ),
-    ).toEqual([
+    expect(labels(runningDevMenu({ server: server('error'), actions: devActions }))).toEqual([
       'Перейти',
       'Открыть в браузере (x)',
       'Перезапустить',
       'Копировать адрес (x)',
+      'Скрыть dev',
       '—',
       'Остановить',
     ]);

@@ -46,6 +46,18 @@ export function TreeCard({ open, onOpen, current, total, query, onQuery, childre
   }, [open, onOpen, query, onQuery]);
 
   useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Element | null;
+      if (!t || card.current?.contains(t) || t.closest('.wb-tc-scrim')) return;
+      if (t.closest('[role="dialog"], [role="alertdialog"], [role="menu"], dialog')) return;
+      onOpen(false);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, [open, onOpen]);
+
+  useEffect(() => {
     if (!moved.current) {
       moved.current = true;
       return;

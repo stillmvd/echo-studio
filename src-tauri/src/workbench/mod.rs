@@ -26,7 +26,8 @@ pub fn projects_root() -> Option<PathBuf> {
 }
 
 pub fn is_claude_env(key: &str) -> bool {
-    key.to_ascii_uppercase().starts_with("CLAUDE")
+    let key = key.to_ascii_uppercase();
+    key.starts_with("CLAUDE") || key == "NO_COLOR"
 }
 
 pub fn child_command(program: &str) -> Command {
@@ -56,6 +57,7 @@ mod tests {
         assert!(is_claude_env("CLAUDECODE"));
         assert!(is_claude_env("CLAUDE_CODE_ENTRYPOINT"));
         assert!(is_claude_env("claude_x"));
+        assert!(is_claude_env("NO_COLOR"));
         assert!(!is_claude_env("PATH"));
     }
 

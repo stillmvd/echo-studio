@@ -1,6 +1,6 @@
 import { devTabKey } from '@/state/workbench-store';
 import type { ClaudeSession, DevServer } from './types';
-import { agentName, crashLabel, devHealth } from './workbench';
+import { agentName, devHealth } from './workbench';
 
 export const TOAST_GAP_MS = 10_000;
 export const TOAST_TARGET_MS = 10 * 60_000;
@@ -23,7 +23,8 @@ export function marksOf(sessions: ClaudeSession[], devs: DevServer[]): Marks {
   return marks;
 }
 
-const devMark = (d: DevServer) => `${devHealth(d)}|${d.restarted ? d.startedAt : ''}`;
+const devMark = (d: DevServer) => devHealth(d);
+const crashCode = ({ exitCode }: DevServer) => (exitCode === null ? '' : ` с кодом ${exitCode}`);
 
 interface ToastInput {
   prev: Marks;
@@ -61,12 +62,8 @@ export function pickToasts({ prev, sessions, devs, name, unseen, last, now }: To
     const tab = devTabKey(d.projectPath);
     const was = prev.get(tab);
     if (was === undefined) continue;
-    const [wasHealth, wasRestart] = was.split('|');
-    const [health, restart] = devMark(d).split('|');
-    if (health === 'crashed' && wasHealth !== 'crashed')
-      add(d.projectPath, tab, `dev ${crashLabel(d)} — ${d.command}`);
-    else if (restart && restart !== wasRestart)
-      add(d.projectPath, tab, `dev упал, Echo запустил его снова — ${d.command}`);
+    if (devMark(d) === 'crashed' && was !== 'crashed')
+      add(d.projectPath, tab, `dev упал${crashCode(d)} — ${d.command}`);
   }
   return out;
 }

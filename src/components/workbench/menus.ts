@@ -3,6 +3,7 @@ import {
   Code,
   Copy,
   CornerDownRight,
+  Eye,
   EyeOff,
   FolderCode,
   FolderOpen,
@@ -306,14 +307,17 @@ export function runningMenu({
 
 export function runningDevMenu({
   server,
+  hidden = false,
   actions,
 }: {
   server: DevServer;
+  hidden?: boolean;
   actions: {
     go: () => void;
     openBrowser: () => void;
     restart: () => void;
     copyUrl: () => void;
+    toggleHidden: () => void;
     stop: () => void;
     dismiss: () => void;
   };
@@ -326,6 +330,9 @@ export function runningDevMenu({
       ? [action('Перезапустить', RotateCcw, actions.restart)]
       : []),
     action('Копировать адрес', Link, actions.copyUrl, { disabled: !devUrl(server) }),
+    hidden
+      ? action('Показать dev', Eye, actions.toggleHidden)
+      : action('Скрыть dev', EyeOff, actions.toggleHidden),
     ...(devRuns(server)
       ? danger('Остановить', Square, actions.stop)
       : danger('Закрыть', X, actions.dismiss)),

@@ -12,7 +12,6 @@ const server = (over: Partial<DevServer>): DevServer => ({
   log: '',
   pids: [],
   errors: null,
-  restarted: false,
   ...over,
 });
 

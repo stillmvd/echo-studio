@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom};
 use std::os::windows::io::AsRawHandle;
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
@@ -12,12 +12,13 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Emitter};
-use windows_sys::Win32::Foundation::{CloseHandle, FALSE, HANDLE, TRUE};
+use windows_sys::Win32::Foundation::{
+    CloseHandle, SetHandleInformation, FALSE, HANDLE, HANDLE_FLAG_INHERIT,
+};
 use windows_sys::Win32::NetworkManagement::IpHelper::{
     GetExtendedTcpTable, MIB_TCP6ROW_OWNER_PID, MIB_TCPROW_OWNER_PID, TCP_TABLE_OWNER_PID_LISTENER,
 };
 use windows_sys::Win32::Networking::WinSock::{AF_INET, AF_INET6};
-use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
 use windows_sys::Win32::System::JobObjects::{
     AssignProcessToJobObject, CreateJobObjectW, JobObjectBasicProcessIdList, OpenJobObjectW,
     QueryInformationJobObject, TerminateJobObject,
@@ -33,6 +34,7 @@ pub const ALREADY_RUNNING: &str = "dev-сервер уже запущен";
 const JOB_OBJECT_QUERY: u32 = 0x0004;
 const JOB_OBJECT_TERMINATE: u32 = 0x0008;
 const ERROR_ACCESS_DENIED: i32 = 5;
+const ERROR_ALREADY_EXISTS: i32 = 183;
 const ERROR_INSUFFICIENT_BUFFER: u32 = 122;
 const SEEN_MAX: usize = 4096;
 const SWEEP_SLACK_MS: u64 = 1_000;
@@ -55,8 +57,6 @@ const TAIL_MAX: u64 = 2 * 1024 * 1024;
 const TAIL_POLL: Duration = Duration::from_millis(200);
 const FAST_POLL: Duration = Duration::from_secs(2);
 const SLOW_POLL: Duration = Duration::from_secs(10);
-const RESTART_AFTER: u64 = 60_000;
-const RESTART_MARK: &str = "--- dev упал (код";
 const BUILD_FAILED: [&str; 6] = [
     "[vite] Internal server error",
     "Pre-transform error",
@@ -89,8 +89,6 @@ struct DevFile {
     exit_code: Option<i32>,
     #[serde(default)]
     stopped: bool,
-    #[serde(default)]
-    restarted: bool,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -121,7 +119,6 @@ pub struct DevServer {
     pub log: String,
     pub pids: Vec<u32>,
     pub errors: Option<BuildErrors>,
-    pub restarted: bool,
 }
 
 #[derive(Default)]
@@ -196,7 +193,7 @@ fn runtime() -> std::sync::MutexGuard<'static, HashMap<String, Runtime>> {
     RUNTIME.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-struct Job(HANDLE);
+struct Job(HANDLE, bool);
 
 unsafe impl Send for Job {}
 
@@ -209,19 +206,27 @@ impl Drop for Job {
 impl Job {
     fn create(slug: &str) -> Result<Self, String> {
         let name = job_name(slug);
-        let inherit = SECURITY_ATTRIBUTES {
-            nLength: size_of::<SECURITY_ATTRIBUTES>() as u32,
-            lpSecurityDescriptor: std::ptr::null_mut(),
-            bInheritHandle: TRUE,
-        };
-        let handle = unsafe { CreateJobObjectW(&inherit, name.as_ptr()) };
+        let handle = unsafe { CreateJobObjectW(std::ptr::null(), name.as_ptr()) };
+        let last = std::io::Error::last_os_error();
         if handle.is_null() {
-            return Err(format!(
-                "CreateJobObjectW: {}",
-                std::io::Error::last_os_error()
-            ));
+            return Err(format!("CreateJobObjectW: {last}"));
         }
-        Ok(Self(handle))
+        Ok(Self(
+            handle,
+            last.raw_os_error() == Some(ERROR_ALREADY_EXISTS),
+        ))
+    }
+
+    fn set_inheritable(&self, on: bool) {
+        let flag = if on { HANDLE_FLAG_INHERIT } else { 0 };
+        unsafe { SetHandleInformation(self.0, HANDLE_FLAG_INHERIT, flag) };
+    }
+
+    #[cfg(test)]
+    fn inheritable(&self) -> bool {
+        let mut flags = 0u32;
+        unsafe { windows_sys::Win32::Foundation::GetHandleInformation(self.0, &mut flags) };
+        flags & HANDLE_FLAG_INHERIT != 0
     }
 
     fn open(slug: &str) -> Option<Self> {
@@ -237,16 +242,17 @@ impl Job {
                 name.as_ptr(),
             )
         };
-        (!handle.is_null()).then_some(Self(handle))
+        (!handle.is_null()).then_some(Self(handle, false))
     }
 
     fn assign(&self, child: &Child) -> Result<(), String> {
         let ok = unsafe { AssignProcessToJobObject(self.0, child.as_raw_handle() as HANDLE) };
         if ok == 0 {
-            return Err(format!(
-                "AssignProcessToJobObject: {}",
-                std::io::Error::last_os_error()
-            ));
+            let err = std::io::Error::last_os_error();
+            if self.1 && err.raw_os_error() == Some(ERROR_ACCESS_DENIED) {
+                return Err("Не запустили dev: прежний запуск держит другой процесс. Закройте его или перезапустите Echo".into());
+            }
+            return Err(format!("AssignProcessToJobObject: {err}"));
         }
         Ok(())
     }
@@ -467,7 +473,6 @@ fn view(
         log: log.to_string_lossy().into_owned(),
         pids,
         errors,
-        restarted: file.restarted,
     }
 }
 
@@ -577,7 +582,6 @@ fn checker_name(line: &str, found: usize) -> Option<String> {
 
 pub fn build_errors(text: &str, project: &str) -> Option<BuildErrors> {
     let text = strip_ansi(text);
-    let text = text.rsplit(RESTART_MARK).next().unwrap_or_default();
     let mut checkers: Vec<(String, u32, Option<String>)> = Vec::new();
     let mut bundler: Option<(u32, Option<String>)> = None;
     let mut pending: Option<String> = None;
@@ -719,34 +723,7 @@ pub fn start_in(
     args: &[String],
     on_exit: impl Fn() + Send + Sync + 'static,
 ) -> Result<DevServer, String> {
-    launch(
-        dir,
-        project_path,
-        cwd,
-        args,
-        Arc::new(on_exit),
-        None,
-        RESTART_AFTER,
-    )
-}
-
-fn restart_due(code: Option<i32>, file: &DevFile, now: u64, after: u64) -> bool {
-    code.is_some_and(|c| c != 0) && !file.restarted && now.saturating_sub(file.started_at) >= after
-}
-
-fn open_log(path: &Path, after_crash: Option<i32>) -> std::io::Result<File> {
-    let Some(code) = after_crash else {
-        return File::create(path);
-    };
-    let mut log = fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)?;
-    writeln!(
-        log,
-        "\n{RESTART_MARK} {code}), Echo запускает его снова ---\n"
-    )?;
-    Ok(log)
+    launch(dir, project_path, cwd, args, Arc::new(on_exit))
 }
 
 fn launch(
@@ -755,8 +732,6 @@ fn launch(
     cwd: &Path,
     args: &[String],
     on_exit: OnExit,
-    after_crash: Option<i32>,
-    restart_after: u64,
 ) -> Result<DevServer, String> {
     let _launching = LAUNCH.lock().unwrap_or_else(|e| e.into_inner());
     fs::create_dir_all(dir).map_err(|e| e.to_string())?;
@@ -774,13 +749,15 @@ fn launch(
         stop_in(dir, project_path)?;
     }
     let line = args.join(" ");
-    let log = open_log(&dir.join(format!("{slug}.log")), after_crash).map_err(|e| e.to_string())?;
+    let log = File::create(dir.join(format!("{slug}.log"))).map_err(|e| e.to_string())?;
     let job = Job::create(&slug)?;
-    let mut child = match spawn(cwd, &line, &log, true) {
+    job.set_inheritable(true);
+    let spawned = match spawn(cwd, &line, &log, true) {
         Err(e) if e.raw_os_error() == Some(ERROR_ACCESS_DENIED) => spawn(cwd, &line, &log, false),
         other => other,
-    }
-    .map_err(|e| format!("Не удалось запустить `{line}`: {e}"))?;
+    };
+    job.set_inheritable(false);
+    let mut child = spawned.map_err(|e| format!("Не удалось запустить `{line}`: {e}"))?;
     if let Err(e) = job.assign(&child) {
         let _ = child.kill();
         return Err(e);
@@ -793,7 +770,6 @@ fn launch(
         seen: start_times(&[child.id()]),
         exit_code: None,
         stopped: false,
-        restarted: after_crash.is_some(),
     };
     let written = {
         let _lock = files();
@@ -804,40 +780,15 @@ fn launch(
         let _ = child.kill();
         return Err(e);
     }
-    {
-        let mut rt = runtime();
-        if after_crash.is_some() && rt.get(&slug).is_some_and(|r| r.stopping) {
-            drop(rt);
-            job.terminate();
-            let _ = child.kill();
-            return Err("dev-сервер остановлен во время перезапуска".into());
-        }
-        rt.insert(slug.clone(), Runtime::default());
-    }
+    runtime().insert(slug.clone(), Runtime::default());
     let watched = slug.clone();
     let state = dir.to_path_buf();
-    let (project, cwd, args) = (project_path.to_owned(), cwd.to_path_buf(), args.to_vec());
     std::thread::spawn(move || {
         let _job = job;
         let code = child.wait().ok().and_then(|s| s.code());
         let stopping = runtime().entry(watched.clone()).or_default().stopping;
         if !stopping {
             let _ = update_file(&state, &watched, |f| f.exit_code = code);
-            let again = read_file(&state, &watched).is_some_and(|f| {
-                restart_due(code, &f, now_ms(), restart_after)
-                    && ports_for(&running_members(&watched, f.started_at), &listeners()).is_empty()
-            });
-            if again && !runtime().entry(watched.clone()).or_default().stopping {
-                let _ = launch(
-                    &state,
-                    &project,
-                    &cwd,
-                    &args,
-                    on_exit.clone(),
-                    code,
-                    restart_after,
-                );
-            }
         }
         on_exit();
     });
@@ -1242,11 +1193,15 @@ mod tests {
     fn named_job_outlives_its_handle() {
         let slug = format!("test-{}", std::process::id());
         let job = Job::create(&slug).unwrap();
+        assert!(!job.inheritable());
+        job.set_inheritable(true);
         let mut child = super::super::child_command("ping")
             .args(["-n", "30", "127.0.0.1"])
             .stdout(Stdio::null())
             .spawn()
             .unwrap();
+        job.set_inheritable(false);
+        assert!(!job.inheritable());
         job.assign(&child).unwrap();
         drop(job);
         let reopened = Job::open(&slug).expect("job reachable by name after its handle closed");
@@ -1569,7 +1524,6 @@ mod tests {
             seen: vec![(7, 1_000), (8, 2_000)],
             exit_code: Some(1),
             stopped: false,
-            restarted: true,
         };
         let text = serde_json::to_string(&file).unwrap();
         assert!(text.contains(r#""seen":[[7,1000],[8,2000]]"#), "{text}");
@@ -1658,29 +1612,8 @@ mod tests {
     }
 
     #[test]
-    fn errors_before_an_automatic_restart_are_forgotten() {
-        let log = format!(
-            "[vue-tsc] Found 1 error. Watching for file changes.\n\n{RESTART_MARK} 1), Echo запускает его снова ---\n\nVITE ready\n"
-        );
-        assert_eq!(errors(&log), None);
-    }
-
-    #[test]
-    fn restart_is_due_once_after_a_long_run() {
-        let mut file: DevFile = serde_json::from_str(
-            r#"{"projectPath":"C:\\P","command":"pnpm dev","pid":7,"startedAt":1000}"#,
-        )
-        .unwrap();
-        assert!(restart_due(Some(1), &file, 61_000, RESTART_AFTER));
-        assert!(!restart_due(Some(1), &file, 30_000, RESTART_AFTER));
-        assert!(!restart_due(Some(0), &file, 61_000, RESTART_AFTER));
-        file.restarted = true;
-        assert!(!restart_due(Some(1), &file, 61_000, RESTART_AFTER));
-    }
-
-    #[test]
-    fn a_crash_restarts_once_and_then_stays_red() {
-        let base = std::env::temp_dir().join(format!("echo-dev-restart-{}", std::process::id()));
+    fn a_crash_stays_red_and_is_not_restarted() {
+        let base = std::env::temp_dir().join(format!("echo-dev-no-restart-{}", std::process::id()));
         let project = base.join("project");
         let dir = base.join("state");
         fs::create_dir_all(&project).unwrap();
@@ -1690,16 +1623,13 @@ mod tests {
         let on_exit: OnExit = Arc::new(move || {
             let _ = tx.send(());
         });
-        launch(&dir, &project_path, &project, &args, on_exit, None, 0).unwrap();
-        rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        launch(&dir, &project_path, &project, &args, on_exit).unwrap();
         rx.recv_timeout(Duration::from_secs(10)).unwrap();
         assert!(rx.recv_timeout(Duration::from_secs(2)).is_err());
         let file = read_file(&dir, &slug(&project_path)).unwrap();
-        assert!(file.restarted);
         assert_eq!(file.exit_code, Some(3));
         let log = fs::read_to_string(dir.join(format!("{}.log", slug(&project_path)))).unwrap();
-        assert_eq!(log.matches("run").count(), 2, "{log}");
-        assert_eq!(log.matches("код 3").count(), 1, "{log}");
+        assert_eq!(log.matches("run").count(), 1, "{log}");
         assert_eq!(list_in(&dir)[0].state, DevState::Error);
         let _ = fs::remove_dir_all(&base);
     }
@@ -1711,26 +1641,5 @@ mod tests {
             job_name_in("com.stillmvd.echo-studio.check", "ab"),
             "Local\\EchoStudio.dev.com.stillmvd.echo-studio.check.ab"
         );
-    }
-
-    #[test]
-    fn a_restart_gives_up_when_stop_came_first() {
-        let base = std::env::temp_dir().join(format!("echo-dev-stopped-{}", std::process::id()));
-        let project = base.join("project");
-        let dir = base.join("state");
-        fs::create_dir_all(&project).unwrap();
-        let project_path = project.to_string_lossy().into_owned();
-        let args = ["ping -n 30 127.0.0.1 > nul".to_owned()];
-        runtime().entry(slug(&project_path)).or_default().stopping = true;
-        let on_exit: OnExit = Arc::new(|| {});
-        let result = launch(&dir, &project_path, &project, &args, on_exit, Some(3), 0);
-        assert!(result.is_err());
-        let gone = (0..30).any(|_| {
-            std::thread::sleep(Duration::from_millis(100));
-            running_members(&slug(&project_path), 0).is_empty()
-        });
-        assert!(gone);
-        runtime().remove(&slug(&project_path));
-        let _ = fs::remove_dir_all(&base);
     }
 }

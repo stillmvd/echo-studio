@@ -12,6 +12,8 @@ export interface DraggedTab {
 
 let dragging: DraggedTab | null = null;
 
+export const draggedTab = () => dragging;
+
 export function tabDragProps(tab: DraggedTab | null) {
   if (!tab) return {};
   return {

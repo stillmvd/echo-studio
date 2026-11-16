@@ -36,6 +36,7 @@ import {
   nextInRecency,
   normalizeCells,
   pathsText,
+  pickableSessions,
   plainTitle,
   projectOf,
   pruneCells,
@@ -48,6 +49,7 @@ import {
   statusTitle,
   statusView,
   stoppedDevTabs,
+  swapCells,
   TAB_DRAG_TYPE,
   terminalKey,
   topStatus,
@@ -317,7 +319,6 @@ describe('urgency', () => {
     log: '',
     pids: [],
     errors: null,
-    restarted: false,
   });
   const top = (i: RunningItem) => (i.kind === 'session' ? i.session.sessionId : i.server.state);
 
@@ -346,6 +347,17 @@ describe('urgency', () => {
     );
     expect(groups.map((g) => g.path)).toEqual(['C:\\P\\X', null]);
     expect(groups[0]?.devs).toHaveLength(1);
+  });
+
+  it('does not raise a project whose dev server is hidden', () => {
+    const groups = runningGroups(
+      [session('b1', 'idle', 1, 'B')],
+      [dev('C', 'error')],
+      {},
+      (path) => path === 'C',
+    );
+    expect(groups.map((g) => g.path)).toEqual(['B', 'C']);
+    expect(groups[1]?.devs).toHaveLength(1);
   });
 
   it('puts groups with only exited sessions last', () => {
@@ -1113,7 +1125,6 @@ describe('ended tabs', () => {
       log: '',
       pids: [],
       errors: null,
-      restarted: false,
     });
     const devs = [srv('B', 'running'), srv('C', 'error'), srv('D', 'stopped')];
     expect(stoppedDevTabs(tabs, devs)).toEqual([
@@ -1230,5 +1241,32 @@ describe('nextGlTry', () => {
   it('starts over after a context lived long enough', () => {
     expect(nextGlTry(5, 60_000)).toBe(0);
     expect(nextGlTry(3, 3_600_000)).toBe(0);
+  });
+});
+
+describe('swapCells', () => {
+  const cells = [{ id: 'c1' }, { id: 'c2' }, { id: 'c3' }, { id: 'c4' }];
+
+  it('swaps two cells by id', () => {
+    expect(swapCells(cells, 'c1', 'c3').map((c) => c.id)).toEqual(['c3', 'c2', 'c1', 'c4']);
+  });
+
+  it('leaves the array alone for the same or an unknown id', () => {
+    expect(swapCells(cells, 'c2', 'c2')).toBe(cells);
+    expect(swapCells(cells, 'c2', 'zz')).toBe(cells);
+  });
+});
+
+describe('pickableSessions', () => {
+  it('keeps live sessions with a project, most urgent first', () => {
+    const ext = { ...session('E', 'waiting', 1), kind: 'external' as const };
+    const list = [
+      session('A', 'idle', 1),
+      ext,
+      session('B', 'exited', 1),
+      session('C', 'waiting', 2),
+      session('D', 'working', 3, null),
+    ];
+    expect(pickableSessions(list, {}).map((s) => s.sessionId)).toEqual(['C', 'A']);
   });
 });

@@ -349,7 +349,6 @@ mod tests {
             log: String::new(),
             pids: Vec::new(),
             errors: None,
-            restarted: false,
         }
     }
 

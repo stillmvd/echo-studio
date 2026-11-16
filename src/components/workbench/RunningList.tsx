@@ -1,5 +1,5 @@
 import { SquareTerminal } from 'lucide-react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, MouseEvent } from 'react';
 import { useOpenMenu } from '@/components/ui/ContextMenu';
 import { cn } from '@/lib/cn';
 import { devLook, LIVE_COLOR, type LiveLook, sessionLook } from '@/lib/live-status';
@@ -11,6 +11,7 @@ import {
   EXTERNAL_LABEL,
   runningGroups,
   STATUS_LABEL,
+  samePath,
   statusView,
 } from '@/lib/workbench';
 import { devTabKey, useWorkbenchStore } from '@/state/workbench-store';
@@ -59,12 +60,15 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
   const activeTab = useWorkbenchStore((s) => s.activeTab);
   const openTab = useWorkbenchStore((s) => s.openTab);
   const select = useWorkbenchStore((s) => s.select);
+  const hiddenDevs = useWorkbenchStore((s) => s.hiddenDevs);
+  const setDevHidden = useWorkbenchStore((s) => s.setDevHidden);
   const { openExternal, layer } = useExternalSession();
   const openMenu = useOpenMenu();
   const { menu: projectMenu, dev } = useProjectMenu(devServers, busy, onStart);
   const stop = useStopSession();
 
-  const groups = runningGroups(sessions, devServers, seen);
+  const quiet = (path: string) => hiddenDevs.some((p) => samePath(p, path));
+  const groups = runningGroups(sessions, devServers, seen, quiet);
   if (groups.length === 0) {
     return (
       <>
@@ -100,6 +104,40 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
     };
     const url = devUrl(d);
     const look = devLook(d);
+    const hidden = quiet(d.projectPath);
+    const menu = (e: MouseEvent) =>
+      openMenu(
+        e,
+        runningDevMenu({
+          server: d,
+          hidden,
+          actions: {
+            go,
+            openBrowser: () => dev.openBrowser(d.projectPath),
+            restart: () => restartDev(dev, project, d),
+            copyUrl: () => url && copyText(url),
+            stop: () => dev.askStop(project),
+            dismiss: () => dev.dismiss(d.projectPath),
+            toggleHidden: () => setDevHidden(d.projectPath, !hidden),
+          },
+        }),
+      );
+    if (hidden) {
+      return (
+        <button
+          key={key}
+          type="button"
+          className={cn('wb-pc-dev', isOn(d.projectPath, key) && 'on')}
+          style={tileStyle(look)}
+          aria-label={`dev · ${devStatusLabel(d)}`}
+          data-tip={`dev · ${devStatusLabel(d)}`}
+          onClick={go}
+          onContextMenu={menu}
+        >
+          <SquareTerminal strokeWidth={2} aria-hidden="true" />
+        </button>
+      );
+    }
     return (
       <button
         key={key}
@@ -107,22 +145,7 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
         className={cn('wb-rt', isOn(d.projectPath, key) && 'on')}
         style={tileStyle(look)}
         onClick={go}
-        onContextMenu={(e) =>
-          openMenu(
-            e,
-            runningDevMenu({
-              server: d,
-              actions: {
-                go,
-                openBrowser: () => dev.openBrowser(d.projectPath),
-                restart: () => restartDev(dev, project, d),
-                copyUrl: () => url && copyText(url),
-                stop: () => dev.askStop(project),
-                dismiss: () => dev.dismiss(d.projectPath),
-              },
-            }),
-          )
-        }
+        onContextMenu={menu}
       >
         <LiveIcon look={look} />
         <span className="wb-rt-l">
@@ -201,9 +224,10 @@ export function RunningList({ sessions, devServers, projects, busy, onStart }: P
                 {name}
               </div>
             )}
+            {g.devs.filter((d) => quiet(d.projectPath)).map(devTile)}
             <div className="wb-rts">
               {g.sessions.map(sessionTile)}
-              {g.devs.map(devTile)}
+              {g.devs.filter((d) => !quiet(d.projectPath)).map(devTile)}
             </div>
           </article>
         );

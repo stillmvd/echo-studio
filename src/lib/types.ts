@@ -433,5 +433,4 @@ export interface DevServer {
   log: string;
   pids: number[];
   errors: { count: number; at: string | null } | null;
-  restarted: boolean;
 }

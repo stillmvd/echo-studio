@@ -38,7 +38,6 @@ const dev = (over: Partial<DevServer> = {}): DevServer => ({
   log: '',
   pids: [1],
   errors: null,
-  restarted: false,
   ...over,
 });
 
@@ -62,7 +61,6 @@ describe('dev health', () => {
     const crashed = dev({ state: 'error', exitCode: 1, ports: [] });
     expect(devHealth(crashed)).toBe('crashed');
     expect(devStatusLabel(crashed)).toBe('упал · код 1');
-    expect(devStatusLabel({ ...crashed, restarted: true })).toBe('упал снова · код 1');
     const broken = dev({ errors: { count: 2, at: 'src/a.ts:3' } });
     expect(devHealth(broken)).toBe('errors');
     expect(devStatusLabel(broken)).toBe('2 ошибки');
@@ -91,7 +89,7 @@ describe('toasts', () => {
     expect(toasts.map((t) => [t.tab, t.body])).toEqual([
       ['a', 'Фикс — ждёт ответа'],
       ['b', 'Claude — закончил задачу'],
-      ['dev:C:/P', 'dev упал · код 1 — npm run dev'],
+      ['dev:C:/P', 'dev упал с кодом 1 — npm run dev'],
     ]);
   });
 
@@ -138,15 +136,6 @@ describe('toasts', () => {
       { sessions: [session('b', 'error')], devs: [] },
     );
     expect(toasts.map((t) => t.body)).toEqual(['Claude — остановился с ошибкой']);
-  });
-
-  it('tells about an automatic restart once', () => {
-    const restarted = dev({ state: 'starting', ports: [], restarted: true, startedAt: 5 });
-    const toasts = run({ sessions: [], devs: [dev()] }, { sessions: [], devs: [restarted] });
-    expect(toasts.map((t) => t.body)).toEqual(['dev упал, Echo запустил его снова — npm run dev']);
-    expect(run({ sessions: [], devs: [restarted] }, { sessions: [], devs: [restarted] })).toEqual(
-      [],
-    );
   });
 
   it('sends at most one toast per tab in ten seconds', () => {
