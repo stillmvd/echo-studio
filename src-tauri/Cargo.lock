@@ -937,6 +937,7 @@ name = "echo-studio"
 version = "0.24.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "dirs 7.0.0",
  "humantime",
  "log",

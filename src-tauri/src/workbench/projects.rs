@@ -236,8 +236,10 @@ pub fn decode_ini(bytes: &[u8]) -> String {
     match bytes {
         [0xFF, 0xFE, rest @ ..] => {
             let units: Vec<u16> = rest
-                .chunks_exact(2)
-                .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|c| u16::from_le_bytes(*c))
                 .collect();
             String::from_utf16_lossy(&units)
         }
@@ -245,23 +247,56 @@ pub fn decode_ini(bytes: &[u8]) -> String {
     }
 }
 
-pub fn icon_name(ini: &str) -> Option<String> {
+pub fn icon_resource(ini: &str) -> Option<String> {
     let value = ini.lines().find_map(|line| {
         let (key, value) = line.trim().trim_start_matches('\u{feff}').split_once('=')?;
         key.trim()
             .eq_ignore_ascii_case("IconResource")
             .then(|| value.trim().to_string())
     })?;
-    let file = value.split(',').next()?.rsplit(['\\', '/']).next()?;
-    let (stem, ext) = file.rsplit_once('.')?;
-    ext.eq_ignore_ascii_case("ico").then(|| stem.to_string())
+    let path = value.split(',').next()?.trim();
+    let (_, ext) = path.rsplit_once('.')?;
+    ext.eq_ignore_ascii_case("ico").then(|| path.to_string())
+}
+
+pub fn icon_name(ini: &str) -> Option<String> {
+    let path = icon_resource(ini)?;
+    let file = path.rsplit(['\\', '/']).next()?;
+    file.rsplit_once('.').map(|(stem, _)| stem.to_string())
 }
 
 fn icon(dir: &Path, icons: &Path) -> Option<String> {
-    let ini = fs::read(dir.join("desktop.ini")).ok()?;
-    let name = icon_name(&decode_ini(&ini))?;
-    let svg = fs::read_to_string(icons.join(format!("{name}-small.svg"))).ok()?;
-    Some(svg.trim().to_string())
+    let ini = decode_ini(&fs::read(dir.join("desktop.ini")).ok()?);
+    let name = icon_name(&ini)?;
+    match fs::read_to_string(icons.join(format!("{name}-small.svg"))) {
+        Ok(svg) => Some(svg.trim().to_string()),
+        Err(_) => ico_as_svg(&fs::read(icon_resource(&ini)?).ok()?),
+    }
+}
+
+const ICO_MAX_BYTES: usize = 4 * 1024 * 1024;
+const PNG_MAGIC: &[u8] = b"\x89PNG\r\n\x1a\n";
+
+pub fn ico_as_svg(bytes: &[u8]) -> Option<String> {
+    use base64::Engine;
+    if bytes.len() > ICO_MAX_BYTES || bytes.get(..4)? != [0, 0, 1, 0] {
+        return None;
+    }
+    let count = u16::from_le_bytes([bytes[4], bytes[5]]) as usize;
+    let (side, png) = (0..count)
+        .filter_map(|i| {
+            let e = bytes.get(6 + i * 16..6 + (i + 1) * 16)?;
+            let side = if e[0] == 0 { 256 } else { u32::from(e[0]) };
+            let size = u32::from_le_bytes([e[8], e[9], e[10], e[11]]) as usize;
+            let at = u32::from_le_bytes([e[12], e[13], e[14], e[15]]) as usize;
+            let data = bytes.get(at..at.checked_add(size)?)?;
+            data.starts_with(PNG_MAGIC).then_some((side, data))
+        })
+        .max_by_key(|(side, _)| *side)?;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(png);
+    Some(format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {side} {side}\"><image width=\"{side}\" height=\"{side}\" href=\"data:image/png;base64,{b64}\"/></svg>"
+    ))
 }
 
 pub fn dev_args(dir: &Path) -> Option<(Vec<String>, DevKind)> {
@@ -504,6 +539,50 @@ mod tests {
         let mut bom = vec![0xEF, 0xBB, 0xBF];
         bom.extend_from_slice(plain);
         assert_eq!(icon_name(&decode_ini(&bom)).as_deref(), Some("x"));
+    }
+
+    fn ico(entries: &[(u8, &[u8])]) -> Vec<u8> {
+        let mut head = vec![0, 0, 1, 0, entries.len() as u8, 0];
+        let mut body = Vec::new();
+        let mut at = 6 + entries.len() * 16;
+        for (side, data) in entries {
+            head.extend([*side, *side, 0, 0, 1, 0, 32, 0]);
+            head.extend((data.len() as u32).to_le_bytes());
+            head.extend((at as u32).to_le_bytes());
+            body.extend_from_slice(data);
+            at += data.len();
+        }
+        head.extend(body);
+        head
+    }
+
+    #[test]
+    fn raster_ico_becomes_svg_with_largest_png() {
+        let small = [PNG_MAGIC, b"small"].concat();
+        let big = [PNG_MAGIC, b"big"].concat();
+        let svg = ico_as_svg(&ico(&[(32, &small), (0, &big), (48, b"BMPDATA")])).unwrap();
+        assert!(svg.contains("viewBox=\"0 0 256 256\""));
+        use base64::Engine;
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&big);
+        assert!(svg.contains(&format!("data:image/png;base64,{b64}")));
+        assert_eq!(ico_as_svg(&ico(&[(48, b"BMPDATA")])), None);
+        assert_eq!(ico_as_svg(b"not an icon"), None);
+    }
+
+    #[test]
+    fn icon_falls_back_to_the_ico_itself() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        let icons = mk(root, "_maintenance/folder-icons");
+        let file = root.join("gen.ico");
+        fs::write(&file, ico(&[(32, &[PNG_MAGIC, b"x"].concat())])).unwrap();
+        let proj = mk(root, "Ext");
+        fs::write(
+            proj.join("desktop.ini"),
+            format!("[.ShellClassInfo]\r\nIconResource={},0\r\n", file.display()),
+        )
+        .unwrap();
+        assert!(icon(&proj, &icons).is_some_and(|s| s.contains("viewBox=\"0 0 32 32\"")));
     }
 
     #[test]
