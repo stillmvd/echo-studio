@@ -172,7 +172,7 @@ pub fn status_dir(home: &Path) -> PathBuf {
 }
 
 pub fn memory_root(home: &Path) -> PathBuf {
-    home.join(".claude").join("projects")
+    home.join(".echo-memory")
 }
 
 static CURRENT: RwLock<AgentKind> = RwLock::new(AgentKind::Claude);
@@ -303,7 +303,7 @@ mod tests {
     fn shared_paths_stay_under_claude() {
         let home = Path::new(r"C:\Users\me");
         assert_eq!(status_dir(home), home.join(r".claude\state\sessions"));
-        assert_eq!(memory_root(home), home.join(r".claude\projects"));
+        assert_eq!(memory_root(home), home.join(".echo-memory"));
     }
 
     #[test]

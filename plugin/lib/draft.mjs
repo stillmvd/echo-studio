@@ -9,7 +9,10 @@ export function buildDraft(state, sessionId, now = new Date()) {
         )
         .join('\n')
     : '—';
-  const files = state.touched.filter((f) => !f.replace(/\\/g, '/').includes('/.claude/projects/'));
+  const files = state.touched.filter((f) => {
+    const norm = f.replace(/\\/g, '/');
+    return !norm.includes('/.claude/projects/') && !norm.includes('/.echo-memory/');
+  });
   const touched = files.length ? files.map((f) => `- \`${f}\``).join('\n') : '—';
   return `---
 name: session-${sessionId.slice(0, 8)}

@@ -41,7 +41,7 @@ export function slug(root) {
 }
 
 export function memoryDir(cwd, home = homedir()) {
-  return join(home, '.claude', 'projects', slug(projectRoot(cwd)), 'memory');
+  return join(home, '.echo-memory', slug(projectRoot(cwd)), 'memory');
 }
 
 export function safeId(sessionId) {
